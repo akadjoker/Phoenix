@@ -201,19 +201,19 @@ public:
 };
 
 
-class Skeleton
-{
-public:
-    void Load( Mesh* mesh);
-    void CalculateBoneMatrices();
+// class Skeleton
+// {
+// public:
+//     void Load( Mesh* mesh);
+//     void CalculateBoneMatrices();
     
-    const std::vector<Mat4>& GetBoneMatrices() const { return m_boneMatrices; }
-    Bone* FindBone(const std::string& name);
+//     const std::vector<Mat4>& GetBoneMatrices() const { return m_boneMatrices; }
+//     Bone* FindBone(const std::string& name);
     
-private:
-    std::vector<Bone> m_bones;
-    std::vector<Mat4> m_boneMatrices;
-};
+// private:
+//     std::vector<Bone> m_bones;
+//     std::vector<Mat4> m_boneMatrices;
+// };
 
 
 

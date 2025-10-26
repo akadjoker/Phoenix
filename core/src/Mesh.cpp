@@ -2332,8 +2332,6 @@ Quat Animation::InterpolateRotation(const AnimationChannel& ch, float time)
             
             const Quat& q0 = ch.keyframes[i].rotation;
             const Quat& q1 = ch.keyframes[i + 1].rotation;
-            
-            // Spherical Linear Interpolation (SLERP)
             return Quat::Slerp(q0, q1, factor);
         }
     }
