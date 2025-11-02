@@ -137,19 +137,21 @@ int main()
     //animationTop.BindToMesh(model);
 
     Animator animator =Animator(model);
-    animator.LoadAnimation("topIdle", "assets/sinbad/sinbad_IdleTop.anim");
-    animator.LoadAnimation("topRun", "assets/sinbad/sinbad_RunTop.anim");
-    animator.LoadAnimation("legsRun", "assets/sinbad/sinbad_RunBase.anim");
 
+    AnimationLayer *torsoLayer = animator.AddLayer();
 
-    u32 upperLayer = animator.AddLayer("Upper", 0.5f);
-    u32 lowerLayer = animator.AddLayer("Lower", 0.5f);
+    torsoLayer->LoadAnimation("topIdle", "assets/sinbad/sinbad_IdleTop.anim");
+    torsoLayer->LoadAnimation("topSliceHorizontal", "assets/sinbad/sinbad_SliceHorizontal.anim");
+    torsoLayer->LoadAnimation("topSliceVertical", "assets/sinbad/sinbad_SliceVertical.anim");
+    torsoLayer->LoadAnimation("topRun", "assets/sinbad/sinbad_RunTop.anim");
+    torsoLayer->LoadAnimation("legsRun", "assets/sinbad/sinbad_RunBase.anim");
+    torsoLayer->Play("topRun", PlayMode::Loop);
 
-    animator.PlayOnLayer(upperLayer, "topRun", PlayMode::Loop);
-    animator.PlayOnLayer(lowerLayer, "legsRun", PlayMode::Loop);
-
-  //  animator.Play("IdleTop", PlayMode::Loop);
-    //animator.Play("RunBase", PlayMode::Loop);
+    AnimationLayer *legsLayer = animator.AddLayer();
+    legsLayer->LoadAnimation("legsIdle", "assets/sinbad/sinbad_IdleBase.anim");
+    legsLayer->LoadAnimation("legsRun", "assets/sinbad/sinbad_RunBase.anim");
+    legsLayer->Play("legsRun", PlayMode::Loop);
+    
 
 
      Mesh *modelDefault = MeshManager::Instance().Load("default", "assets/anim.h3d");
@@ -248,6 +250,14 @@ int main()
         if (state[SDL_SCANCODE_D])
             camera.strafe(SPEED);
 
+        if (state[SDL_SCANCODE_P])
+            torsoLayer->PlayOneShot( "topSliceHorizontal", "topRun", 0.15f);
+            //animator.Play("topSliceHorizontal", PlayMode::OnceAndReturn);
+    
+        if (state[SDL_SCANCODE_O])
+            torsoLayer->PlayOneShot( "topSliceVertical", "topRun", 0.15f);
+            //animator.Play("topSliceVertical", PlayMode::OnceAndReturn);
+    
         camera.update(1.0f);
         const Mat4 &view = camera.getViewMatrix();
         const Mat4 &proj = camera.getProjectionMatrix();
