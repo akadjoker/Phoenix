@@ -62,9 +62,9 @@ void main()
 {           
     vec3 color = texture(diffuse, TexCoords).rgb;
     vec3 normal = normalize(Normal);
-    vec3 lightColor = vec3(1.0,0.0,0.0);
+    vec3 lightColor = vec3(0.5,0.5,0.5);
     // ambient
-    vec3 ambient = 0.3 * lightColor;
+    vec3 ambient = 0.6 * lightColor;
     // diffuse
     vec3 lightDir = normalize(lightPos - FragPos);
     float diff = max(dot(lightDir, normal), 0.0);
@@ -123,7 +123,33 @@ int main()
     CameraFree camera(45.0f, (float)screenWidth / (float)screenHeight, 0.1f, 1000.0f);
     camera.setPosition(0.0f, 0.5f, 10.0f);
 
-    Mesh *model = MeshManager::Instance().Load("modle", "assets/sinbad/sinbad.h3d");
+    TextureManager::Instance().SetLoadPath("assets/");
+
+    TextureManager::Instance().Add("sinbad/sinbad_body.tga",false);
+    TextureManager::Instance().Add("sinbad/sinbad_clothes.tga",false);
+    TextureManager::Instance().Add("sinbad/sinbad_sword.tga",false);
+    TextureManager::Instance().Add("marm.jpg",true);
+
+    Mesh *model = MeshManager::Instance().Load("sinbad", "assets/sinbad/sinbad.h3d");
+
+    Material *material = model->AddMaterial("body");
+    material->SetTexture(0, TextureManager::Instance().Get("sinbad_body"));
+    material = model->AddMaterial("clothes");
+    material->SetTexture(0, TextureManager::Instance().Get("sinbad_clothes"));
+    material = model->AddMaterial("sword");
+    material->SetTexture(0, TextureManager::Instance().Get("sinbad_sword"));
+
+    model->SetBufferMaterial(0, 1);//olhos
+    model->SetBufferMaterial(1, 1);//tronco
+    model->SetBufferMaterial(2, 2);//rings
+    model->SetBufferMaterial(3, 1);
+    model->SetBufferMaterial(4, 3);//espada
+    model->SetBufferMaterial(5, 2);
+    model->SetBufferMaterial(6, 2);//pernas
+
+ 
+
+
  
     //animation.Load("assets/sinbad/sinbad_JumpLoop.anim");
     //animation.Load("assets/sinbad/sinbad_IdleTop.anim");
@@ -164,13 +190,17 @@ int main()
     Shader *shader = ShaderManager::Instance().Create("shader", shadowVertexShader, shadowFragmentShader);
 
     Mesh *cube = MeshManager::Instance().CreateCube("cube");
+    Mesh *plane = MeshManager::Instance().CreatePlane("plane", 10.0f, 10.0f,10,10,20,20);
+    plane->AddMaterial("marm");
+    plane->GetMaterial(0)->SetTexture(0, TextureManager::Instance().Get("marm"));
 
-    Texture *texture = TextureManager::Instance().Get("checker");
+ 
+ 
 
     bool firstMouse{true};
     float mouseSensitivity{0.8f};
 
-    Vec3 lightPos(-2, 4.0f, -4.0f);
+    Vec3 lightPos(-2, 40.0f, -40.0f);
 
 
     float totalTime = 0.0f;
@@ -250,11 +280,11 @@ int main()
         if (state[SDL_SCANCODE_D])
             camera.strafe(SPEED);
 
-        if (state[SDL_SCANCODE_P])
+        if (state[SDL_SCANCODE_P] && torsoLayer->GetCurrentAnimation() == "topRun")
             torsoLayer->PlayOneShot( "topSliceHorizontal", "topRun", 0.15f);
             //animator.Play("topSliceHorizontal", PlayMode::OnceAndReturn);
     
-        if (state[SDL_SCANCODE_O])
+        if (state[SDL_SCANCODE_O] && torsoLayer->GetCurrentAnimation() == "topRun")
             torsoLayer->PlayOneShot( "topSliceVertical", "topRun", 0.15f);
             //animator.Play("topSliceVertical", PlayMode::OnceAndReturn);
     
@@ -275,11 +305,10 @@ int main()
         shader->SetUniformMat4("view", view.m);
         shader->SetUniform("lightPos", lightPos.x, lightPos.y, lightPos.z);
         shader->SetUniform("viewPos", cameraPos.x, cameraPos.y, cameraPos.z);
-        shader->SetTexture2D("diffuse", texture->GetHandle(), 0);
+        shader->SetUniform("diffuse", 0);
+ 
 
-        u32 count = model->GetBoneCount();
-       
-          
+      
  
         // animation.Update(dt  );
         // animationTop.Update(dt  );
@@ -294,11 +323,16 @@ int main()
         shader->SetUniformMat4("model", matModel.m );
 
         driver.DrawMesh(model);
+        
 
         S=0.01f;
         matModel= Mat4::Translation(-0.5f, 0.0f, 0.0f) * Mat4::Scale(S, S, S) ;
         shader->SetUniformMat4("model", matModel.m );
-        driver.DrawMesh(modelDefault);
+      //  driver.DrawMesh(modelDefault);
+
+        matModel= Mat4::Translation(0.5f, 0.0f, 0.0f) * Mat4::Scale(10.0f,0.05,10.0f) ;
+        shader->SetUniformMat4("model", matModel.m );
+        driver.DrawMesh(plane);
 
  
         // for (u32 i = 0; i < count; i++)
@@ -347,7 +381,7 @@ int main()
 
         batch.SetColor(255, 255, 255);
         //
-        font.Print(10, 10, "Fps :%d", device.GetFPS());
+        font.Print(10, 10, "Fps :%d Animation : %s", device.GetFPS(), torsoLayer->GetCurrentAnimation().c_str());
 
         batch.Render();
 

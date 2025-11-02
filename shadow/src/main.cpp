@@ -322,9 +322,6 @@ int main()
 
     //******************************************* */
 
-    Mesh *plane = MeshManager::Instance().CreatePlane("plane", 10, 10, 50, 50);
-    Mesh *cube = MeshManager::Instance().CreateCube("cube");
-
     Shader *simpleDepthShader = ShaderManager::Instance().Create("depth", depthVertexShader, depthFragmentShader);
     Shader *debugShader = ShaderManager::Instance().Create("debug", debugVertexShader, debugFragmentShader);
     Shader *shader = ShaderManager::Instance().Create("shader", shadowVertexShader, shadowFragmentShader);
@@ -390,11 +387,67 @@ int main()
 
     QuadRenderer quad;
 
-    Texture *texture = TextureManager::Instance().Load("wall.jpg");
+    TextureManager::Instance().SetLoadPath("assets/");
+    TextureManager::Instance().Add("wall.jpg",true);
+    TextureManager::Instance().Add("marm.jpg",true);
+
+
+
+    TextureManager::Instance().Add("sinbad/sinbad_body.tga",false);
+    TextureManager::Instance().Add("sinbad/sinbad_clothes.tga",false);
+    TextureManager::Instance().Add("sinbad/sinbad_sword.tga",false);
+    
+
+    Mesh *meshModel = MeshManager::Instance().Load("sinbad", "assets/sinbad/sinbad.h3d");
+
+    Material *material = meshModel->AddMaterial("body");
+    material->SetTexture(0, TextureManager::Instance().Get("sinbad_body"));
+    material = meshModel->AddMaterial("clothes");
+    material->SetTexture(0, TextureManager::Instance().Get("sinbad_clothes"));
+    material = meshModel->AddMaterial("sword");
+    material->SetTexture(0, TextureManager::Instance().Get("sinbad_sword"));
+
+    meshModel->SetBufferMaterial(0, 1);//olhos
+    meshModel->SetBufferMaterial(1, 1);//tronco
+    meshModel->SetBufferMaterial(2, 2);//rings
+    meshModel->SetBufferMaterial(3, 1);
+    meshModel->SetBufferMaterial(4, 3);//espada
+    meshModel->SetBufferMaterial(5, 2);
+    meshModel->SetBufferMaterial(6, 2);//pernas
+
+    Animator animator =Animator(meshModel);
+
+    AnimationLayer *torsoLayer = animator.AddLayer();
+
+    torsoLayer->LoadAnimation("topIdle", "assets/sinbad/sinbad_IdleTop.anim");
+    torsoLayer->LoadAnimation("topSliceHorizontal", "assets/sinbad/sinbad_SliceHorizontal.anim");
+    torsoLayer->LoadAnimation("topSliceVertical", "assets/sinbad/sinbad_SliceVertical.anim");
+    torsoLayer->LoadAnimation("topRun", "assets/sinbad/sinbad_RunTop.anim");
+    torsoLayer->LoadAnimation("legsRun", "assets/sinbad/sinbad_RunBase.anim");
+    torsoLayer->Play("topRun", PlayMode::Loop);
+
+    AnimationLayer *legsLayer = animator.AddLayer();
+    legsLayer->LoadAnimation("legsIdle", "assets/sinbad/sinbad_IdleBase.anim");
+    legsLayer->LoadAnimation("legsRun", "assets/sinbad/sinbad_RunBase.anim");
+    legsLayer->Play("legsRun", PlayMode::Loop);
+    
+
+
+    Mesh *plane = MeshManager::Instance().CreatePlane("plane", 10, 10, 50, 50,20,20);
+    plane->AddMaterial("marm");
+    plane->GetMaterial(0)->SetTexture(0, TextureManager::Instance().Get("marm"));
+
+
+    Mesh *cube = MeshManager::Instance().CreateCube("cube");
+    cube->AddMaterial("wall");
+    cube->GetMaterial(0)->SetTexture(0, TextureManager::Instance().Get("wall"));
+
+
 
     while (device.IsRunning())
     {
 
+        
         float dt = device.GetFrameTime();
         const float SPEED = 12.0f * dt;
 
@@ -476,6 +529,8 @@ int main()
 
         const Mat4 ortho = Mat4::Ortho(0.0f, (float)screenWidth, (float)screenHeight, 0.0f, -1.0f, 1.0f);
 
+
+        animator.Update(dt);
  
         driver.SetCulling(CullMode::None);
         driver.SetDepthTest(true);
@@ -497,7 +552,6 @@ int main()
         CHECK_GL_ERROR(glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO));
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-        // Render plane
         Mat4 model;
 
         // Render cubes
@@ -505,8 +559,12 @@ int main()
         {
             model = Mat4::Translation(cubePositions[i]);
             simpleDepthShader->SetUniformMat4("model", model.m);
-            cube->Render();
+            driver.DrawMesh(cube);
         }
+        float S=0.2f;
+        Mat4 matModel=Mat4::Translation(-2.5f, 0.9f, -0.5f) * Mat4::Scale(S, S, S);
+        simpleDepthShader->SetUniformMat4("model", matModel.m );
+        driver.DrawMesh(meshModel);
         CHECK_GL_ERROR(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 
    
@@ -525,19 +583,20 @@ int main()
         shader->SetUniformMat4("lightSpaceMatrix", lightSpaceMatrix.m);
         shader->SetUniform("lightPos", lightPos.x, lightPos.y, lightPos.z);
         shader->SetUniform("viewPos", cameraPos.x, cameraPos.y, cameraPos.z);
-
-        shader->SetTexture2D("diffuseTexture", texture->GetHandle(), 0);
         shader->SetTexture2D("shadowMap", depthMap, 1);
+        shader->SetTexture2D("diffuseTexture", 0, 0);
 
         model = Mat4::Scale(Vec3(2.0f));
         shader->SetUniformMat4("model", model.m);
-        plane->Render();
+        driver.DrawMesh(plane);
         for (int i = 0; i < 10; i++)
         {
             model = Mat4::Translation(cubePositions[i]) * Mat4::Scale(Vec3(1.0f));
             shader->SetUniformMat4("model", model.m);
-            cube->Render();
+            driver.DrawMesh(cube);
         }
+        shader->SetUniformMat4("model", matModel.m );
+        driver.DrawMesh(meshModel);
 
         // render Depth map to quad for visual debugging
      //   driver.SetDepthTest(false);
@@ -565,6 +624,7 @@ int main()
         //    batch.Render();
 
         device.Flip();
+        driver.Reset();
     }
 
     font.Release();

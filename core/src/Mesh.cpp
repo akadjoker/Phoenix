@@ -89,6 +89,12 @@ u32 MeshBuffer::AddFace(u32 i0, u32 i1, u32 i2)
     return indices.size() - 3;
 }
 
+void MeshBuffer::SetMaterial(u32 material)
+{
+    m_material = material;
+    
+}
+
 void MeshBuffer::Build()
 {
 
@@ -1005,6 +1011,39 @@ Mesh::~Mesh()
     m_bones.clear();
 }
 
+bool Mesh::SetBufferMaterial(u32 index, u32 material)
+{
+
+    if (material >= materials.size())
+    {
+        LogWarning("[Mesh] Invalid material index: %d", material);
+        return false;
+    }
+
+    if (index >= buffers.size() )
+    {
+        LogWarning("[Mesh] Invalid mesh buffer index: %d", index);
+        return false;
+    }
+
+    buffers[index]->SetMaterial(material);
+    return true;
+}
+
+bool Mesh::SetMaterial(u32 material)
+{
+    if (material >= materials.size())
+    {
+        LogWarning("[Mesh] Invalid material index: %d", material);
+        return false;
+    }
+    for (MeshBuffer *buffer : buffers)
+    {
+        buffer->SetMaterial(material);
+    }
+    return true;
+}
+
 void Mesh::OptimizeBuffers()
 {
     if (buffers.empty())
@@ -1117,14 +1156,12 @@ void Mesh::CalculateBoneMatrices()
         {
             bone->parent = m_bones[bone->parentIndex];
 
-            LogInfo("Bone[%d] %s → parent[%d] %s",
-                    i, bone->name.c_str(),
-                    bone->parentIndex, m_bones[bone->parentIndex]->name.c_str());
+            //LogInfo("Bone[%d] %s → parent[%d] %s",i, bone->name.c_str(),                 bone->parentIndex, m_bones[bone->parentIndex]->name.c_str());
         }
         else
         {
             bone->parent = nullptr;
-            LogInfo("Bone[%d] %s → ROOT (no parent)", i, bone->name.c_str());
+           // LogInfo("Bone[%d] %s → ROOT (no parent)", i, bone->name.c_str());
         }
     }
     m_boneMatrices.resize(m_bones.size());
@@ -1382,7 +1419,8 @@ Mesh *MeshManager::CreateCube(const std::string &name, float size)
     return mesh;
 }
 
-Mesh *MeshManager::CreatePlane(const std::string &name, float width, float height, int detailX, int detailY)
+Mesh *MeshManager::CreatePlane(const std::string &name, float width, float height, 
+                               int detailX, int detailY, float tilesH, float tilesV)
 {
     if (Exists(name))
     {
@@ -1400,18 +1438,18 @@ Mesh *MeshManager::CreatePlane(const std::string &name, float width, float heigh
     {
         for (int x = 0; x <= detailX; x++)
         {
-            float u = (float)x / detailX;
-            float v = (float)y / detailY;
+            float u = ((float)x / detailX) * tilesH;  // Multiplica por tilesH
+            float v = ((float)y / detailY) * tilesV;  // Multiplica por tilesV
 
-            float px = -hw + u * width;
+            float px = -hw + ((float)x / detailX) * width;
             float py = 0.0f;
-            float pz = -hh + v * height;
+            float pz = -hh + ((float)y / detailY) * height;
 
             buffer->AddVertex(px, py, pz, 0.0f, 1.0f, 0.0f, u, v);
         }
     }
 
-    // Gera índices
+    // Gera índices (mantém igual)
     for (int y = 0; y < detailY; y++)
     {
         for (int x = 0; x < detailX; x++)
@@ -1431,6 +1469,7 @@ Mesh *MeshManager::CreatePlane(const std::string &name, float width, float heigh
 
     return mesh;
 }
+
 
 Mesh *MeshManager::CreateSphere(const std::string &name, float radius, int segments, int rings)
 {
@@ -2129,7 +2168,7 @@ bool MeshReader::Load(const std::string &filename, Mesh *mesh)
             mesh->GetBufferCount(), mesh->GetMaterialCount(),
             mesh->GetBoneCount());
 
-    ValidateBoneHierarchy(mesh);
+  //  ValidateBoneHierarchy(mesh);
 
     return true;
 }
@@ -2170,7 +2209,7 @@ void MeshReader::ReadMaterialsChunk(Mesh *mesh, const ChunkHeader &header)
         std::string name = ReadCString();
         Material *mat = mesh->AddMaterial(name);
 
-        //  LogInfo("[MeshReader] Material: %s", name.c_str());
+        LogInfo("[MeshReader] Material: %s", name.c_str());
 
         Vec3 diffuse;
         diffuse.x = m_stream->ReadFloat();
@@ -2211,8 +2250,8 @@ void MeshReader::ReadSkeletonChunk(Mesh *mesh, const ChunkHeader &header)
         Bone *bone = mesh->AddBone(ReadCString());
 
         bone->parentIndex = m_stream->ReadInt();
-
-        LogInfo("[MeshReader] Bone: %s Parent(%d)", bone->name.c_str(), bone->parentIndex);
+//
+     //   LogInfo("[MeshReader] Bone: %s Parent(%d)", bone->name.c_str(), bone->parentIndex);
 
         // Local transform
         for (int j = 0; j < 16; j++)
@@ -2306,7 +2345,7 @@ void MeshReader::ReadIndicesChunk(MeshBuffer *buffer, const ChunkHeader &header)
 void MeshReader::ReadSkinChunk(MeshBuffer *buffer, const ChunkHeader &header)
 {
     u32 numVertices = m_stream->ReadUInt();
-    LogInfo("ReadSkinChunk numVertices %d", numVertices);
+   // LogInfo("ReadSkinChunk numVertices %d", numVertices);
 
     buffer->m_skinData.resize(numVertices);
     buffer->m_isSkinned = true;
@@ -2576,7 +2615,7 @@ bool AnimReader::ReadChannelChunk(Channel &channel)
     u32 numKeys = m_stream->ReadUInt();
     channel.keyframes.reserve(numKeys);
 
-    LogInfo("[AnimReader] Reading channel: %s (%d keyframes)", channel.boneName.c_str(), numKeys);
+    //LogInfo("[AnimReader] Reading channel: %s (%d keyframes)", channel.boneName.c_str(), numKeys);
 
     // Read all keyframes
     for (u32 i = 0; i < numKeys; i++)

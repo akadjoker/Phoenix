@@ -347,6 +347,7 @@ public:
     Vec3 rotateZDeg(float angleDeg) const;                      // Roda em torno do eixo Z (graus)
 
     // Funções estáticas
+    static Vec3 Normalize(const Vec3 &a);
     static float Dot(const Vec3 &a, const Vec3 &b);
     static Vec3 Cross(const Vec3 &a, const Vec3 &b);
     static float Distance(const Vec3 &a, const Vec3 &b);

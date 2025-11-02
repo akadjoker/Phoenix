@@ -146,7 +146,7 @@ public:
     u32 GetIndexCount() const { return indices.size(); }
 
     void SetMaterial(u32 material);
-    u32 GetMaterial() const { return m_material; }
+    u32  GetMaterial() const { return m_material; }
 
     void Build();
 
@@ -254,8 +254,7 @@ enum class PlayMode
 {
     Once,
     Loop,
-    PingPong,
-    OnceAndReturn
+    PingPong
 };
 
  
@@ -368,6 +367,9 @@ public:
 
     size_t GetBufferCount() const { return buffers.size(); }
     MeshBuffer *GetBuffer(size_t index) const { return buffers[index]; }
+
+    bool SetBufferMaterial(u32 index, u32 material);
+    bool SetMaterial(u32 material);
 
     void OptimizeBuffers();
 
@@ -627,7 +629,7 @@ public:
     Mesh *Create(const std::string &name);
 
     Mesh *CreateCube(const std::string &name, float size = 1.0f);
-    Mesh *CreatePlane(const std::string &name, float width = 1.0f, float height = 1.0f, int detailX = 1, int detailY = 1);
+    Mesh *CreatePlane(const std::string &name, float width = 1.0f, float height = 1.0f, int detailX = 1, int detailY = 1, float tilesH = 1.0f, float tilesV = 1.0f);
     Mesh *CreateSphere(const std::string &name, float radius = 1.0f, int segments = 32, int rings = 16);
     Mesh *CreateCylinder(const std::string &name, float radius = 1.0f, float height = 2.0f, int segments = 32, bool caps = true);
     Mesh *CreateCone(const std::string &name, float radius = 1.0f, float height = 2.0f, int segments = 32);

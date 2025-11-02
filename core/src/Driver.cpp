@@ -100,7 +100,7 @@ void Driver::DrawMesh(Mesh *mesh)
                 const Texture *texture = mesh->GetMaterial(materialID)->GetTexture(i);
                 if (texture)
                 {
-                    texture->Bind(i);
+                    texture->Bind(0);
                 }
             }
         }

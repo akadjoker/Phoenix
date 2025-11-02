@@ -90,6 +90,7 @@ Animation *AnimationLayer::LoadAnimation(const std::string &name, const std::str
         delete anim;
         return nullptr;
     }
+    anim->m_name = name;
 
     AddAnimation(name, anim);
     return anim;
@@ -105,7 +106,7 @@ void AnimationLayer::Play(const std::string &animName, PlayMode mode, float blen
     if (!anim)
         return;
 
-    if (m_currentAnimName == animName && !m_isBlending)
+     if (m_currentAnimName == animName && !m_isBlending)
         return;
 
     if (m_currentAnim && blendTime > 0.0f)
@@ -124,7 +125,7 @@ void AnimationLayer::Play(const std::string &animName, PlayMode mode, float blen
     if (!m_playTo)
     {
         m_previousAnim = anim;
-        m_previousAnimName = m_currentAnimName;
+        m_previousAnimName = animName;
     }
 
     m_playTo = anim;
@@ -135,8 +136,6 @@ void AnimationLayer::Play(const std::string &animName, PlayMode mode, float blen
 
 void AnimationLayer::PlayOneShot(const std::string &animName, const std::string &returnTo, float blendTime, PlayMode toMode)
 {
-    if (m_currentAnimName == animName || m_isBlending)
-        return;
     m_returnToAnim = returnTo;
     m_toReturnMode = toMode;
     Play(animName, PlayMode::Once, blendTime);
@@ -173,15 +172,15 @@ void AnimationLayer::Stop(float blendOutTime)
             m_isPaused = false;
             m_isBlending = false;
 
-            // Volta para bind pose
-            if (m_mesh)
-            {
-                for (Bone *bone : m_mesh->GetBones())
-                {
-                    bone->hasAnimation = false;
-                }
-                m_mesh->UpdateSkinning();
-            }
+            // Volta para bind pose?? em multi layer temos problemas , logo s eve se vale apena
+            // if (m_mesh)
+            // {
+            //     for (Bone *bone : m_mesh->GetBones())
+            //     {
+            //         bone->hasAnimation = false;
+            //     }
+            //     m_mesh->UpdateSkinning();
+            // }
         }
     }
 }
@@ -219,8 +218,7 @@ void AnimationLayer::Update(float deltaTime)
     if (m_playTo)
     {
 
-        if (m_playTo->GetName() != m_currentAnimName)
-        {
+       
 
             if (m_currentAnim)
             {
@@ -232,20 +230,17 @@ void AnimationLayer::Update(float deltaTime)
             {
                 // LogInfo("[ANIMATOR] Blending from %s to %s", m_currentAnimName.c_str(), m_playTo->GetName().c_str());
                 m_blendTime += dt ;
-                float blend = std::min(m_blendTime / m_blendDuration, 1.0f);
+                float blend = Min(m_blendTime / m_blendDuration, 1.0f);
 
                 if (blend >= 1.0f || !m_currentAnim)
-                {
-
-                    
-
-
+                {  
                     m_currentTime = m_currentTimeBlend;
                     m_currentTimeBlend = 0.0f;
                     m_isBlending = false;
                     m_blendTime = 0.0f;
                     m_blendDuration = 0.0f;
                     isOnBlend = false;
+                    m_currentAnimName = m_playTo->GetName(); 
                     m_currentAnim = m_playTo;
                     m_playTo = nullptr;
                 }
@@ -254,6 +249,7 @@ void AnimationLayer::Update(float deltaTime)
                     
                   //  LogInfo("[ANIMATOR]  Blending %f - %f - Blend %f ", m_blendTime, m_blendDuration,blend);
 
+                       m_currentAnimName= m_playTo->GetName(); 
                        m_currentTimeBlend+= dt  * m_playTo->GetTicksPerSecond();
 
                        while (m_currentTimeBlend >= m_playTo->GetDuration())
@@ -298,9 +294,6 @@ void AnimationLayer::Update(float deltaTime)
                        
                         }
                         m_mesh->UpdateSkinning();
-                    
-
-
                 }
 
 
@@ -317,27 +310,17 @@ void AnimationLayer::Update(float deltaTime)
                 m_currentAnim = m_playTo;
                 m_playTo = nullptr;
             }
-        }
-        else
-        {
-            m_currentTime = 0.0f;
-            m_isBlending = false;
-            m_blendTime = 0.0f;
-            m_blendDuration = 0.0f;
-            m_playTo = nullptr;
-        }
+        
+ 
     }
 
 
 
     if (isOnBlend)        return;
-
-    // Sistema de animação única
+ 
     if (m_currentAnim)
     {
-
-        // Atualiza tempo baseado no modo
-        float duration = m_currentAnim->GetDuration();
+       float duration = m_currentAnim->GetDuration();
 
         if (m_currentMode == PlayMode::PingPong)
         {
@@ -368,7 +351,7 @@ void AnimationLayer::Update(float deltaTime)
             {
                 if (m_shouldReturn && !m_returnToAnim.empty())
                 {
-                    LogInfo("Returning to previous animation: %s from %s", m_returnToAnim.c_str(), m_currentAnimName.c_str());
+                   // LogInfo("Returning to previous animation: %s from %s", m_returnToAnim.c_str(), m_currentAnimName.c_str());
                     m_currentAnimName = "";
                     m_isBlending = false;
                     m_currentTime = 0.0f;
@@ -377,13 +360,6 @@ void AnimationLayer::Update(float deltaTime)
                     m_shouldReturn = false;
                     return;
                 }
-
-                // OnceAndReturn volta para animação anterior automaticamente
-                // if (m_currentMode == PlayMode::OnceAndReturn && !m_previousAnimName.empty())
-                // {
-                //     Play(m_previousAnimName, PlayMode::Loop, m_defaultBlendTime);
-                //     return;
-                // }
             }
         }
 
@@ -432,12 +408,7 @@ bool AnimationLayer::CheckAnimationEnd()
         }
         break;
 
-    case PlayMode::OnceAndReturn:
-        if (m_currentTime >= duration)
-        {
-            return true;
-        }
-        break;
+ 
 
     case PlayMode::PingPong:
         if (m_currentTime >= duration)

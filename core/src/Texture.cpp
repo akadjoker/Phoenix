@@ -301,7 +301,7 @@ void Texture::Bind(u32 slot) const
 {
     //glActiveTexture(GL_TEXTURE0 + slot);
     //glBindTexture(ToGLTextureType(m_type), m_handle);
-    Driver::Instance().BindTexture(slot, ToGLTextureType(m_type), m_handle);
+     Driver::Instance().BindTexture(slot, ToGLTextureType(m_type), m_handle);
 }
 
 void Texture::Release()
@@ -749,8 +749,9 @@ TextureManager &TextureManager::Instance()
 
 Texture *TextureManager::Load(const std::string &path, bool generateMipmaps)
 {
-   
-    auto it = m_textures.find(path);
+    
+    std::string name = Utils::GetFileNameWithoutExt(path.c_str());
+    auto it = m_textures.find(name);
     if (it != m_textures.end())
     {
         return it->second;
@@ -767,9 +768,8 @@ Texture *TextureManager::Load(const std::string &path, bool generateMipmaps)
         delete texture;
         return nullptr;
     }
-
-    m_textures[path] = texture;
-    LogInfo("[TextureManager] Loaded: %s", path.c_str());
+    m_textures[name] = texture;
+    LogInfo("[TextureManager] Loaded: %s", name.c_str());
     return texture;
 }
 
@@ -804,7 +804,7 @@ Texture *TextureManager::Add(const std::string &path, bool generateMipmaps)
     std::string finalePath = defaultPath + path;
     if (Utils::FileExists(finalePath.c_str()))
     {
-       //     LogInfo("[TextureManager] Loading texture: %s",  finalePath.c_str());
+        LogInfo("[TextureManager] Loading texture: %s",  finalePath.c_str());
         return Load(finalePath, generateMipmaps);
     }
     LogError("[TextureManager] Texture not found: %s", finalePath.c_str());
@@ -814,7 +814,12 @@ Texture *TextureManager::Add(const std::string &path, bool generateMipmaps)
 Texture *TextureManager::Get(const std::string &name)
 {
     auto it = m_textures.find(name);
-    return (it != m_textures.end()) ? it->second : nullptr;
+    if (it != m_textures.end())
+    {
+        return it->second;
+    }
+    LogWarning("[TextureManager] Texture not found: %s", name.c_str());
+    return nullptr;
 }
 
 void TextureManager::Unload(const std::string &name)

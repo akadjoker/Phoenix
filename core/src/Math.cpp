@@ -466,7 +466,11 @@ Vec3 Vec3::rotateZDeg(float angleDeg) const
     return rotateZ(angleDeg * DEG_TO_RAD);
 }
 
- 
+Vec3 Vec3::Normalize(const Vec3 &a)
+{
+    return a.normalized();
+}
+
 float Vec3::Dot(const Vec3 &a, const Vec3 &b)
 {
     return a.dot(b);

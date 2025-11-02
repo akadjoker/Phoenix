@@ -121,7 +121,14 @@ Mat4 getLightSpaceMatrix(const float nearPlane, const float farPlane,
     }
     center /= corners.size();
 
-    const auto lightView = Mat4::LookAt(center + lightDir, center, Vec3(0.0f, 1.0f, 0.0f));
+    float snapGrid = 1.0f; 
+    center.x = std::round(center.x / snapGrid) * snapGrid;
+    center.y = std::round(center.y / snapGrid) * snapGrid;
+    center.z = std::round(center.z / snapGrid) * snapGrid;
+
+ 
+
+    const auto lightView = Mat4::LookAt(center + lightDir, center,  Vec3(0.0f, 1.0f, 0.0f) );
 
     float minX = std::numeric_limits<float>::max();
     float maxX = std::numeric_limits<float>::lowest();
@@ -141,7 +148,7 @@ Mat4 getLightSpaceMatrix(const float nearPlane, const float farPlane,
         maxZ = std::max(maxZ, trf.z);
     }
  
-    constexpr float zMult = 10.0f;
+    float zMult = 10.0f;
     if (minZ < 0)
     {
         minZ *= zMult;
@@ -159,6 +166,14 @@ Mat4 getLightSpaceMatrix(const float nearPlane, const float farPlane,
         maxZ *= zMult;
     }
 
+      float worldUnitsPerTexel = (maxX - minX) / SHADOW_WIDTH;
+    
+    // Arredondar min/max para o grid de texels
+    minX = std::floor(minX / worldUnitsPerTexel) * worldUnitsPerTexel;
+    maxX = std::floor(maxX / worldUnitsPerTexel) * worldUnitsPerTexel;
+    minY = std::floor(minY / worldUnitsPerTexel) * worldUnitsPerTexel;
+    maxY = std::floor(maxY / worldUnitsPerTexel) * worldUnitsPerTexel;
+
     const Mat4 lightProjection = Mat4::Ortho(minX, maxX, minY, maxY, minZ, maxZ);
     return lightProjection * lightView;
 }
@@ -168,7 +183,7 @@ std::vector<float> getCascadeSplits(float nearPlane, float farPlane, int cascade
     std::vector<float> splits;
     splits.resize(cascadeCount);
     
-    float lambda = 0.75f;  
+    float lambda = 0.85f;  
     
     for (int i = 0; i < cascadeCount; ++i)
     {
@@ -200,7 +215,10 @@ const char *depthFragmentShader = R"(
 precision highp float;
 
 void main()
-{             
+{
+    
+    gl_FragDepth = gl_FragCoord.z;
+
 }
 )";
 
@@ -284,6 +302,31 @@ uniform bool showCascades;
 uniform float farPlane;
 uniform vec2 shadowMapSize;
 
+
+//uniform float debugBaseBias;        // Controlar baseBias
+//uniform float debugSlopeBias;       // Controlar slopeBias
+//uniform float debugDiskRadius;      // Controlar Poisson disk radius
+ 
+
+const vec2 poissonDisk[16] = vec2[](
+   vec2(-0.94201624, -0.39906216),
+   vec2(0.94558609, -0.76890725),
+   vec2(-0.094184101, -0.92938870),
+   vec2(0.34495938, 0.29387760),
+   vec2(-0.91588581, 0.45771432),
+   vec2(-0.81544232, -0.87912464),
+   vec2(-0.38277543, 0.27676845),
+   vec2(0.97484398, 0.75648379),
+   vec2(0.44323325, -0.97511554),
+   vec2(0.53742981, -0.47373420),
+   vec2(-0.26496911, -0.41893023),
+   vec2(0.79197514, 0.19090188),
+   vec2(-0.24188840, 0.99706507),
+   vec2(-0.81409955, 0.91437590),
+   vec2(0.19984126, 0.78641367),
+   vec2(0.14383161, -0.14100790)
+);
+
 float SampleShadowMap(int cascadeIndex, vec2 uv)
 {
     if(cascadeIndex == 0)
@@ -299,57 +342,102 @@ float SampleShadowMap(int cascadeIndex, vec2 uv)
     return texture(shadowMap[0], uv).r;
 }
 
-float ShadowCalculation2(int cascadeIndex, vec4 fragPosLightSpace)
+
+float ShadowCalculationDiskPCF(int cascadeIndex, vec4 fragPosLightSpace)
 {
+
+    //melhores valores
+    float debugBaseBias = 0.0002f;
+    float debugSlopeBias = 0.0001f;
+   float debugDiskRadius = 0.68f;
+
+
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
     
     if(projCoords.z > 1.0)
         return 0.0;
     
-    if(projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0)
+    if(projCoords.x < 0.0 || projCoords.x > 1.0 || 
+       projCoords.y < 0.0 || projCoords.y > 1.0)
         return 0.0;
     
-    float closestDepth = SampleShadowMap(cascadeIndex, projCoords.xy); 
     float currentDepth = projCoords.z;
     
     vec3 normal = normalize(Normal);
     vec3 lightDir = normalize(lightPos - FragPos);
+    float NdotL = max(dot(normal, lightDir), 0.0);
     
-    // Bias melhorado: constante + slope, com tan(acos) para precisão em ângulos
-    float cosTheta = max(dot(normal, lightDir), 0.0);
-    float slopeBias = 0.001 * tan(acos(cosTheta));  // Mantido, mas agora somado a constante
-    float constantBias = 0.0005;  // Adicionado: bias fixo para superfícies planas
-    float baseBias = constantBias + slopeBias;
-    
-    // Escala adaptativa por cascata: projeta bias de mundo para espaço de profundidade
-    // Usa a distância da cascata para escalar (maior bias em mundo para cascatas distantes)
-    float cascadeDistance = (cascadeIndex == cascadeCount - 1) ? farPlane : cascadePlaneDistances[cascadeIndex];
-    float depthScale = cascadeDistance / farPlane;  // Normaliza pela far plane total
-    const float worldBiasFactor = 0.02;  // Ajuste em unidades de mundo (tune isso!)
-    float worldBias = worldBiasFactor * depthScale;  // Bias maior para distâncias maiores
-    
-    // Projeta para espaço de profundidade (aproximação simples via derivada de profundidade)
-    float depthBias = baseBias + (worldBias / (farPlane * 100.0));  // Escala para [0-1]; ajuste o 100.0 pela resolução
-    
-    // Clamp para evitar exageros (descomentei e ajustei baseado em testes comuns)
-    depthBias = clamp(depthBias, 0.0001, 0.005 * depthScale);  // Menor clamp para cascatas próximas, maior para distantes
-    
-    // Ajuste final por resolução do shadow map (opcional, mas melhora em resoluções baixas)
-    vec2 texelSize = 1.0 / shadowMapSize;
-    depthBias *= (1.0 + texelSize.x * 2.0);  // Fator pequeno baseado em texel para anti-acne
+    float baseBias = max(debugBaseBias, 0.000005); 
+    float slopeBias = debugSlopeBias * (1.0 - NdotL);
+    float cascadeScale = 1.0 + float(cascadeIndex) * 0.2;
+    float bias = (baseBias + slopeBias) * cascadeScale;
  
+    
+   
     float shadow = 0.0;
-    vec2 texelSizePCF = 1.0 / shadowMapSize;
-    int pcfCount = 2;
+    vec2 texelSize = 1.0 / shadowMapSize;
+    float diskRadius = debugDiskRadius;
+    
+    for(int i = 0; i < 16; ++i)
+    {
+        vec2 offset = poissonDisk[i] * texelSize * diskRadius;
+        float pcfDepth = SampleShadowMap(cascadeIndex, projCoords.xy + offset);
+        shadow += (currentDepth - bias) > pcfDepth ? 1.0 : 0.0;
+    }
+    shadow /= 16.0;
+    
+    return shadow;
+}
+
+float ShadowCalculationPCF(int cascadeIndex, vec4 fragPosLightSpace)
+{
+
+    //melhores valores
+     float debugBaseBias = 0.0004f;
+     float debugSlopeBias = 0.00015f;
+    
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+    
+    if(projCoords.z > 1.0)
+        return 0.0;
+    
+    if(projCoords.x < 0.0 || projCoords.x > 1.0 || 
+       projCoords.y < 0.0 || projCoords.y > 1.0)
+        return 0.0;
+    
+    float currentDepth = projCoords.z;
+    
+    vec3 normal = normalize(Normal);
+    vec3 lightDir = normalize(lightPos - FragPos);
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    
+    // Bias otimizado para superfícies planas e inclinadas
+    float baseBias = debugBaseBias;
+    float slopeBias = debugSlopeBias * (1.0 - NdotL);
+    
+  
+    float cascadeScale = 1.0 + float(cascadeIndex) * 0.2;  //  Era 0.3
+    float bias = (baseBias + slopeBias) * cascadeScale;
+    
+ 
+    
+    // PCF com kernel maior para suavizar
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / shadowMapSize;
+    int pcfCount = 2;  //  Aumentar para 3 (kernel 7x7)
+
+    
+
     int numSamples = (pcfCount * 2 + 1) * (pcfCount * 2 + 1);
     
     for(int x = -pcfCount; x <= pcfCount; ++x)
     {
         for(int y = -pcfCount; y <= pcfCount; ++y)
         {
-            float pcfDepth = SampleShadowMap(cascadeIndex, projCoords.xy + vec2(x, y) * texelSizePCF); 
-            shadow += currentDepth - depthBias > pcfDepth ? 1.0 : 0.0;        
+            float pcfDepth = SampleShadowMap(cascadeIndex, projCoords.xy + vec2(x, y) * texelSize); 
+            shadow += (currentDepth - bias) > pcfDepth ? 1.0 : 0.0;        
         }    
     }
     shadow /= float(numSamples);
@@ -359,64 +447,20 @@ float ShadowCalculation2(int cascadeIndex, vec4 fragPosLightSpace)
 
 float ShadowCalculation(int cascadeIndex, vec4 fragPosLightSpace)
 {
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
-    
-    if(projCoords.z > 1.0)
-        return 0.0;
-    
-    if(projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0)
-        return 0.0;
-    
-    float closestDepth = SampleShadowMap(cascadeIndex, projCoords.xy); 
-    float currentDepth = projCoords.z;
-    
-    vec3 normal = normalize(Normal);
-    vec3 lightDir = normalize(lightPos - FragPos);
-    
-    // Bias melhorado baseado no slope
-    //float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
-    //float bias = max(0.08 * (1.0 - dot(normal, lightDir)), 0.008);  
-    float cosTheta = max(dot(normal, lightDir), 0.0);
-    float bias = 0.001 * tan(acos(cosTheta));
-    
-    const float biasModifier = 0.5;
-    if (cascadeIndex == cascadeCount - 1)
+
+    if(cascadeIndex <= 1) 
     {
-        bias *= 1.0 / (farPlane * biasModifier);
-    } 
-    else if (cascadeIndex == 0)
-    {
-         bias = 0.0009;
-    } 
+        return ShadowCalculationDiskPCF(cascadeIndex, fragPosLightSpace);
+    }
+    // Cascatas distantes (2,3): PCF Grid (mais suave, menos se nota)
     else 
     {
-        bias *= 1.0 / (cascadePlaneDistances[cascadeIndex] * biasModifier);
+        return ShadowCalculationPCF(cascadeIndex, fragPosLightSpace);
     }
 
- 
-   // bias = clamp(bias, 0.0001, 0.01);
-   bias = clamp(bias, 0.00005, 0.01);
-    
-  
-    float shadow = 0.0;
-    vec2 texelSize = 1.0 / shadowMapSize;
-    int pcfCount = 2;
-    int numSamples = (pcfCount * 2 + 1) * (pcfCount * 2 + 1);
-    
-    for(int x = -pcfCount; x <= pcfCount; ++x)
-    {
-        for(int y = -pcfCount; y <= pcfCount; ++y)
-        {
-            float pcfDepth = SampleShadowMap(cascadeIndex, projCoords.xy + vec2(x, y) * texelSize); 
-            shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;        
-        }    
-    }
-    shadow /= float(numSamples);
-    
-    return shadow;
+   //return ShadowCalculationDiskPCF(cascadeIndex, fragPosLightSpace);
+   // return ShadowCalculationPCF(cascadeIndex, fragPosLightSpace);
 }
-
 
 vec3 GetCascadeColor(int cascadeIndex)
 {
@@ -456,23 +500,66 @@ void main()
     float depthValue = abs(FragPosViewSpace.z);
     int cascadeIndex = -1;
     
-    for(int i = 0; i < cascadeCount - 1; ++i)
+    for(int i = 0; i < cascadeCount; ++i)
     {
         if(depthValue < cascadePlaneDistances[i])
         {
-            cascadeIndex = i ;
+            cascadeIndex = i;
             break;
         }
     }
-    
+
     if(cascadeIndex == -1)
     {
-        cascadeIndex = cascadeCount ;
+        cascadeIndex = cascadeCount - 1;
     }
-    
+        
     // Calcular sombra
-    vec4 fragPosLightSpace = lightSpaceMatrices[cascadeIndex] * vec4(FragPos, 1.0);
-    float shadow = ShadowCalculation(cascadeIndex, fragPosLightSpace);
+   // vec3 offsetFragPos = FragPos + normal* 0.0015;  //  Offset pela normal
+   // vec4 fragPosLightSpace = lightSpaceMatrices[cascadeIndex] * vec4(offsetFragPos, 1.0);
+   // float shadow = ShadowCalculation(cascadeIndex, fragPosLightSpace);
+
+
+
+    float shadow = 0.0;
+    float blendThreshold = 0.85;  // Começar blend nos últimos 10%
+    
+    if(cascadeIndex < cascadeCount - 1)
+    {
+        float cascadeDistance = cascadePlaneDistances[cascadeIndex];
+        float blendRatio = smoothstep(
+            cascadeDistance * blendThreshold,
+            cascadeDistance,
+            depthValue
+        );
+        
+        if(blendRatio > 0.001)  // Só calcular se blend necessário
+        {
+            vec3 offsetFragPos = FragPos + normalize(Normal) *  0.0015;
+            vec4 fragPosLight1 = lightSpaceMatrices[cascadeIndex] * vec4(offsetFragPos, 1.0);
+            float shadow1 = ShadowCalculation(cascadeIndex, fragPosLight1);
+            
+            vec4 fragPosLight2 = lightSpaceMatrices[cascadeIndex + 1] * vec4(offsetFragPos, 1.0);
+            float shadow2 = ShadowCalculation(cascadeIndex + 1, fragPosLight2);
+            
+            // Interpolar
+            shadow = mix(shadow1, shadow2, blendRatio);
+        }
+        else
+        {
+            vec3 offsetFragPos = FragPos + normalize(Normal) *  0.0015;
+            vec4 fragPosLightSpace = lightSpaceMatrices[cascadeIndex] * vec4(offsetFragPos, 1.0);
+            shadow = ShadowCalculation(cascadeIndex, fragPosLightSpace);
+        }
+    }
+    else
+    {
+        // Última cascata - sem blend
+        vec3 offsetFragPos = FragPos + normalize(Normal) *  0.0015;
+        vec4 fragPosLightSpace = lightSpaceMatrices[cascadeIndex] * vec4(offsetFragPos, 1.0);
+        shadow = ShadowCalculation(cascadeIndex, fragPosLightSpace);
+    }
+
     
     vec3 lighting = (ambient + (1.0 - shadow) * (diffuse + specular)) * color;
     
@@ -520,14 +607,7 @@ int main()
     float mouseSensitivity{0.8f};
 
 
-
-    Texture *texture = TextureManager::Instance().Load("wall.jpg");
-    texture->SetAnisotropy(8.0f);
-    texture->SetMinFilter(FilterMode::LINEAR_MIPMAP);
-    texture->SetMagFilter(FilterMode::LINEAR);
-
-    Mesh *plane = MeshManager::Instance().CreatePlane("plane", 10, 10, 50, 50);
-    Mesh *cube = MeshManager::Instance().CreateCube("cube");
+ 
 
     Shader *simpleDepthShader = ShaderManager::Instance().Create("depth", depthVertexShader, depthFragmentShader);
     Shader *debugShader = ShaderManager::Instance().Create("debug", debugVertexShader, debugFragmentShader);
@@ -572,7 +652,7 @@ int main()
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 
-    Vec3 lightPos(-2, 4.0f, -4.0f);
+    Vec3 lightPos(-20, 24.0f, 24.0f);
 
     Vec3 cubePositions[] = {
         Vec3(0.0f, 0.0f, 0.0f),
@@ -581,13 +661,92 @@ int main()
         Vec3(-3.8f, 2.0f, -12.3f),
         Vec3(2.4f, -0.4f, -3.5f),
         Vec3(-1.7f, 3.0f, -7.5f),
-        Vec3(1.3f, 2.0f, -2.5f),
-        Vec3(1.5f, 2.0f, -2.5f),
+        Vec3(1.3f, 2.0f, -3.5f),
+        Vec3(1.5f, 2.0f, -2.9f),
         Vec3(1.5f, 0.2f, -1.5f),
-        Vec3(-1.3f, 1.0f, -1.5f)};
+        Vec3(-1.3f, 1.0f, -2.5f)};
 
     QuadRenderer quad;
 
+
+    TextureManager::Instance().SetLoadPath("assets/");
+
+    TextureManager::Instance().Add("sinbad/sinbad_body.tga",false);
+    TextureManager::Instance().Add("sinbad/sinbad_clothes.tga",false);
+    TextureManager::Instance().Add("sinbad/sinbad_sword.tga",false);
+    TextureManager::Instance().Add("wall.jpg",true);
+    Texture* texture =TextureManager::Instance().Add("marm.jpg",true);
+    texture->SetAnisotropy(16);
+    texture->SetMinFilter(FilterMode::LINEAR_MIPMAP);
+    texture->SetMagFilter(FilterMode::LINEAR);
+
+
+    Mesh *meshModel = MeshManager::Instance().Load("sinbad", "assets/sinbad/sinbad.h3d");
+
+    Material *material = meshModel->AddMaterial("body");
+    material->SetTexture(0, TextureManager::Instance().Get("sinbad_body"));
+    material = meshModel->AddMaterial("clothes");
+    material->SetTexture(0, TextureManager::Instance().Get("sinbad_clothes"));
+    material = meshModel->AddMaterial("sword");
+    material->SetTexture(0, TextureManager::Instance().Get("sinbad_sword"));
+
+    meshModel->SetBufferMaterial(0, 1);//olhos
+    meshModel->SetBufferMaterial(1, 1);//tronco
+    meshModel->SetBufferMaterial(2, 2);//rings
+    meshModel->SetBufferMaterial(3, 1);
+    meshModel->SetBufferMaterial(4, 3);//espada
+    meshModel->SetBufferMaterial(5, 2);
+    meshModel->SetBufferMaterial(6, 2);//pernas
+
+    Animator animator =Animator(meshModel);
+
+    AnimationLayer *torsoLayer = animator.AddLayer();
+
+    torsoLayer->LoadAnimation("topIdle", "assets/sinbad/sinbad_IdleTop.anim");
+    torsoLayer->LoadAnimation("topSliceHorizontal", "assets/sinbad/sinbad_SliceHorizontal.anim");
+    torsoLayer->LoadAnimation("topSliceVertical", "assets/sinbad/sinbad_SliceVertical.anim");
+    torsoLayer->LoadAnimation("topRun", "assets/sinbad/sinbad_RunTop.anim");
+    torsoLayer->LoadAnimation("legsRun", "assets/sinbad/sinbad_RunBase.anim");
+    torsoLayer->Play("topRun", PlayMode::Loop);
+
+    AnimationLayer *legsLayer = animator.AddLayer();
+    legsLayer->LoadAnimation("legsIdle", "assets/sinbad/sinbad_IdleBase.anim");
+    legsLayer->LoadAnimation("legsRun", "assets/sinbad/sinbad_RunBase.anim");
+    legsLayer->Play("legsRun", PlayMode::Loop);
+    
+
+
+
+    Mesh *plane = MeshManager::Instance().CreatePlane("plane", 10, 10, 50, 50,20,20);
+    plane->AddMaterial("marm");
+    plane->GetMaterial(0)->SetTexture(0, TextureManager::Instance().Get("marm"));
+
+
+    Mesh *cube = MeshManager::Instance().CreateCube("cube");
+    cube->AddMaterial("wall");
+    cube->GetMaterial(0)->SetTexture(0, TextureManager::Instance().Get("wall"));
+
+
+    //disk
+    float debugBaseBias = 0.0002f;
+    float debugSlopeBias = 0.0001f;
+    float debugDiskRadius = 0.68f;
+
+    // float debugBaseBias = 0.0004f;
+    // float debugSlopeBias = 0.00015f;
+    // float debugDiskRadius = 0.68f;
+
+
+ 
+    float biasStep = 0.0005f;
+    float radiusStep = 0.001f;
+ 
+     
+    float shadowUpdateTimer = 0.0f;
+    std::vector<Mat4> lightSpaceMatrices(CASCADE_COUNT);
+    std::vector<float> cascadeSplits(CASCADE_COUNT);
+    bool shadowMapsNeedUpdate = true;
+    float UPDATE_INTERVAL = 0.1f; 
 
     while (device.IsRunning())
     {
@@ -597,7 +756,7 @@ int main()
 
            lightPos.x = sin(device.GetTime()) * 3.0f;
         lightPos.z = cos(device.GetTime()) * 2.0f;
-        lightPos.y = 5.0 + cos(device.GetTime()) * 1.0f;
+        lightPos.y = 25.0 + cos(device.GetTime()) * 1.0f;
 
         SDL_Event event;
         while (device.PollEvents(&event))
@@ -667,6 +826,32 @@ int main()
         if (state[SDL_SCANCODE_D])
             camera.strafe(SPEED);
 
+
+        if (state[SDL_SCANCODE_P])
+            debugBaseBias += biasStep;
+        if (state[SDL_SCANCODE_O])
+            debugBaseBias -= biasStep;
+
+        if (state[SDL_SCANCODE_I])
+            debugSlopeBias += biasStep;
+        if (state[SDL_SCANCODE_U])
+            debugSlopeBias -= biasStep;
+ 
+
+
+        if (state[SDL_SCANCODE_J])
+            debugDiskRadius += radiusStep;
+        if (state[SDL_SCANCODE_H])
+            debugDiskRadius -= radiusStep;
+
+
+  // Clamping para segurança
+    // debugBaseBias = Clamp(debugBaseBias, 0.0f, 0.01f);
+    // debugSlopeBias = Clamp(debugSlopeBias, 0.0f, 0.01f);
+    // debugNormalOffset = Clamp(debugNormalOffset, 0.0f, 0.05f);
+    // debugDiskRadius = Clamp(debugDiskRadius, 0.5f, 5.0f);
+                
+
         camera.update(1.0f);
         const Mat4 &view = camera.getViewMatrix();
         const Mat4 &proj = camera.getProjectionMatrix();
@@ -677,6 +862,7 @@ int main()
 
        driver.Clear(CLEAR_COLOR | CLEAR_DEPTH);
 
+        animator.Update(dt);
 
        batch.SetMatrix(mvp);
        driver.SetDepthTest(true);
@@ -692,10 +878,17 @@ int main()
      bool showCascades = false;
 
 
+     shadowUpdateTimer += dt;
+
+      if (shadowUpdateTimer >= UPDATE_INTERVAL || shadowMapsNeedUpdate)
+    {
+        shadowUpdateTimer = 0.0f;
+        shadowMapsNeedUpdate = false;
+
         // Calcular splits das cascatas
-        auto cascadeSplits = getCascadeSplits(nearPlane, farPlane, CASCADE_COUNT);
+        cascadeSplits = getCascadeSplits(nearPlane, farPlane, CASCADE_COUNT);
         
-        std::vector<Mat4> lightSpaceMatrices;
+        //std::vector<Mat4> lightSpaceMatrices;
         Vec3 lightDir =lightPos.normalized();
         
         // Gerar matrizes para cada cascata
@@ -708,18 +901,28 @@ int main()
                 (float)screenWidth / (float)screenHeight, 
                 lastSplitDist, splitDist);
             
-            auto lightMatrix = getLightSpaceMatrix(lastSplitDist, splitDist, proj, view, lightDir);
-            lightSpaceMatrices.push_back(lightMatrix);
+            lightSpaceMatrices[i] = getLightSpaceMatrix(lastSplitDist, splitDist, proj, view, lightDir);
+             
             
             lastSplitDist = splitDist;
         }
+    }
 
         // Renderizar depth maps para cada cascata
         simpleDepthShader->Bind();
         glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
         glEnable(GL_CULL_FACE);
-        glCullFace(GL_FRONT);
+        glCullFace(GL_BACK);
+        glFrontFace(GL_CCW);
+        // glCullFace(GL_FRONT);
+   
+
+
+        
+ 
         Mat4 model;
+             float S=0.2f;
+            Mat4 matModel=Mat4::Translation(0.5f, 0.9f, 8.0f) * Mat4::Scale(S, S, S);
         
         for (int cascade = 0; cascade < CASCADE_COUNT; ++cascade)
         {
@@ -729,16 +932,24 @@ int main()
             simpleDepthShader->SetUniformMat4("lightSpaceMatrix", lightSpaceMatrices[cascade].m);
             
             // Render scene
+     
+            
             
             for (int i = 0; i < 10; i++)
             {
                 model = Mat4::Translation(cubePositions[i]);
                 simpleDepthShader->SetUniformMat4("model", model.m);
-                cube->Render();
+                driver.DrawMesh(cube);
             }
+
+       
+            simpleDepthShader->SetUniformMat4("model", matModel.m );
+            driver.DrawMesh(meshModel);
+        
         }
+      
        //glDisable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
+      //  glCullFace(GL_BACK);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, screenWidth, screenHeight);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -754,36 +965,46 @@ int main()
         shader->SetUniform("viewPos", cameraPos.x, cameraPos.y, cameraPos.z);
         shader->SetUniform("farPlane", farPlane);
         shader->SetUniform("shadowMapSize", SHADOW_WIDTH, SHADOW_HEIGHT);
+
+        shader->SetUniform("debugBaseBias", debugBaseBias);
+        shader->SetUniform("debugSlopeBias", debugSlopeBias);
+ 
+        shader->SetUniform("debugDiskRadius", debugDiskRadius);
         
         // Passar matrizes e splits das cascatas
         for (int i = 0; i < CASCADE_COUNT; ++i)
         {
             std::string uniformName = "lightSpaceMatrices[" + std::to_string(i) + "]";
             shader->SetUniformMat4(uniformName.c_str(), lightSpaceMatrices[i].m);
-            
             uniformName = "cascadePlaneDistances[" + std::to_string(i) + "]";
             shader->SetUniform(uniformName.c_str(), cascadeSplits[i]);
         }
         
-        shader->SetTexture2D("diffuseTexture", texture->GetHandle(), 0);
+        //shader->SetTexture2D("diffuseTexture", texture->GetHandle(), 0);
         for (int i = 0; i < CASCADE_COUNT; ++i)
         {
             std::string uniformName = "shadowMap[" + std::to_string(i) + "]";
             shader->SetTexture2D(uniformName.c_str(), depthMaps[i], 1 + i);
         }
+        shader->SetTexture2D("diffuseTexture", 0, 0);
 
         // Renderizar plano
-         model = Mat4::Scale(Vec3(2.0f));
+        model = Mat4::Scale(Vec3(2.0f));
         shader->SetUniformMat4("model", model.m);
-        plane->Render();
+        driver.DrawMesh(plane);
         
         // Renderizar cubos
         for (int i = 0; i < 10; i++)
         {
             model = Mat4::Translation(cubePositions[i]) * Mat4::Scale(Vec3(1.0f));
             shader->SetUniformMat4("model", model.m);
-            cube->Render();
+            driver.DrawMesh(cube);
         }
+
+
+       
+        shader->SetUniformMat4("model", matModel.m );
+        driver.DrawMesh(meshModel);
 
         // Debug: visualizar cascatas com labels
         debugShader->Bind();
@@ -792,17 +1013,10 @@ int main()
         {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, depthMaps[i]);
-            quad.render(i * 210, 0, 200, 200, screenWidth, screenHeight);
+           // quad.render(i * 210, 0, 200, 200, screenWidth, screenHeight);
         }
         
-        debugShader->Bind();
-        debugShader->SetUniform("depthMap", 0);
-        for (int i = 0; i < CASCADE_COUNT; ++i)
-        {
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, depthMaps[i]);
-            quad.render(i * 210, 0, 200, 200, screenWidth, screenHeight);
-        }
+ 
         
 
 
@@ -814,6 +1028,15 @@ int main()
        batch.SetColor(255, 255, 255);
 //
        font.Print(10,10,"Fps :%d",device.GetFPS());
+
+    int Y=22;
+       font.Print(10,Y," [ P/O]  Base bias :%f", debugBaseBias);
+
+       font.Print(10,Y*2," [I/U] Slope bias :%f", debugSlopeBias);
+
+       font.Print(10,Y*3," [J/H]  Disk radius :%f", debugDiskRadius);
+ 
+
 
        
 
