@@ -71,7 +71,7 @@ struct VertexSkin
     u8 boneIDs[4];
     float weights[4];
 };
-
+ 
 struct Bone
 {
     std::string name;

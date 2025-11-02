@@ -4,6 +4,7 @@
 #include "Mesh.hpp"
 #include "Texture.hpp"
 #include "Stream.hpp"
+#include "Batch.hpp"
 #include "glad/glad.h"
 
 Material::Material()
@@ -130,6 +131,123 @@ void MeshBuffer::Render()
         Build();
     }
     buffer->Render(PrimitiveType::PT_TRIANGLES, indices.size());
+}
+
+void MeshBuffer::Debug(RenderBatch *batch)
+{
+
+    // tris lines
+
+    // batch->SetColor(255, 0, 0);
+    // for (size_t i = 0; i < indices.size(); i += 3)
+    // {
+
+    //     const Vertex v0 = vertices[indices[i]];
+    //     const Vertex v1 = vertices[indices[i + 1]];
+    //     const Vertex v2 = vertices[indices[i + 2]];
+    //     const Vec3 p0 = Vec3(v0.x, v0.y, v0.z);
+    //     const Vec3 p1 = Vec3(v1.x, v1.y, v1.z);
+    //     const Vec3 p2 = Vec3(v2.x, v2.y, v2.z);
+    //   //  batch->TriangleLines(p0, p1, p2);
+    //    // batch->Line3D(p0, p1);
+    // }
+
+    /// vertex animaltions lines
+
+    if (!m_skinnedVertices.empty())
+    {
+        batch->SetColor(0, 255, 0);
+        for (size_t i = 0; i < indices.size(); i += 3)
+        {
+
+            const Vertex &v0 = m_skinnedVertices[indices[i]];
+            const Vertex &v1 = m_skinnedVertices[indices[i + 1]];
+            const Vertex &v2 = m_skinnedVertices[indices[i + 2]];
+            const Vec3 p0 = Vec3(v0.x, v0.y, v0.z);
+            const Vec3 p1 = Vec3(v1.x, v1.y, v1.z);
+            const Vec3 p2 = Vec3(v2.x, v2.y, v2.z);
+            batch->TriangleLines(p0, p1, p2);
+        }
+    }
+    else
+    {
+        // LogWarning("Skinned vertices empty");
+    }
+}
+
+void MeshBuffer::UpdateSkinning(Mesh *mesh)
+{
+    if (!mesh)
+        return;
+
+    if (!m_isSkinned || mesh->m_boneMatrices.empty() || vertices.empty() || m_skinData.empty())
+    {
+        LogWarning("Mesh not skinned or malformed!");
+        return;
+    }
+
+    for (size_t i = 0; i < vertices.size(); i++)
+    {
+        const Vertex &original = vertices[i];
+        const VertexSkin &skin = m_skinData[i];
+
+        Vec3 finalPos(0, 0, 0);
+        Vec3 finalNormal(0, 0, 0);
+
+        // Aplica influência de cada bone
+        for (int j = 0; j < 4; j++)
+        {
+            float weight = skin.weights[j];
+            if (weight == 0.0f)
+                continue;
+            u8 boneID = skin.boneIDs[j];
+            Bone *bone = mesh->GetBone(boneID);
+            if (!bone)
+            {
+                LogWarning("Bone not found %d ", boneID);
+                continue;
+            }
+
+            Mat4 boneMatrix = bone->GetGlobalTransform() * bone->inverseBindPose;
+
+            mesh->m_boneMatrices[boneID] = boneMatrix;
+
+            // Transform position
+            Vec3 transformedPos = boneMatrix.TransformPoint(Vec3(original.x, original.y, original.z));
+            finalPos.x += transformedPos.x * weight;
+            finalPos.y += transformedPos.y * weight;
+            finalPos.z += transformedPos.z * weight;
+
+            // Transform normal (sem translation)
+            Vec3 transformedNormal = boneMatrix.TransformVector(Vec3(original.nx, original.ny, original.nz));
+            finalNormal.x += transformedNormal.x * weight;
+            finalNormal.y += transformedNormal.y * weight;
+            finalNormal.z += transformedNormal.z * weight;
+        }
+
+        // Normaliza normal
+        float len = sqrt(finalNormal.x * finalNormal.x +
+                         finalNormal.y * finalNormal.y +
+                         finalNormal.z * finalNormal.z);
+        if (len > 0.0f)
+        {
+            finalNormal.x /= len;
+            finalNormal.y /= len;
+            finalNormal.z /= len;
+        }
+
+        m_skinnedVertices[i].x = finalPos.x;
+        m_skinnedVertices[i].y = finalPos.y;
+        m_skinnedVertices[i].z = finalPos.z;
+        m_skinnedVertices[i].nx = finalNormal.x;
+        m_skinnedVertices[i].ny = finalNormal.y;
+        m_skinnedVertices[i].nz = finalNormal.z;
+        m_skinnedVertices[i].u = original.u;
+        m_skinnedVertices[i].v = original.v;
+    }
+
+    vb->SetData(m_skinnedVertices.data());
+    buffer->Build();
 }
 
 void MeshBuffer::Transform(const Mat4 &matrix)
@@ -947,123 +1065,61 @@ Bone *Mesh::GetBone(u32 index) const
     return m_bones[index];
 }
 
-Bone* Mesh::AddBone(const std::string &name)
+Bone *Mesh::AddBone(const std::string &name)
 {
-    Bone* bone = new Bone();
+    Bone *bone = new Bone();
     bone->name = name;
-    
+
     m_bones.push_back(bone);
     return bone;
 }
 
-void Mesh::UpdateSkinning( )
+void Mesh::UpdateSkinning()
 {
-    // if (!HasSkinning()) return;
-    
-    // // Para cada vértice
-    // for (size_t i = 0; i < m_originalVertices.size(); i++)
-    // {
-    //     Vertex original = m_originalVertices[i];
-    //     VertexSkin skin = m_skinData[i];
-        
-    //     Vec3 finalPos(0, 0, 0);
-    //     Vec3 finalNormal(0, 0, 0);
-        
-    //     // Aplica influência de cada bone
-    //     for (int j = 0; j < 4; j++)
-    //     {
-    //         float weight = skin.weights[j];
-    //         if (weight == 0.0f) continue;
-            
-    //         u8 boneID = skin.boneIDs[j];
-    //         if (boneID >= skeleton->boneMatrices.size()) continue;
-            
-    //         Mat4 boneMatrix = skeleton->boneMatrices[boneID];
-            
-    //         // Transform position
-    //         Vec3 transformedPos = boneMatrix.TransformPoint(
-    //             Vec3(original.x, original.y, original.z)
-    //         );
-    //         finalPos.x += transformedPos.x * weight;
-    //         finalPos.y += transformedPos.y * weight;
-    //         finalPos.z += transformedPos.z * weight;
-            
-    //         // Transform normal (sem translation)
-    //         Vec3 transformedNormal = boneMatrix.TransformVector(
-    //             Vec3(original.nx, original.ny, original.nz)
-    //         );
-    //         finalNormal.x += transformedNormal.x * weight;
-    //         finalNormal.y += transformedNormal.y * weight;
-    //         finalNormal.z += transformedNormal.z * weight;
-    //     }
-        
-    //     // Normaliza normal
-    //     float len = sqrt(finalNormal.x*finalNormal.x + 
-    //                     finalNormal.y*finalNormal.y + 
-    //                     finalNormal.z*finalNormal.z);
-    //     if (len > 0.0f)
-    //     {
-    //         finalNormal.x /= len;
-    //         finalNormal.y /= len;
-    //         finalNormal.z /= len;
-    //     }
-        
-    //     // Atualiza vértice
-    //     m_skinnedVertices[i].x = finalPos.x;
-    //     m_skinnedVertices[i].y = finalPos.y;
-    //     m_skinnedVertices[i].z = finalPos.z;
-    //     m_skinnedVertices[i].nx = finalNormal.x;
-    //     m_skinnedVertices[i].ny = finalNormal.y;
-    //     m_skinnedVertices[i].nz = finalNormal.z;
-    //     m_skinnedVertices[i].u = original.u;
-    //     m_skinnedVertices[i].v = original.v;
-   // }
-    
-    //m_isDirty = true;
+    if (!IsSkinned())
+    {
+        LogWarning("Mesh is not skinned");
+        return;
+    }
+
+    for (size_t i = 0; i < buffers.size(); i++)
+    {
+        buffers[i]->UpdateSkinning(this);
+    }
+}
+
+void Mesh::Debug(RenderBatch *batch)
+{
+
+    if (buffers.empty())
+        return;
+    for (MeshBuffer *buffer : buffers)
+    {
+        buffer->Debug(batch);
+    }
 }
 
 // Skeleton.cpp
 void Mesh::CalculateBoneMatrices()
 {
 
-        
-    // m_boneMatrices.resize(m_bones.size());
-    
-    // for (size_t i = 0; i < m_bones.size(); i++)
-    // {
-    //     Bone* bone = m_bones[i];
-        
-    //     // Se tem parent, multiplica pela matriz do parent
-    //     if (bone->parentIndex >= 0)
-    //     {
-    //         Bone* parent = GetBone(bone->parentIndex);
- 
-
-    //         m_boneMatrices[i] = m_boneMatrices[bone->parentIndex] * bone->localTransform;
-    //     }
-    //     else
-    //     {
-    //         // Root bone
-    //         m_boneMatrices[i] = bone->localTransform;
-    //         bone->parent = nullptr;
-    //     }
-        
-    //     // Multiplica pelo inverse bind pose
-    //     m_boneMatrices[i] = m_boneMatrices[i] *  bone->inverseBindPose;
-    // }
-
+    if (!IsSkinned())
+    {
+        LogWarning("Mesh is not skinned");
+        return;
+    }
 
     for (size_t i = 0; i < m_bones.size(); i++)
     {
-        Bone* bone = m_bones[i];
-        
+        Bone *bone = m_bones[i];
+
         if (bone->parentIndex >= 0 && bone->parentIndex < (s32)m_bones.size())
         {
             bone->parent = m_bones[bone->parentIndex];
-            
-            LogInfo("Bone[%d] %s → parent[%d] %s", 
-                   i, bone->name.c_str(), 
-                   bone->parentIndex, m_bones[bone->parentIndex]->name.c_str());
+
+            LogInfo("Bone[%d] %s → parent[%d] %s",
+                    i, bone->name.c_str(),
+                    bone->parentIndex, m_bones[bone->parentIndex]->name.c_str());
         }
         else
         {
@@ -1071,9 +1127,8 @@ void Mesh::CalculateBoneMatrices()
             LogInfo("Bone[%d] %s → ROOT (no parent)", i, bone->name.c_str());
         }
     }
-
+    m_boneMatrices.resize(m_bones.size());
 }
-
 
 void PrintMatrix(const Mat4 &mat)
 {
@@ -1087,19 +1142,28 @@ void PrintMatrix(const Mat4 &mat)
     }
 }
 
-
-Mat4 Mesh::GetBoneBindPoseMatrix(u32 index) const
+Bone::Bone()
 {
-    if (index >= m_bones.size())
-        return Mat4::Identity();
-    
-    Bone* bone = m_bones[index];
-    
-    // BIND POSE = inverso da inverseBindPose!
-    Mat4 bindPoseMatrix = Mat4::Inverse(bone->inverseBindPose);
-    
-    // Não precisa de hierarchy aqui, a inverseBindPose já é global
-    return bindPoseMatrix;
+    localPose = Mat4::Identity();
+    inverseBindPose = Mat4::Identity();
+    hasAnimation = false;
+    parent = nullptr;
+    parentIndex = -1;
+}
+
+Mat4 Bone::GetGlobalTransform() const
+{
+
+    if (parent != nullptr)
+        return parent->GetGlobalTransform() * GetLocalTransform();
+    else
+        return GetLocalTransform();
+}
+
+Mat4 Bone::GetLocalTransform() const
+{
+    Mat4 mat = (hasAnimation ? transform : localPose);
+    return mat;
 }
 
 void Mesh::SetBoneTransform(u32 index, const Vec3 &position, const Quat &rotation)
@@ -1107,8 +1171,36 @@ void Mesh::SetBoneTransform(u32 index, const Vec3 &position, const Quat &rotatio
     if (index >= m_bones.size())
         return;
 
-        //T * R * S; 
-    m_bones[index]->transform = Mat4::Translation(position) * rotation.toMat4();
+    if (index >= m_boneMatrices.size())
+        m_boneMatrices.resize(index + 1);
+
+    // T * R * S;
+    Mat4 local = (Mat4::Translation(position) * rotation.toMat4());
+    m_bones[index]->hasAnimation = true;
+    m_bones[index]->transform = local;
+    m_boneMatrices[index] = local;
+}
+
+void Mesh::SetBoneStatic(u32 index)
+{
+    if (index >= m_bones.size())
+        return;
+
+    if (index >= m_boneMatrices.size())
+        m_boneMatrices.resize(index + 1);
+
+    m_bones[index]->transform = m_bones[index]->localPose;
+    m_boneMatrices[index] = m_bones[index]->transform;
+    m_bones[index]->hasAnimation = false;
+}
+
+void Mesh::ResetBones()
+{
+    for (u32 i = 0; i < m_bones.size(); i++)
+    {
+        m_bones[i]->hasAnimation = false;
+        m_boneMatrices[i] = m_bones[i]->localPose;
+    }
 }
 
 u32 Mesh::FindBoneIndex(const std::string &name)
@@ -1125,8 +1217,8 @@ Mat4 Mesh::GetBoneMatrix(u32 index) const
 {
     if (index >= m_bones.size())
         return Mat4::Identity();
-    
-    return  m_bones[index]->GetGlobalTransform();
+
+    return m_bones[index]->GetGlobalTransform();
 }
 
 void Mesh::SortByMaterial()
@@ -1595,6 +1687,7 @@ Mesh *MeshManager::Load(const std::string &name, const std::string &filename)
     {
         return nullptr;
     }
+    mesh->CalculateBoneMatrices();
     return mesh;
 }
 
@@ -1821,7 +1914,7 @@ void MeshWriter::WriteSkeletonChunk(const Mesh *mesh)
         m_stream->WriteInt(bone->parentIndex);
 
         // Local transform (16 floats)
-        const Mat4 &local = bone->localTransform;
+        const Mat4 &local = bone->localPose;
         for (int j = 0; j < 16; j++)
             m_stream->WriteFloat(local.m[j]);
 
@@ -1923,19 +2016,17 @@ void MeshWriter::WriteSkinChunk(const MeshBuffer *buffer)
     EndChunk(startPos);
 }
 
-
-
-void PrintBoneTree(Mesh* mesh, u32 boneIndex, int depth)
+void PrintBoneTree(Mesh *mesh, u32 boneIndex, int depth)
 {
-    Bone* bone = mesh->GetBone(boneIndex);
-    
+    Bone *bone = mesh->GetBone(boneIndex);
+
     std::string indent(depth * 2, ' ');
     std::cout << "  " << indent << "[" << boneIndex << "] " << bone->name << std::endl;
-    
+
     // Print children
     for (size_t i = 0; i < mesh->GetBoneCount(); i++)
     {
-        
+
         if (mesh->GetBone(i)->parentIndex == (s32)boneIndex)
         {
             PrintBoneTree(mesh, i, depth + 1);
@@ -1943,23 +2034,23 @@ void PrintBoneTree(Mesh* mesh, u32 boneIndex, int depth)
     }
 }
 
-void ValidateBoneHierarchy(Mesh* mesh)
+void ValidateBoneHierarchy(Mesh *mesh)
 {
-    
+
     std::cout << "\n  Bone Hierarchy:" << std::endl;
-    
+
     // Conta roots
     int rootCount = 0;
     for (size_t i = 0; i < mesh->GetBoneCount(); i++)
     {
-        Bone* bone = mesh->GetBone(i);
+        Bone *bone = mesh->GetBone(i);
         if (bone->parentIndex < 0)
         {
             PrintBoneTree(mesh, i, 0);
             rootCount++;
         }
     }
-    
+
     if (rootCount == 1)
     {
         std::cout << "  ✓ Single root bone (OK)" << std::endl;
@@ -1969,9 +2060,6 @@ void ValidateBoneHierarchy(Mesh* mesh)
         std::cout << "  ⚠ Warning: " << rootCount << " root bones detected!" << std::endl;
     }
 }
-
-
-
 
 bool MeshReader::Load(const std::string &filename, Mesh *mesh)
 {
@@ -2121,23 +2209,24 @@ void MeshReader::ReadSkeletonChunk(Mesh *mesh, const ChunkHeader &header)
     for (u32 i = 0; i < numBones; i++)
     {
         Bone *bone = mesh->AddBone(ReadCString());
-        
+
         bone->parentIndex = m_stream->ReadInt();
-        
-        LogInfo("[MeshReader] Bone: %s Parent(%d)", bone->name.c_str(),bone->parentIndex);
+
+        LogInfo("[MeshReader] Bone: %s Parent(%d)", bone->name.c_str(), bone->parentIndex);
+
         // Local transform
         for (int j = 0; j < 16; j++)
-            bone->localTransform.m[j] = m_stream->ReadFloat();
-        
-        PrintMatrix(bone->localTransform);
+            bone->localPose.m[j] = m_stream->ReadFloat();
+
+        // PrintMatrix(bone->localPose);
 
         // Inverse bind pose
         for (int j = 0; j < 16; j++)
             bone->inverseBindPose.m[j] = m_stream->ReadFloat();
-        
-        PrintMatrix(bone->inverseBindPose);
 
-        
+        // bone->inverseBindPose = bone->localPose.inverse();
+
+        // PrintMatrix(bone->inverseBindPose);
     }
 }
 
@@ -2207,78 +2296,98 @@ void MeshReader::ReadIndicesChunk(MeshBuffer *buffer, const ChunkHeader &header)
     u32 numIndices = m_stream->ReadUInt();
     for (size_t i = 0; i < numIndices; i += 3)
     {
-        u32 a =  m_stream->ReadUInt();
-        u32 b =  m_stream->ReadUInt();
-        u32 c =  m_stream->ReadUInt();
-        buffer->AddFace( a, b, c);
+        u32 a = m_stream->ReadUInt();
+        u32 b = m_stream->ReadUInt();
+        u32 c = m_stream->ReadUInt();
+        buffer->AddFace(a, b, c);
     }
 }
 
 void MeshReader::ReadSkinChunk(MeshBuffer *buffer, const ChunkHeader &header)
 {
-    u32 numVertices = buffer->GetVertexCount();
-    std::vector<VertexSkin> skinData(numVertices);
-    m_stream->Read(skinData.data(), numVertices * sizeof(VertexSkin));
-    buffer->SetSkinData(skinData);
-    
+    u32 numVertices = m_stream->ReadUInt();
+    LogInfo("ReadSkinChunk numVertices %d", numVertices);
+
+    buffer->m_skinData.resize(numVertices);
+    buffer->m_isSkinned = true;
+    buffer->m_skinnedVertices.resize(numVertices);
+
+    for (u32 i = 0; i < numVertices; i++)
+    {
+        buffer->m_skinData[i].boneIDs[0] = m_stream->ReadByte();
+        buffer->m_skinData[i].boneIDs[1] = m_stream->ReadByte();
+        buffer->m_skinData[i].boneIDs[2] = m_stream->ReadByte();
+        buffer->m_skinData[i].boneIDs[3] = m_stream->ReadByte();
+
+        buffer->m_skinData[i].weights[0] = m_stream->ReadFloat();
+        buffer->m_skinData[i].weights[1] = m_stream->ReadFloat();
+        buffer->m_skinData[i].weights[2] = m_stream->ReadFloat();
+        buffer->m_skinData[i].weights[3] = m_stream->ReadFloat();
+    }
 }
 
-
-
- 
-bool Animation::Load(const std::string& filename)
+bool Animation::Load(const std::string &filename)
 {
-    m_currentTime=0.0f;
+    m_currentTime = 0.0f;
+    m_ticksPerSecond = 25.0f;
+
     AnimReader reader;
-    AnimReader::FrameAnimation* frameAnim = reader.Load(filename);
-    if (!frameAnim) return false;
-    
+    AnimReader::FrameAnimation *frameAnim = reader.Load(filename);
+    if (!frameAnim)
+        return false;
+
     m_name = frameAnim->name;
     m_duration = frameAnim->duration;
     m_ticksPerSecond = frameAnim->ticksPerSecond;
-    
+
     // Converte channels
     m_channels.resize(frameAnim->channels.size());
     for (size_t i = 0; i < frameAnim->channels.size(); i++)
     {
         m_channels[i].boneName = frameAnim->channels[i].boneName;
-        m_channels[i].boneIndex = (u32)-1;  // Resolve depois
+        m_channels[i].boneIndex = (u32)-1;
         m_channels[i].keyframes = frameAnim->channels[i].keyframes;
     }
-    
+
     delete frameAnim;
     return true;
 }
 
-
 void Animation::Update(float deltaTime)
 {
-    m_currentTime +=   deltaTime * m_ticksPerSecond;
+    if (m_channels.empty())
+        return;
+    m_currentTime += deltaTime * m_ticksPerSecond;
     while (m_currentTime >= m_duration)
         m_currentTime -= m_duration;
-    
-    Sample( m_currentTime);  // Aplica
-}
 
+    Sample(m_currentTime); // Aplica
+}
 
 void Animation::Sample(float time)
 {
-    if (!m_mesh) return;
-    for (const auto& channel : m_channels)
+    if (!m_mesh || m_channels.empty())
+        return;
+
+    for (const auto &channel : m_channels)
     {
-        if (channel.boneIndex == (u32)-1) continue;
-        
+        if (channel.boneIndex == (u32)-1)
+        {
+            LogWarning("Bone not found: %s", channel.boneName.c_str());
+            continue;
+        }
+
         Vec3 pos = InterpolatePosition(channel, time);
         Quat rot = InterpolateRotation(channel, time);
         m_mesh->SetBoneTransform(channel.boneIndex, pos, rot);
     }
+    m_mesh->UpdateSkinning();
 }
 
-
-void Animation::BindToMesh(Mesh* mesh)
+void Animation::BindToMesh(Mesh *mesh)
 {
     m_mesh = mesh;
-    for (auto& channel : m_channels)
+    for (auto &channel : m_channels)
     {
         channel.boneIndex = mesh->FindBoneIndex(channel.boneName);
         if (channel.boneIndex == (u32)-1)
@@ -2288,60 +2397,73 @@ void Animation::BindToMesh(Mesh* mesh)
     }
 }
 
- 
-Vec3 Animation::InterpolatePosition(const AnimationChannel& ch, float time)
+AnimationChannel *Animation::FindChannel(const std::string &name)
 {
-    if (ch.keyframes.empty())
-        return Vec3(0, 0, 0);
-    
-    if (ch.keyframes.size() == 1)
-        return ch.keyframes[0].position;
-    for (size_t i = 0; i < ch.keyframes.size() - 1; i++)
+    for (auto &channel : m_channels)
     {
-        float t0 = ch.keyframes[i].time;
-        float t1 = ch.keyframes[i + 1].time;
-        
-        if (time >= t0 && time <= t1)
-        {
-            float factor = (time - t0) / (t1 - t0);            
-            const Vec3& p0 = ch.keyframes[i].position;
-            const Vec3& p1 = ch.keyframes[i + 1].position;
-            return Vec3::Lerp(p0, p1, factor);
-        }
+        if (channel.boneName == name)
+            return &channel;
     }
-    
-    return ch.keyframes.back().position;
+    return nullptr;
 }
 
-Quat Animation::InterpolateRotation(const AnimationChannel& ch, float time)
+Vec3 Animation::InterpolatePosition(const AnimationChannel &ch, float time)
 {
     if (ch.keyframes.empty())
-        return Quat(0, 0, 0, 1);
-    
+    {
+
+        return Vec3(0, 0, 0);
+    }
+
     if (ch.keyframes.size() == 1)
-        return ch.keyframes[0].rotation;
-    
+    {
+
+        return ch.keyframes[0].position;
+    }
     for (size_t i = 0; i < ch.keyframes.size() - 1; i++)
     {
         float t0 = ch.keyframes[i].time;
         float t1 = ch.keyframes[i + 1].time;
-        
+
         if (time >= t0 && time <= t1)
         {
             float factor = (time - t0) / (t1 - t0);
-            
-            const Quat& q0 = ch.keyframes[i].rotation;
-            const Quat& q1 = ch.keyframes[i + 1].rotation;
+            const Vec3 &p0 = ch.keyframes[i].position;
+            const Vec3 &p1 = ch.keyframes[i + 1].position;
+            return Vec3::Lerp(p0, p1, factor);
+        }
+    }
+
+    return ch.keyframes.back().position;
+}
+
+Quat Animation::InterpolateRotation(const AnimationChannel &ch, float time)
+{
+    if (ch.keyframes.empty())
+        return Quat(0, 0, 0, 1);
+
+    if (ch.keyframes.size() == 1)
+        return ch.keyframes[0].rotation;
+
+    for (size_t i = 0; i < ch.keyframes.size() - 1; i++)
+    {
+        float t0 = ch.keyframes[i].time;
+        float t1 = ch.keyframes[i + 1].time;
+
+        if (time >= t0 && time <= t1)
+        {
+            float factor = (time - t0) / (t1 - t0);
+
+            const Quat &q0 = ch.keyframes[i].rotation;
+            const Quat &q1 = ch.keyframes[i + 1].rotation;
             return Quat::Slerp(q0, q1, factor);
         }
     }
-    
+
     return ch.keyframes.back().rotation;
 }
- 
 
- 
-AnimReader::FrameAnimation* AnimReader::Load(const std::string& filename)
+AnimReader::FrameAnimation *AnimReader::Load(const std::string &filename)
 {
     FileStream stream;
     if (!stream.Open(filename, "rb"))
@@ -2349,45 +2471,45 @@ AnimReader::FrameAnimation* AnimReader::Load(const std::string& filename)
         LogError("[AnimReader] Failed to open: %s", filename.c_str());
         return nullptr;
     }
-    
+
     m_stream = &stream;
     m_stream->SetBigEndian(false);
-    
+
     // Read magic + version
     u32 magic = m_stream->ReadUInt();
     u32 version = m_stream->ReadUInt();
-    
+
     if (magic != ANIM_MAGIC)
     {
         LogError("[AnimReader] Invalid magic: 0x%08X", magic);
         stream.Close();
         return nullptr;
     }
-    
+
     if (version != ANIM_VERSION)
     {
         LogError("[AnimReader] Invalid version: %d", version);
         stream.Close();
         return nullptr;
     }
-    
-    FrameAnimation* animation = new FrameAnimation();
-    
+
+    FrameAnimation *animation = new FrameAnimation();
+
     // Read chunks
     while (!m_stream->IsEOF())
     {
         // Check if enough data for chunk header
         long currentPos = m_stream->Tell();
         long fileSize = m_stream->Size();
-        
+
         if (currentPos + 8 > fileSize)
             break;
-        
+
         u32 chunkId = m_stream->ReadUInt();
         u32 chunkLength = m_stream->ReadUInt();
-        
+
         long nextChunkPos = m_stream->Tell() + chunkLength;
-        
+
         if (chunkId == ANIM_CHUNK_INFO)
         {
             if (!ReadInfoChunk(*animation))
@@ -2408,79 +2530,80 @@ AnimReader::FrameAnimation* AnimReader::Load(const std::string& filename)
                 stream.Close();
                 return nullptr;
             }
-            
+
             animation->channels.push_back(channel);
         }
         else
         {
             LogError("[AnimReader] Unknown chunk: 0x%08X", chunkId);
         }
-        
+
         // Seek to next chunk
         m_stream->Seek(nextChunkPos, SeekOrigin::Begin);
     }
-    
+
     stream.Close();
 
     LogInfo("[AnimReader] Loaded animation: %s (%d channels, %.2f seconds)", animation->name.c_str(), animation->channels.size(), animation->duration);
 
-    
     return animation;
 }
 
-bool AnimReader::ReadInfoChunk(FrameAnimation& anim)
+bool AnimReader::ReadInfoChunk(FrameAnimation &anim)
 {
     // Name (64 bytes fixed)
     char name[64];
     m_stream->Read(name, 64);
-    name[63] = '\0';  // Ensure null-terminated
+    name[63] = '\0'; // Ensure null-terminated
     anim.name = name;
-    
+
     // Duration, ticks per second, num channels
     anim.duration = m_stream->ReadFloat();
     anim.ticksPerSecond = m_stream->ReadFloat();
     u32 numChannels = m_stream->ReadUInt();
-    
+
     anim.channels.reserve(numChannels);
-    
+
     return true;
 }
 
-bool AnimReader::ReadChannelChunk(Channel& channel)
+bool AnimReader::ReadChannelChunk(Channel &channel)
 {
     // Bone name (null-terminated string)
     channel.boneName = m_stream->ReadCString();
-    
+
     // Number of keyframes
     u32 numKeys = m_stream->ReadUInt();
     channel.keyframes.reserve(numKeys);
-    
+
+    LogInfo("[AnimReader] Reading channel: %s (%d keyframes)", channel.boneName.c_str(), numKeys);
+
     // Read all keyframes
     for (u32 i = 0; i < numKeys; i++)
     {
         AnimationKeyframe key;
-        
+
         // Time
         key.time = m_stream->ReadFloat();
-        
+
         // Position
         key.position.x = m_stream->ReadFloat();
         key.position.y = m_stream->ReadFloat();
         key.position.z = m_stream->ReadFloat();
-        
+
         // Rotation (quaternion)
         key.rotation.x = m_stream->ReadFloat();
         key.rotation.y = m_stream->ReadFloat();
         key.rotation.z = m_stream->ReadFloat();
         key.rotation.w = m_stream->ReadFloat();
-        
+
         // Scale
-          m_stream->ReadFloat();
-          m_stream->ReadFloat();
-         m_stream->ReadFloat();
-        
+        m_stream->ReadFloat();
+        m_stream->ReadFloat();
+        m_stream->ReadFloat();
+
         channel.keyframes.push_back(key);
     }
-    
+
     return true;
 }

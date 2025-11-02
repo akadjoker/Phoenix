@@ -4,7 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-
+ 
 class VertexBuffer;
 class IndexBuffer;
 class VertexArray;
@@ -14,7 +14,10 @@ class MeshManager;
 class Stream;
 class Texture;
 class Driver;
-
+class RenderBatch;
+class MeshWriter;
+class MeshLoader;
+class Animator;
 
 constexpr u32 MESH_MAGIC = 0x4D455348; // "MESH"
 constexpr u32 MESH_VERSION = 100; // 1.00
@@ -69,19 +72,18 @@ struct VertexSkin
 struct Bone
 {
     std::string name;
-    s32 parentIndex;  // -1 = root
+    bool hasAnimation;
+    s32  parentIndex;  // -1 = root
     Mat4 transform;
-    Mat4 localTransform;
+    Mat4 localPose;
     Mat4 inverseBindPose;
     Bone * parent{nullptr};
 
-    Mat4 GetGlobalTransform() const
-    {
-        if (parent != nullptr)
-            return parent->GetGlobalTransform() * transform;
-        else
-            return transform;
-    }
+    Bone();
+
+    Mat4 GetGlobalTransform() const;
+    Mat4 GetLocalTransform() const;
+   
 };
 
 class Material
@@ -120,7 +122,9 @@ class MeshBuffer
 {
 private:
     std::vector<Vertex> vertices;
-    std::vector<VertexSkin> skinData;
+    std::vector<Vertex> m_skinnedVertices;
+    
+    std::vector<VertexSkin> m_skinData;
     std::vector<u32> indices;
     bool m_isSkinned = false;
     bool m_vdirty;
@@ -132,6 +136,8 @@ private:
     friend class Mesh;
     friend class MeshManager;
     friend class Driver;
+    friend class MeshReader;
+    friend class MeshWriter;
 
 public:
     MeshBuffer();
@@ -155,6 +161,9 @@ public:
     void Build();
 
     void Render();
+    void Debug(RenderBatch* batch);
+
+    void UpdateSkinning( Mesh* mesh);
 
 
     void RemoveDuplicateVertices(float threshold);
@@ -193,27 +202,14 @@ public:
     bool IsSkinned() const { return m_isSkinned; }
     
 
-    const VertexSkin* GetSkinData() const  { return skinData.data(); }
-    void SetSkinData(const std::vector<VertexSkin>& data) { skinData = data; m_isSkinned = !data.empty(); }
+    const VertexSkin* GetSkinData() const  { return m_skinData.data(); }
+    void SetSkinData(const std::vector<VertexSkin>& data) { m_skinData = data; m_isSkinned = !data.empty(); }
     const Vertex* GetVertices() const { return vertices.data(); }
     const u32* GetIndices() const { return indices.data(); }
     
 };
 
 
-// class Skeleton
-// {
-// public:
-//     void Load( Mesh* mesh);
-//     void CalculateBoneMatrices();
-    
-//     const std::vector<Mat4>& GetBoneMatrices() const { return m_boneMatrices; }
-//     Bone* FindBone(const std::string& name);
-    
-// private:
-//     std::vector<Bone> m_bones;
-//     std::vector<Mat4> m_boneMatrices;
-// };
 
 
 
@@ -246,6 +242,14 @@ public:
     const std::string& GetName() const { return m_name; }
 
     AnimationChannel* GetChannel(u32 index) { return &m_channels[index]; }
+
+    AnimationChannel* FindChannel(const std::string& name);
+    
+       Vec3 InterpolatePosition(const AnimationChannel& channel, float time);
+       Quat InterpolateRotation(const AnimationChannel& channel, float time);
+        
+       u32 GetChannelCount() const { return m_channels.size(); } 
+    
     
 private:
     std::string m_name;
@@ -253,6 +257,7 @@ private:
     float m_ticksPerSecond;
     Mesh * m_mesh = nullptr;
     float m_currentTime;
+    friend class Animator;
     
     void Sample(float time);
 
@@ -260,9 +265,105 @@ private:
     std::vector<AnimationChannel> m_channels;
     
  
-    Vec3 InterpolatePosition(const AnimationChannel& channel, float time);
-    Quat InterpolateRotation(const AnimationChannel& channel, float time);
+};
+
+
  
+
+enum class PlayMode
+{
+    Once,           
+    Loop,          
+    PingPong,       
+    OnceAndReturn 
+};
+
+struct AnimationLayer
+{
+    std::string name;
+    Animation* animation;
+    float weight;               // 0.0 a 1.0 para blending
+    float speed;                // Multiplicador de velocidade
+    PlayMode mode;
+    bool isActive;
+    float currentTime;
+    
+};
+
+ 
+class Animator
+{
+public:
+    Animator(Mesh* mesh);
+    ~Animator();
+    
+    // Gerenciamento de animações
+    void AddAnimation(const std::string& name, Animation* anim);
+    Animation* GetAnimation(const std::string& name);
+
+    Animation* LoadAnimation(const std::string& name, const std::string& filename);
+
+
+    
+    // Controle de playback
+    void Play(const std::string& animName, PlayMode mode = PlayMode::Loop, 
+              float blendTime = 0.3f);
+    void PlayOneShot(const std::string& animName, const std::string& returnTo, 
+                     float blendTime = 0.3f);
+    void CrossFade(const std::string& toAnim, float duration);
+    void Stop(float blendOutTime = 0.3f);
+    void Pause();
+    void Resume();
+    
+    // Layers (para múltiplas animações simultâneas)
+    u32 AddLayer(const std::string& layerName, float weight = 1.0f);
+    void PlayOnLayer(u32 layerIndex, const std::string& animName, PlayMode mode = PlayMode::Loop);
+    void SetLayerWeight(u32 layerIndex, float weight);
+
+    
+  
+    void Update(float deltaTime);
+    
+    bool IsPlaying(const std::string& animName) const;
+    float GetCurrentTime() const { return m_currentTime; }
+    const std::string& GetCurrentAnimation() const { return m_currentAnimName; }
+ 
+    void SetSpeed(float speed) { m_globalSpeed = speed; }
+    void SetDefaultBlendTime(float time) { m_defaultBlendTime = time; }
+    
+private:
+    Mesh* m_mesh;
+    std::map<std::string, Animation*> m_animations;
+    
+    std::string m_currentAnimName;
+    std::string m_previousAnimName;
+    Animation* m_currentAnim;
+    Animation* m_previousAnim;
+    
+    float m_currentTime;
+    float m_globalSpeed;
+    bool m_isPaused;
+    
+    // Blending
+    bool m_isBlending;
+    float m_blendTime;
+    float m_blendDuration;
+    std::string m_targetAnimName;
+    
+    std::vector<AnimationLayer> m_layers;
+    
+    std::string m_returnToAnim;
+    bool m_shouldReturn;
+    
+    PlayMode m_currentMode;
+    
+    float m_defaultBlendTime;
+    
+    void UpdateBlending(float deltaTime);
+    void UpdateLayers(float deltaTime);
+ 
+    void BlendAnimations(Animation* from, Animation* to, float blend);
+    bool CheckAnimationEnd();
 };
 
 
@@ -293,7 +394,12 @@ public:
     Bone* GetBone(u32 index) const ;
     Bone* AddBone(const std::string& name);
 
+    std::vector<Bone*>& GetBones() { return m_bones; }
+    const std::vector<Bone*>& GetBones() const { return m_bones; }
+
     void UpdateSkinning( );
+
+    void Debug(RenderBatch* batch);
 
     void CalculateBoneMatrices(); 
     const std::vector<Mat4>& GetBoneMatrices() const { return m_boneMatrices; }
@@ -304,7 +410,9 @@ public:
     Mat4 GetBoneBindPoseMatrix(u32 index) const;
 
     void SetBoneTransform(u32 index, const Vec3& position, const Quat& rotation);
-
+    void SetBoneStatic(u32 index);
+    void ResetBones();
+  
 private:
     std::vector<Bone*> m_bones;
     std::vector<Mat4> m_boneMatrices;

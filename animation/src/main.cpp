@@ -123,8 +123,41 @@ int main()
     CameraFree camera(45.0f, (float)screenWidth / (float)screenHeight, 0.1f, 1000.0f);
     camera.setPosition(0.0f, 0.5f, 10.0f);
 
-    Mesh *model = MeshManager::Instance().Load("modle", "assets/anim.mesh");
-    model->CalculateBoneMatrices();
+    Mesh *model = MeshManager::Instance().Load("modle", "assets/sinbad/sinbad.h3d");
+ 
+    //animation.Load("assets/sinbad/sinbad_JumpLoop.anim");
+    //animation.Load("assets/sinbad/sinbad_IdleTop.anim");
+    //animation.Load("assets/sinbad/sinbad_DrawSwords.anim");
+    //animation.Load("assets/sinbad/sinbad_Dance.anim");
+   
+    //animation.BindToMesh(model);
+    
+ 
+
+    //animationTop.BindToMesh(model);
+
+    Animator animator =Animator(model);
+    animator.LoadAnimation("topIdle", "assets/sinbad/sinbad_IdleTop.anim");
+    animator.LoadAnimation("topRun", "assets/sinbad/sinbad_RunTop.anim");
+    animator.LoadAnimation("legsRun", "assets/sinbad/sinbad_RunBase.anim");
+
+
+    u32 upperLayer = animator.AddLayer("Upper", 0.5f);
+    u32 lowerLayer = animator.AddLayer("Lower", 0.5f);
+
+    animator.PlayOnLayer(upperLayer, "topRun", PlayMode::Loop);
+    animator.PlayOnLayer(lowerLayer, "legsRun", PlayMode::Loop);
+
+  //  animator.Play("IdleTop", PlayMode::Loop);
+    //animator.Play("RunBase", PlayMode::Loop);
+
+
+     Mesh *modelDefault = MeshManager::Instance().Load("default", "assets/anim.h3d");
+     Animation defaultIdle;
+     defaultIdle.Load("assets/idle.anim");
+     defaultIdle.BindToMesh(modelDefault);
+
+
 
     Shader *shader = ShaderManager::Instance().Create("shader", shadowVertexShader, shadowFragmentShader);
 
@@ -137,9 +170,6 @@ int main()
 
     Vec3 lightPos(-2, 4.0f, -4.0f);
 
-    Animation animation;
-    animation.Load("assets/idle.anim");
-    animation.BindToMesh(model);
 
     float totalTime = 0.0f;
     
@@ -238,106 +268,66 @@ int main()
         shader->SetTexture2D("diffuse", texture->GetHandle(), 0);
 
         u32 count = model->GetBoneCount();
-      //  animation->CalculateBoneMatrices();
-
-       // const std::vector<Mat4> &boneMatrices = animation->GetBoneMatrices();
+       
           
+ 
+        // animation.Update(dt  );
+        // animationTop.Update(dt  );
+        defaultIdle.Update(dt  );
 
-        AnimationChannel *channel = animation.GetChannel(0);
-        animation.Update(dt  );
+        animator.Update(dt);
 
 
-        Mat4 scale = Mat4::Scale(0.02f, 0.02f, 0.02f);
+        float S=0.2f;
 
-        for (u32 i = 0; i < count; i++)
-        {
-            Bone *bone = model->GetBone(i);
+        Mat4 matModel=Mat4::Translation(0.5f, 0.9f, 0.0f) * Mat4::Scale(S, S, S);
+        shader->SetUniformMat4("model", matModel.m );
 
-            Mat4 bindPose = Mat4::Inverse(bone->inverseBindPose);
+        driver.DrawMesh(model);
+
+        S=0.01f;
+        matModel= Mat4::Translation(-0.5f, 0.0f, 0.0f) * Mat4::Scale(S, S, S) ;
+        shader->SetUniformMat4("model", matModel.m );
+        driver.DrawMesh(modelDefault);
+
+ 
+        // for (u32 i = 0; i < count; i++)
+        // {
+        //     Bone *bone = model->GetBone(i);
+
+        // //     Mat4 bindPose = Mat4::Inverse(bone->inverseBindPose);
 
       
             
 
-            Mat4 final =  scale * bindPose ;
+        // //     Mat4 final =  matModel * bindPose ;
          
          
 
-            shader->SetUniformMat4("model", final.m );
-            cube->Render();
+        // //     shader->SetUniformMat4("model", final.m );
+        // //    cube->Render();
 
 
-            Mat4 mat = scale * bone->GetGlobalTransform();
-            shader->SetUniformMat4("model", mat.m );
-            cube->Render();
+        //     //Mat4 mat = matModel * bone->GetGlobalTransform();
+        //   //  shader->SetUniformMat4("model", mat.m );
+        //    // cube->Render();
 
 
         
-        }
+        // }
 
 
 
-
+        batch.SetMatrix(mvp);
         batch.Grid(10, 1.0f, true);
 
+        batch.BeginTransform(matModel);
+        //model->Debug(&batch);
+        batch.EndTransform();
 
-
-       for (u32 i = 0; i < channel->keyframes.size(); i++)
-        {
-            Vec3 position = channel->keyframes[i].position;
-            Quat rotation = channel->keyframes[i].rotation;
-
-            //Mat4 mat = rotation.toMat4() * Mat4::Translation(position) ;
-            
-            batch.Cube(position, 0.1f, 0.1f, 0.1f,false);
-            //LogInfo("[Main] Position:  %f %f %f %d Rotation: %f %f %f %f", position.x, position.y, position.z,i, rotation.x, rotation.y, rotation.z, rotation.w);
-         
-        }
-            
-
-
-
-        //    for (u32 i = 0; i < count; i++)
-        //    {
-        //        Bone *bone = animation->GetBone(i);
-        //        batch.SetColor(255, 0, 0);
-
-        //        Vec3  position;
-        //        Quat rotation;
-        //        //Mat4::DecomposeMatrix(boneMatrices[i], &position, &rotation);
-        //        Mat4::DecomposeMatrix(animation->GetBoneMatrix(i), &position, &rotation);
-        //      //  LogInfo("[Main] %s Position:  %f %f %f",bone->name.c_str(), position.x, position.y, position.z);
-
-        //        //batch.Sphere(position, 0.1f,12,12,false);
-        //       // batch.BeginTransform(animation->GetBoneMatrix(i));
-        //        //batch.BeginTransform(animation->GetBoneMatrix(i));
-        //         batch.Cube(position, 0.1f, 0.1f, 0.1f,false);
-        //       // batch.EndTransform();
-        //    }
-
-        // Render bones como cubos
-        // for (u32 i = 0; i < animation->GetBoneCount(); i++)
-        // {
-        //     Bone* bone = animation->GetBone(i);
-
-        //     Mat4 globalMatrix = animation->GetBoneMatrix(i);
-        //     Vec3 position(globalMatrix.m[12], globalMatrix.m[13], globalMatrix.m[14]);
-        //     batch.SetColor(255, 0, 0);
-        //     batch.Cube(position, 1.1f, 1.1f, 1.1f, false);
-
-        //     // Desenha linha para o parent (se tiver)
-        //     if (bone->parentIndex >= 0)
-        //     {
-        //         Mat4 parentMatrix = animation->GetBoneMatrix(bone->parentIndex);
-        //         Vec3 parentPos(parentMatrix.m[12], parentMatrix.m[13], parentMatrix.m[14]);
-        //         batch.SetColor(0, 255, 0);
-        //         batch.Line3D(parentPos, position);  // Linha do parent ao bone
-        //         //LogInfo("[Main] %s  parent %s  Position:  %f %f %f", bone->name.c_str(), bone->parent->name.c_str(), position.x, position.y, position.z);
-        //     }
-        // }
 
  
 
-        batch.SetMatrix(mvp);
         batch.Render();
 
         batch.SetMatrix(ortho);

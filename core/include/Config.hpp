@@ -1,6 +1,6 @@
 #pragma once
 
-
+ 
 // Detect platform
 #if defined( WIN32 ) || defined( _WINDOWS ) || defined( _WIN32 )
 #	if !defined( PLATFORM_WIN )
