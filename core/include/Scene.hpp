@@ -1,10 +1,106 @@
 #pragma once
 #include "Config.hpp"
-#include "Node3D.hpp"
+#include "Math.hpp"
+#include "Node.hpp"
 #include <vector>
 #include <map>
 
 
-class Node;
+ 
 class Node3D;
 class GameObject;
+class RenderBatch;
+class Frustum;
+class Shader;
+class Camera3D;
+class CameraFree;
+class CameraFPS;
+class CameraMaya;
+
+class Scene
+{
+private:
+    std::vector<Node3D *> m_objects;
+    std::vector<Node3D *> m_objects_to_remove;
+
+    std::vector<Camera3D *> m_cameras;
+
+    std::vector<Node3D *> m_render_solids;
+    std::vector<Node3D *> m_render_trasparent;
+    std::vector<Node3D *> m_render_special;
+    std::vector<Node3D *> m_render_mirrors;
+    std::vector<Node3D *> m_render_waters;
+    std::vector<Node3D *> m_render_lights;
+    std::vector<Node3D *> m_render_skyes;
+    std::vector<Node3D *> m_render_terrains;
+
+    Camera3D *ActiveCamera;
+    Mat4 m_view;
+    Mat4 m_proj;
+    Vec3 camWorldPos;
+    Frustum *m_frustum;
+    u32 m_total;
+    u32 m_visible;
+    u32 m_current_camera;
+    bool m_ready;
+    bool m_needRebuildLists=false;
+
+public:
+    explicit Scene();
+    virtual ~Scene();
+
+    Scene(const Scene &) = delete;
+    Scene &operator=(const Scene &) = delete;
+    Scene(Scene &&) noexcept = default;
+    Scene &operator=(Scene &&) noexcept = default;
+
+
+    bool Init();
+
+    bool isVisible(Node3D *node);
+
+    void renderPass(Shader *shader, RenderType renderPass);
+    void renderAll(Shader *shader);
+
+    void Render();
+    void Update(float dt);
+
+    void Clear();
+    void removeObjects();
+
+    void Release();
+
+    void Debug(RenderBatch *batch);
+
+    Camera3D *createCamera(const std::string &name = "Camera");
+    CameraFPS *createCameraFPS(const std::string &name = "CameraFPS");
+    CameraMaya *createCameraMaya(const std::string &name = "CameraMaya");
+    CameraFree *createCameraFree(const std::string &name = "CameraFree");
+
+    u32 getTotalObjects() const { return m_total; }
+    u32 getVisibleObjects() const { return m_visible; }
+
+    Node3D *createNode3D(const std::string &name = "Node3D", Node3D *parent = nullptr);
+    GameObject *createGameObject(const std::string &name = "GameObject", Node3D *parent = nullptr);
+    const std::vector<Node3D *> &getObjects() const { return m_objects; }
+
+    Camera3D *getActiveCamera() const { return ActiveCamera; }
+
+    void setActiveCamera(Camera3D *camera) ;
+
+    void SetCamera(Camera3D *camera);
+
+    const Mat4 &getViewMatrix() const;
+    const Mat4 &getProjectionMatrix() const;
+protected:
+    virtual void OnRender( ) = 0;
+    virtual void OnUpdate(float dt) {};
+    virtual bool OnCreate() { return true; }
+    virtual void OnDestroy() {}
+    virtual void OnResize(u32  w, u32 h) {}
+
+    void rebuildRenderLists();
+ 
+};
+
+

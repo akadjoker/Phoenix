@@ -1816,6 +1816,17 @@ BoundingBox::BoundingBox() : min(Vec3(0, 0, 0)), max(Vec3(0, 0, 0)) {}
 
 BoundingBox::BoundingBox(const Vec3 &min, const Vec3 &max) : min(min), max(max) {}
 
+void BoundingBox::expand(float x, float y, float z)
+{
+    min.x = std::fmin(min.x, x);
+    min.y = std::fmin(min.y, y);
+    min.z = std::fmin(min.z, z);
+
+    max.x = std::fmax(max.x, x);
+    max.y = std::fmax(max.y, y);
+    max.z = std::fmax(max.z, z);
+}
+
 void BoundingBox::expand(const Vec3 &point)
 {
     min.x = std::fmin(min.x, point.x);
@@ -1831,6 +1842,12 @@ void BoundingBox::expand(const BoundingBox &other)
 {
     expand(other.min);
     expand(other.max);
+}
+
+void BoundingBox::clear()
+{
+    min = Vec3(MAXFLOAT, MAXFLOAT, MAXFLOAT);
+    max = Vec3(-MAXFLOAT, -MAXFLOAT, -MAXFLOAT);
 }
 
 Vec3 BoundingBox::center() const
@@ -1929,20 +1946,23 @@ void BoundingBox::transform(const Mat4 &m)
     // Efficient algorithm for transforming an AABB, taken from Graphics
     // Gems
 
-    float minA[3] = {min.x, min.y, min.z}, minB[3];
-    float maxA[3] = {max.x, max.y, max.z}, maxB[3];
+   
+    float minA[3] = {min.x, min.y, min.z};
+    float maxA[3] = {max.x, max.y, max.z};
+    float minB[3], maxB[3];
 
-    for (unsigned int i = 0; i < 3; ++i)
+    for (unsigned i = 0; i < 3; ++i)
     {
-        minB[i] = m(3, i);
-        maxB[i] = m(3, i);
+        // componente de translação (coluna 3)
+        minB[i] = m(i, 3);
+        maxB[i] = m(i, 3);
 
         for (unsigned j = 0; j < 3; ++j)
         {
-            float x = minA[j] * m(j, i);
-            float y = maxA[j] * m(j, i);
-            minB[i] += Min(x, y);
-            maxB[i] += Max(x, y);
+            float a = minA[j] * m(i, j);
+            float b = maxA[j] * m(i, j);
+            if (a < b) { minB[i] += a; maxB[i] += b; }
+            else       { minB[i] += b; maxB[i] += a; }
         }
     }
 

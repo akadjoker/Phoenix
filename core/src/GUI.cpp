@@ -19,7 +19,10 @@ Color LerpColor(const Color &a, const Color &b, float t)
 // ========================================
 // GUI Implementation
 // ========================================
-GUI::GUI() {}
+GUI::GUI() 
+{
+    focusCounter = 0;
+}
 GUI::~GUI() { Release(); }
 
 void GUI::Init(RenderBatch *batch, Font *font)
@@ -86,10 +89,11 @@ float GUI::AlignLeft(float margin) const
 // Frame Management
 // ========================================
 
-void GUI::BeginFrame()
+bool GUI::BeginFrame()
 {
     m_nextControlID = 0;
     m_activeControl = 0;
+    focusCounter = 0;
  
     m_mousePos = Input::GetMousePosition();
     
@@ -117,7 +121,7 @@ void GUI::BeginFrame()
     {
         m_draggingWindow->bounds.x = m_mousePos.x - m_draggingWindow->dragOffset.x;
         m_draggingWindow->bounds.y = m_mousePos.y - m_draggingWindow->dragOffset.y;
-        return;
+        return true;
     }
     
     // Descobre a janela topmost sob o rato
@@ -148,12 +152,23 @@ void GUI::BeginFrame()
             p.second.isFocused = false;
         m_focusedWindow = nullptr;
     }
+    
+    return true;
 }
 
  
 void GUI::EndFrame()
 {
+
+  
     m_hotID.clear();
+
+}
+
+bool GUI::IsFocused()
+{
+    m_isFocused = (focusCounter > 0);
+    return m_isFocused;
 }
 
 // ========================================
@@ -360,6 +375,7 @@ bool GUI::BeginWindow(const char *title, const FloatRect &bounds, bool *open)
     std::string id = title;
     WindowData *window = GetOrCreateWindow(id);
 
+   
     // Next-window settings
     if (m_hasNextWindowPos)
     {
@@ -385,6 +401,8 @@ bool GUI::BeginWindow(const char *title, const FloatRect &bounds, bool *open)
     // Primeira vez
     if (window->bounds.width == 0.0f)
         window->bounds = bounds;
+
+    
 
     // Close flag externo
     if (open)
@@ -412,6 +430,13 @@ bool GUI::BeginWindow(const char *title, const FloatRect &bounds, bool *open)
         m_cursorPos.y = window->bounds.y + m_theme.titleBarHeight + m_theme.windowPadding - window->scrollOffset.y;
         m_maxItemWidth = window->bounds.width - m_theme.windowPadding * 2.0f;
     }
+
+    bool isHover = IsPointInRect(m_mousePos, window->bounds);
+    if (isHover )
+    {
+        focusCounter++;
+    }
+
 
     return !window->isMinimized;
 }
@@ -1082,7 +1107,7 @@ static void HSVtoRGB(float h, float s, float v, float &r, float &g, float &b)
 
 static Color GetHueColor(float hue)
 {
-    float r, g, b;
+    float r=0.0f, g=0.0f, b = 0.0f;
     HSVtoRGB(hue, 1.0f, 1.0f, r, g, b);
     return Color((uint8_t)(r * 255), (uint8_t)(g * 255), (uint8_t)(b * 255), 255);
 }
@@ -1121,7 +1146,7 @@ bool GUI::ColorPicker(const char *label, Color *color, float x, float y, float w
     FloatRect svBox = MakeContentRect(x, y, boxSize, boxSize);
 
     // Desenha gradient (simplificado - 4x4 grid de cores)
-    Color hueColor = GetHueColor(hsv.x);
+    //Color hueColor = GetHueColor(hsv.x);
     int gridSize = 32;
     float cellW = svBox.width / gridSize;
     float cellH = svBox.height / gridSize;
@@ -1133,7 +1158,7 @@ bool GUI::ColorPicker(const char *label, Color *color, float x, float y, float w
             float saturation = ix / (float)(gridSize - 1);
             float value = 1.0f - (iy / (float)(gridSize - 1));
 
-            float r, g, b;
+            float r=0.0f, g=0.0f, b = 0.0f;
             HSVtoRGB(hsv.x, saturation, value, r, g, b);
 
             FloatRect cell{

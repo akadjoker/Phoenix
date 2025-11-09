@@ -4,6 +4,10 @@
 #include "Utils.hpp"
 #include "Driver.hpp"
 #include "Input.hpp"
+#include "Texture.hpp"
+#include "Shader.hpp"
+#include "Mesh.hpp"
+#include "RenderTarget.hpp"
 #include "glad/glad.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -14,8 +18,6 @@ extern "C" const char *__lsan_default_suppressions()
     return "leak:libSDL2\n"
            "leak:SDL_DBus\n";
 }
-
-
 
 double GetTime() { return static_cast<double>(SDL_GetTicks()) / 1000; }
 
@@ -78,7 +80,6 @@ bool Device::Create(int width, int height, const char *title, bool vzync, u16 mo
     m_previous = m_current;
     m_frame = m_update + m_draw;
 
- 
     // // Atributos de contexto antes de criar a janela
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 
@@ -87,8 +88,7 @@ bool Device::Create(int width, int height, const char *title, bool vzync, u16 mo
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, majorVersion);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minorVersion);
 
-    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    
+    // SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
     // Formato de framebuffer
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
@@ -105,39 +105,36 @@ bool Device::Create(int width, int height, const char *title, bool vzync, u16 mo
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, sampleCount);
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, sampleCount > 0 ? 1 : 0);
 
-
-
     int numDisplays = SDL_GetNumVideoDisplays();
-    LogInfo("Num Displays: %d", numDisplays);
-     for (int i = 0; i < numDisplays; i++) 
-     {
-        const char* displayName = SDL_GetDisplayName(i);
-        LogInfo("Display: %d - %s", i, displayName);
+    LogInfo("[Device] Num Displays: %d", numDisplays);
+    for (int i = 0; i < numDisplays; i++)
+    {
+        const char *displayName = SDL_GetDisplayName(i);
+        LogInfo("[Device] Display: %d - %s", i, displayName);
     }
 
     if (monitorIndex > numDisplays)
     {
         monitorIndex = 0;
     }
- 
 
     // Criação
     m_window = SDL_CreateWindow(
         title,
-          SDL_WINDOWPOS_CENTERED_DISPLAY(monitorIndex), 
-        SDL_WINDOWPOS_CENTERED_DISPLAY(monitorIndex), 
-         width, height,
+        SDL_WINDOWPOS_CENTERED_DISPLAY(monitorIndex),
+        SDL_WINDOWPOS_CENTERED_DISPLAY(monitorIndex),
+        width, height,
         SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (!m_window)
     {
-        LogError("Window! %s", SDL_GetError());
+        LogError("[Device] Window! %s", SDL_GetError());
         return false;
     }
 
     m_context = SDL_GL_CreateContext(m_window);
     if (!m_context)
     {
-        LogError("Context! %s", SDL_GetError());
+        LogError("[Device] Context! %s", SDL_GetError());
         return false;
     }
 
@@ -147,14 +144,14 @@ bool Device::Create(int width, int height, const char *title, bool vzync, u16 mo
     // glad (GLES)
     if (!gladLoadGLES2Loader((GLADloadproc)SDL_GL_GetProcAddress))
     {
-        LogError("Failed to load GLES with glad");
+        LogError("[Device] Failed to load GLES with glad");
         return false;
     }
 
     // Verificar versão carregada (glad 0.1.x)
     if (!(GLAD_GL_ES_VERSION_3_1))
     { // ou 3_2 se pediste 3.2
-        LogError("OpenGL ES 3.1 não suportado pelo driver");
+        LogError("OpenGL ES 3.1 is required");
         return false;
     }
 
@@ -171,7 +168,7 @@ bool Device::Create(int width, int height, const char *title, bool vzync, u16 mo
 
     //    glEnable(GL_MULTISAMPLE);
 
-    Driver::Instance();
+    Driver::Instance().Init();
 
     m_ready = true;
 
@@ -228,8 +225,11 @@ bool Device::Run()
     m_current = GetTime(); // Number of elapsed seconds since InitTimer()
     m_update = m_current - m_previous;
     m_previous = m_current;
+    m_is_resize = false;
 
     SDL_Event event;
+    Input::Update();
+    Driver::Instance().Reset();
 
     while (SDL_PollEvent(&event) != 0)
     {
@@ -249,9 +249,7 @@ bool Device::Run()
             {
                 m_width = event.window.data1;
                 m_height = event.window.data2;
-                // glViewport(0, 0, m_width, m_height);
                 m_is_resize = true;
-
                 break;
             }
             }
@@ -260,58 +258,47 @@ bool Device::Run()
         case SDL_KEYDOWN:
         {
 
-            // LogWarning("[DEVICE] Key %d
-            // %d",Keyboard::toKey(event.key.keysym.scancode),m_closekey);
-            // if (Keyboard::toKey(event.key.keysym.scancode) == m_closekey)
-            // {
-            //     m_shouldclose = true;
-            //     break;
-            // }
-
-            // Keyboard::setKeyState(event.key.keysym.scancode, true);
+            if (event.key.keysym.sym == SDLK_ESCAPE)
+            {
+                SetShouldClose(true);
+                break;
+            }
+            Input::OnKeyDown(event.key);
 
             break;
         }
 
         case SDL_KEYUP:
         {
-
-            // Keyboard::setKeyState(event.key.keysym.scancode, false);
+            Input::OnKeyUp(event.key);
             break;
         }
-        break;
+        case SDL_TEXTINPUT:
+        {
+            Input::OnTextInput(event.text);
+            break;
+        }
         case SDL_MOUSEBUTTONDOWN:
         {
 
-            int btn = event.button.button - 1;
-            if (btn == 2)
-                btn = 1;
-            else if (btn == 1)
-                btn = 2;
-            // Mouse::setMouseButton(btn, true);
+            Input::OnMouseDown(event.button);
         }
         break;
         case SDL_MOUSEBUTTONUP:
         {
-            int btn = event.button.button - 1;
-            if (btn == 2)
-                btn = 1;
-            else if (btn == 1)
-                btn = 2;
-            // Mouse::setMouseButton(btn, false);
+            Input::OnMouseUp(event.button);
 
             break;
         }
         case SDL_MOUSEMOTION:
         {
-            // Mouse::setMousePosition(event.motion.x, event.motion.y,
-            //                        event.motion.xrel, event.motion.yrel);
+            Input::OnMouseMove(event.motion);
             break;
         }
 
         case SDL_MOUSEWHEEL:
         {
-            //  Mouse::setMouseWheel(event.wheel.x, event.wheel.y);
+            Input::OnMouseWheel(event.wheel);
             break;
         }
         }
@@ -320,9 +307,7 @@ bool Device::Run()
     return !m_shouldclose;
 }
 
-
-
-int Device::PollEvents( SDL_Event *event)
+int Device::PollEvents(SDL_Event *event)
 {
     if (!m_ready)
         return false;
@@ -330,9 +315,7 @@ int Device::PollEvents( SDL_Event *event)
     m_update = m_current - m_previous;
     m_previous = m_current;
     return SDL_PollEvent(event);
-
 }
-
 
 void Device::Close()
 {
@@ -340,6 +323,12 @@ void Device::Close()
         return;
 
     m_ready = false;
+
+    Driver::Instance().Release();
+    MeshManager::Instance().UnloadAll();
+    ShaderManager::Instance().UnloadAll();
+    TextureManager::Instance().UnloadAll();
+    RenderTargetManager::Instance().UnloadAll();
 
     SDL_GL_DeleteContext(m_context);
     SDL_DestroyWindow(m_window);
@@ -377,5 +366,58 @@ void Device::Flip()
 bool Device::IsRunning() const
 {
 
-    return  m_ready && !m_shouldclose;
+    return m_ready && !m_shouldclose;
+}
+
+ 
+Pixmap* Device::CaptureFramebuffer()
+{
+    // Obter tamanho da janela
+    int w = GetWidth();
+    int h = GetHeight();
+    
+    // Criar Pixmap RGBA
+    Pixmap* screenshot = new Pixmap(w, h, 4);
+    
+    if (!screenshot || !screenshot->IsValid())
+    {
+        LogError("[Device] Failed to create screenshot pixmap");
+        return nullptr;
+    }
+    
+    // Ler pixels do framebuffer
+    glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, screenshot->pixels);
+    
+    // OpenGL lê de baixo para cima, então flip vertical
+    screenshot->FlipVertical();
+    
+    LogInfo("[Device] Captured framebuffer: %dx%d", w, h);
+    
+    return screenshot;
+}
+
+bool Device::TakeScreenshot(const char* filename)
+{
+    Pixmap* screenshot = CaptureFramebuffer();
+    
+    if (!screenshot)
+    {
+        LogError("[Device] Failed to capture framebuffer");
+        return false;
+    }
+    
+    // Salvar como PNG
+    bool success = screenshot->Save(filename);
+    
+    if (success)
+    {
+        LogInfo("[Device] Screenshot saved: %s", filename);
+    }
+    else
+    {
+        LogError("[Device] Failed to save screenshot: %s", filename);
+    }
+    
+    delete screenshot;
+    return success;
 }

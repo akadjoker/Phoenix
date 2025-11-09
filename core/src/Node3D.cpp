@@ -11,6 +11,8 @@ Node3D::Node3D(const std::string &name)
       worldScale(1, 1, 1),
       transformDirty(true)
 {
+    m_boundingBox.min = Vec3(-0.5f, -0.5f, -0.5f);
+    m_boundingBox.max = Vec3(0.5f, 0.5f, 0.5f);
 }
 
 Node3D::Node3D(const Vec3 &position)
@@ -409,6 +411,83 @@ void Node3D::rotateFPS(float pitch, float yaw)
     Quat pitchRot = Quat::RotationXDeg(pitch);
     setRotation(yawRot * getRotation() * pitchRot);
 }
+
+
+float Node3D::getLocalPitch() const
+{
+    return localRotation.toEulerAnglesDeg().x;
+}
+
+float Node3D::getLocalYaw() const
+{
+    return localRotation.toEulerAnglesDeg().y;
+}
+
+float Node3D::getLocalRoll() const
+{
+    return localRotation.toEulerAnglesDeg().z;
+}
+
+
+// ==================== Direct Angle Manipulation ====================
+
+float Node3D::getPitch()
+{
+    return getRotation().toEulerAnglesDeg().x;
+}
+
+float Node3D::getYaw()
+{
+    return getRotation().toEulerAnglesDeg().y;
+}
+
+float Node3D::getRoll()
+{
+    return getRotation().toEulerAnglesDeg().z;
+}
+
+void Node3D::addPitch(float degrees)
+{
+    Vec3 euler = getLocalEulerAngles();
+    euler.x += degrees;
+    setLocalRotation(euler);
+}
+
+void Node3D::addYaw(float degrees)
+{
+    Vec3 euler = getLocalEulerAngles();
+    euler.y += degrees;
+    setLocalRotation(euler);
+}
+
+void Node3D::addRoll(float degrees)
+{
+    Vec3 euler = getLocalEulerAngles();
+    euler.z += degrees;
+    setLocalRotation(euler);
+}
+
+void Node3D::setPitch(float degrees)
+{
+    Vec3 euler = getLocalEulerAngles();
+    euler.x = degrees;
+    setLocalRotation(euler);
+}
+
+void Node3D::setYaw(float degrees)
+{
+    Vec3 euler = getLocalEulerAngles();
+    euler.y = degrees;
+    setLocalRotation(euler);
+}
+
+void Node3D::setRoll(float degrees)
+{
+    Vec3 euler = getLocalEulerAngles();
+    euler.z = degrees;
+    setLocalRotation(euler);
+}
+
 
 // ==================== Look At ====================
 

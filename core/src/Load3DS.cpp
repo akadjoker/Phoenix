@@ -311,6 +311,7 @@ void Loader3DS::ProcessMeshChunk(Object3DS &obj, const Chunk &parent)
                 u16 b = m_stream->ReadUShort();
                 u16 a = m_stream->ReadUShort();
                 u16 flags = m_stream->ReadUShort(); // flags de visibilidade
+                (void)  flags;
 
                 obj.indices.push_back(a);
                 obj.indices.push_back(b);

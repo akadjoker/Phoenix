@@ -45,10 +45,10 @@ public:
     const std::string &getName() const { return m_name; }
     void setName(const std::string &name) { m_name = name; }
 
-    bool isActive() const noexcept;
+    bool isActive() const  ;
     void setActive(bool active);
 
-    virtual std::string toString() const;
+  
     virtual ObjectType getType() { return ObjectType::Object; }
 
 protected:

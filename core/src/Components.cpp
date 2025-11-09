@@ -14,7 +14,7 @@ void MeshRenderer::render()
         return;
     if (mesh)
     {
-        // mesh->render();
+       Driver::Instance().DrawMesh(mesh);
     }
 }
 
@@ -24,7 +24,12 @@ MeshRenderer::MeshRenderer(Mesh *m) : mesh(m), visible(true)
 
 void MeshRenderer::attach()
 {
-    // m_owner->getBoundingBox().merge(mesh->getBoundingBox());
+   // LogInfo("[MeshRenderer] attached to %s", m_owner->getName().c_str());
+    
+     m_owner->getBoundingBox().merge(mesh->GetBoundingBox());
+
+  //   LogInfo("[MeshRenderer] Bounding Box: %f %f %f", m_owner->getBoundingBox().min.x, m_owner->getBoundingBox().min.y, m_owner->getBoundingBox().min.z);
+ //    LogInfo("[MeshRenderer] Bounding Box: %f %f %f", m_owner->getBoundingBox().max.x, m_owner->getBoundingBox().max.y, m_owner->getBoundingBox().max.z);
 }
 
 void Rotator::update(float deltaTime)

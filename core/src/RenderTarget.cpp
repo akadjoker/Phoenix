@@ -1545,7 +1545,7 @@ RenderTargetManager& RenderTargetManager::Instance()
 
 RenderTargetManager::~RenderTargetManager()
 {
-    RemoveAll();
+     
 }
 
 // === DEVICE LIMITS (GLES 3.2) ===
@@ -1937,7 +1937,7 @@ void RenderTargetManager::Remove(const std::string& name)
     LogWarning("[RTManager] RenderTarget '%s' not found for removal", name.c_str());
 }
 
-void RenderTargetManager::RemoveAll()
+void RenderTargetManager::UnloadAll()
 {
     LogInfo("[RTManager] Cleaning up all render targets...");
     

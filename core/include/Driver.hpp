@@ -106,6 +106,24 @@ const unsigned CLEAR_DEPTH = 1u << 1;
 const unsigned CLEAR_STENCIL = 1u << 2;
 const unsigned CLEAR_ALL = (CLEAR_COLOR | CLEAR_DEPTH | CLEAR_STENCIL);
 
+
+
+
+class ScreenQuad
+{
+private:
+    u32 quadVAO, quadVBO;
+public:
+    void init();
+    void release();
+    void render(float x, float y, float w, float h, int screenWidth, int screenHeight);
+    void render();
+    
+};
+
+
+
+
 class Driver final
 {
 public:
@@ -199,6 +217,12 @@ public:
     void SaveViewPort();
     void RestoreViewPort();
  
+    void Init();
+    void Release();
+
+
+    void DrawScreenQuad(float x, float y, float w, float h);
+    void DrawScreenQuad();
 
 
 private:
@@ -230,6 +254,8 @@ private:
     u32 m_countDrawCall = 0;
     u32 m_countPrograms = 0;
     u32 m_countTextures = 0;
+
+    ScreenQuad m_quadRenderer;
 
 
     // ---- Blend State ----

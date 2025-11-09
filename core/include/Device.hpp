@@ -4,6 +4,7 @@
 #include "Config.hpp"
 #include <SDL2/SDL.h>
 
+class Pixmap;
 
 class     Device final
 {
@@ -39,6 +40,8 @@ public:
     bool IsResize() const { return m_is_resize; }
     bool IsRunning() const;
 
+    bool TakeScreenshot(const char* filename);
+    Pixmap* CaptureFramebuffer();
 
     SDL_Window*   GetWindow() const { return m_window; }
 

@@ -363,7 +363,7 @@ public:
     
     // === REMOVAL ===
     void Remove(const std::string& name);
-    void RemoveAll();
+    void UnloadAll();
     
     // === STATISTICS ===
     size_t GetCount() const;

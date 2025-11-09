@@ -55,7 +55,7 @@ public:
 
     // getters
     bool IsValid() const { return m_isValid; }
-    u32 GetHandle() const { return m_handle; }
+    u32 GetHandle() const;
     TextureType GetType() const { return m_type; }
     TextureFormat GetFormat() const { return m_format; }
     u32 GetWidth() const { return m_width; }

@@ -116,7 +116,9 @@ public:
 
     // ==================== Rotation ====================
 
+
     // Rotation in world space
+
     void rotate(const Quat &rotation);
     void rotate(const Vec3 &axis, float degrees);
     void rotateX(float degrees);
@@ -129,6 +131,11 @@ public:
     void rotateLocalX(float degrees);
     void rotateLocalY(float degrees);
     void rotateLocalZ(float degrees);
+
+
+    float getLocalPitch() const;
+    float getLocalYaw() const;
+    float getLocalRoll() const;
 
     // FPS-style rotation (limited pitch/yaw)
     void rotateFPS(float pitch, float yaw);
@@ -149,6 +156,20 @@ public:
     Vec3 inverseTransformPoint(const Vec3 &worldPoint);
     Vec3 inverseTransformDirection(const Vec3 &worldDirection);
 
+    float getPitch();
+    float getYaw();
+    float getRoll();
+
+
+     // Direct angle manipulation (add to current angles)
+    void addPitch(float degrees);
+    void addYaw(float degrees);
+    void addRoll(float degrees);
+    
+    // Direct angle setting (absolute)
+    void setPitch(float degrees);
+    void setYaw(float degrees);
+    void setRoll(float degrees);
 
     BoundingBox& getBoundingBox();
     const BoundingBox getBoundingBox() const;

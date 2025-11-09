@@ -1,6 +1,6 @@
 #pragma once
 #include "Config.hpp"
-#include "Node3D.hpp"
+#include "GameObject.hpp"
 
 class Ray;
 
@@ -10,7 +10,7 @@ class Ray;
  * Camera3D provides view and projection matrices for rendering.
  * Specialized camera types (FPS, Free, Orbit) inherit from this.
  */
-class Camera3D : public Node3D
+class Camera3D : public GameObject
 {
 protected:
     float fov;
@@ -60,6 +60,7 @@ public:
     // ==================== Utilities ====================
     
     Vec3 getTarget();
+ 
     
     void update(float deltaTime) override;
 
@@ -105,8 +106,8 @@ public:
     void setPitch(float degrees);
     void setYaw(float degrees);
     
-    float getPitch() const;
-    float getYaw() const;
+    float getLookPitch() const;
+    float getLookYaw() const;
 
     // ==================== Settings ====================
     

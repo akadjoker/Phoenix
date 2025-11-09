@@ -4,8 +4,6 @@
 #include "Texture.hpp"
 #include "Shader.hpp"
 
-
-
 extern u32 CalculatePrimitiveCount(PrimitiveType type, u32 vertexCount);
 extern u32 ToGLTextureType(TextureType type);
 
@@ -75,7 +73,7 @@ Driver &Driver::Instance()
     return instance;
 }
 
-void Driver::DrawMeshBuffer( MeshBuffer *meshBuffer)
+void Driver::DrawMeshBuffer(MeshBuffer *meshBuffer)
 {
     m_countMeshBuffer++;
     m_countVertex += meshBuffer->GetVertexCount();
@@ -100,13 +98,19 @@ void Driver::DrawMesh(Mesh *mesh)
                 const Texture *texture = mesh->GetMaterial(materialID)->GetTexture(i);
                 if (texture)
                 {
-                    texture->Bind(0);
+                   // glActiveTexture(GL_TEXTURE0 + i);
+                   // glBindTexture(GL_TEXTURE_2D, texture->GetHandle());
+
+
+                    
+                    texture->Bind(i);
                 }
             }
+           // if (layer>1)
+          //      LogInfo("[Mesh] Using material %u layer %u", materialID, layer);
         }
         DrawMeshBuffer(mesh->GetBuffer(i));
     }
- 
 }
 
 void Driver::DrawElements(u32 mode, u32 count, u32 type, const void *indices)
@@ -123,12 +127,7 @@ void Driver::DrawArrays(u32 mode, u32 first, u32 count)
 
 Driver::Driver()
 {
-    Reset();
-    ShaderManager::Instance().Init();
-    TextureManager::Instance().Init();
 }
-
- 
 
 void Driver::Reset()
 {
@@ -236,7 +235,7 @@ void Driver::SetBlendFunc(BlendFactor src, BlendFactor dst)
 }
 
 void Driver::SetBlendFuncSeparate(BlendFactor srcRGB, BlendFactor dstRGB,
-                                       BlendFactor srcAlpha, BlendFactor dstAlpha)
+                                  BlendFactor srcAlpha, BlendFactor dstAlpha)
 {
     bool changed = false;
     changed |= CheckAndUpdate(m_blendSrcRGB, srcRGB);
@@ -458,6 +457,11 @@ void Driver::BindTexture(u32 unit, u32 target, u32 tex)
 
     ActiveTextureUnit(unit);
 
+    //glActiveTexture(GL_TEXTURE0 + unit);
+    // glBindTexture(GL_TEXTURE_2D, tex);
+    // m_countTextures++;
+                
+
     u32 *cachedTex = nullptr;
     switch (target)
     {
@@ -471,11 +475,12 @@ void Driver::BindTexture(u32 unit, u32 target, u32 tex)
         cachedTex = &m_textureUnits[unit].tex2DArray;
         break;
     default:
- 
+    {
         glBindTexture(target, tex);
-        LogInfo("[TEXTURE] [ID %i] Bound to unit %i", tex, unit);
+        LogInfo("[TEXTURE] ? [ID %i] Bound to unit %i", tex, unit);
 
         return;
+    }
     }
 
     if (CheckAndUpdate(*cachedTex, tex))
@@ -484,8 +489,6 @@ void Driver::BindTexture(u32 unit, u32 target, u32 tex)
         m_countTextures++;
     }
 }
-
-
 
 // ========== FRAMEBUFFERS ==========
 void Driver::BindFramebuffer(u32 target, u32 fbo)
@@ -604,10 +607,32 @@ void Driver::Clear(unsigned mask)
         SetColorWrite(prevColorWrite);
 }
 
-
 void Driver::RestoreViewPort()
 {
     SetViewPort(m_saveviewport.x, m_saveviewport.y, m_saveviewport.width, m_saveviewport.height);
+}
+
+void Driver::Init()
+{
+    Reset();
+    m_quadRenderer.init();
+    ShaderManager::Instance().Init();
+    TextureManager::Instance().Init();
+}
+
+void Driver::Release()
+{
+    m_quadRenderer.release();
+}
+
+void Driver::DrawScreenQuad(float x, float y, float w, float h)
+{
+    m_quadRenderer.render(x, y, w, h, m_viewport.width, m_viewport.height);
+}
+
+void Driver::DrawScreenQuad()
+{
+    m_quadRenderer.render();
 }
 
 void Driver::SaveViewPort()
@@ -616,4 +641,100 @@ void Driver::SaveViewPort()
     m_saveviewport.y = m_viewport.y;
     m_saveviewport.width = m_viewport.width;
     m_saveviewport.height = m_viewport.height;
+}
+
+void ScreenQuad::init()
+{
+    float quadVertices[] = {
+        // positions        // texture coords
+        -1.0f,
+        1.0f,
+        0.0f,
+        0.0f,
+        1.0f, // Top-left
+        -1.0f,
+        -1.0f,
+        0.0f,
+        0.0f,
+        0.0f, // Bottom-left
+        1.0f,
+        1.0f,
+        0.0f,
+        1.0f,
+        1.0f, // Top-right
+        1.0f,
+        -1.0f,
+        0.0f,
+        1.0f,
+        0.0f, // Bottom-right
+    };
+
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_DYNAMIC_DRAW);
+
+    // Position attribute (3 floats)
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
+
+    // Texture coord attribute (2 floats)
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
+
+    glBindVertexArray(0);
+}
+
+void ScreenQuad::release()
+{
+    glDeleteVertexArrays(1, &quadVAO);
+    glDeleteBuffers(1, &quadVBO);
+}
+
+void ScreenQuad::render(float x, float y, float w, float h, int screenWidth, int screenHeight)
+{
+    float left = (2.0f * x) / screenWidth - 1.0f;
+    float right = (2.0f * (x + w)) / screenWidth - 1.0f;
+    float top = 1.0f - (2.0f * y) / screenHeight;
+    float bottom = 1.0f - (2.0f * (y + h)) / screenHeight;
+
+    float quadVertices[] = {
+        // positions           // texture coords
+        left,
+        top,
+        0.0f,
+        0.0f,
+        1.0f, // Top-left
+        left,
+        bottom,
+        0.0f,
+        0.0f,
+        0.0f, // Bottom-left
+        right,
+        top,
+        0.0f,
+        1.0f,
+        1.0f, // Top-right
+        right,
+        bottom,
+        0.0f,
+        1.0f,
+        0.0f, // Bottom-right
+    };
+
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quadVertices), quadVertices);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindVertexArray(0);
+}
+
+void ScreenQuad::render()
+{
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindVertexArray(0);
 }

@@ -16,8 +16,11 @@
 enum class RenderType : u8
 {
     Solid = 0,
+    Terrain,
     Trasparent,
     Special,
+    Mirror,
+    Water,
     Sky,
     Light
 };
@@ -70,7 +73,7 @@ public:
 
     // ==================== Active State ====================
 
-    bool isActive() const;
+ 
     bool isInsideTree() const;
 
     void show();

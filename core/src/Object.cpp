@@ -26,14 +26,7 @@ void Object::setActive(bool active)
         onDeactivate();
 }
 
-std::string Object::toString() const
-{
-    std::ostringstream oss;
-    oss << m_name << " (ID: " << m_id << ")";
-    return oss.str();
-}
-
-bool Object::isActive() const noexcept
+bool Object::isActive() const  
 {
     return m_active;
 }

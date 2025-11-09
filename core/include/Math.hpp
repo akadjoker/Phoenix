@@ -579,8 +579,10 @@ struct BoundingBox
         return *this;
     }
 
+    void expand(float x, float y, float z);
     void expand(const Vec3 &point);
     void expand(const BoundingBox &other);
+    void clear();
     Vec3 center() const;
     Vec3 size() const;
     bool contains(const Vec3 &point) const;

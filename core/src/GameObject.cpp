@@ -65,8 +65,12 @@ void GameObject::start()
 
 void GameObject::update(float deltaTime)
 {
-    // Update Node3D (transform, etc.)
+    updateWorldTransform();
+    
+    
     Node3D::update(deltaTime);
+
+   // LogInfo("[GameObject] update %s", getName().c_str());
     
     // Start if not started yet
     if (!m_started)
@@ -98,8 +102,10 @@ void GameObject::lateUpdate(float deltaTime)
 
 void GameObject::render()
 {
-    // Render Node3D (if applicable)
+     
     Node3D::render();
+
+    //LogInfo("[GameObject] render %s", getName().c_str());
     
     // Render all enabled components
     for (Component* component : m_components)

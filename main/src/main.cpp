@@ -1,387 +1,242 @@
 
 
 #include "Core.hpp"
- 
 
 int screenWidth = 1024;
 int screenHeight = 768;
 
+class MainScene : public Scene
+{
+    Shader *sceneShader;
+    CameraFree *camera;
+
+    float mouseSensitivity{0.8f};
+
+
+public:
+    void OnRender() override
+    {
 
 
 
  
+        const Mat4 view = getViewMatrix();
+        const Mat4 proj = getProjectionMatrix();
+        const Vec3 cameraPos = camera->getPosition();
+
+        Vec3 lightPos(-2.0f, 8.0f, -4.0f);
+  
+
+  
+
+
+        sceneShader->Bind();
+        sceneShader->SetUniformMat4("projection", proj.m);
+        sceneShader->SetUniformMat4("view", view.m);
+        sceneShader->SetUniform("lightPos", lightPos.x, lightPos.y, lightPos.z);
+        sceneShader->SetUniform("viewPos", cameraPos.x, cameraPos.y, cameraPos.z);
+
+        renderAll(sceneShader);
+
+        
+
+
+
+
+    }
+    bool OnCreate() override
+    {
+
+        Utils::ChangeDirectory("../");
+        sceneShader = ShaderManager::Instance().Load("scene", "assets/shaders/basicLight.ps", "assets/shaders/basicLight.fs");
+
+        if (!sceneShader)
+            return false;
+
+
+
+        camera = createCameraFree("CameraFree");
+        camera->setAspectRatio((float)screenWidth / (float)screenHeight);
+        camera->setFOV(45.0f);
+        camera->setNearPlane(0.1f);
+        camera->setFarPlane(1000.0f);
+        camera->setPosition(0.0f, 0.5f, 10.0f);
+
+        TextureManager::Instance().SetLoadPath("assets/");
+        TextureManager::Instance().Add("wall.jpg", true);
+        TextureManager::Instance().Add("marm.jpg", true);
+
+        Mesh *mesh = MeshManager::Instance().CreatePlane("Plane", 10, 10);
+        mesh->AddMaterial("wall")->SetTexture(0, TextureManager::Instance().Get("marm"));
+
+        GameObject *plane = createGameObject("Plane");
+        plane->addComponent<MeshRenderer>(mesh);
+
+        mesh = MeshManager::Instance().CreateCube("Cube", 1);
+        mesh->AddMaterial("wall")->SetTexture(0, TextureManager::Instance().Get("wall"));
+        Vec3 cubePositions[] = {
+            Vec3(0.0f, 0.5f, 5.0f),
+            Vec3(3.0f, 0.5f, -3.0f),
+            Vec3(-3.0f, 0.5f, -3.0f),
+            Vec3(5.0f, 0.5f, 2.0f),
+            Vec3(-5.0f, 0.5f, 2.0f),
+            Vec3(2.0f, 0.5f, -6.0f),
+            Vec3(-2.0f, 0.5f, -6.0f),
+        };
+
+        for (int i = 0; i < 7; i++)
+        {
+            GameObject *cube = createGameObject("Cube");
+            cube->addComponent<MeshRenderer>(mesh);
+            cube->setPosition(cubePositions[i]);
+
+            //   Rotator* rotator = cube->addComponent<Rotator>();
+            //    rotator->setRotationSpeed(Vec3(0, 90, 20));  // 90°/s on Y axis
+        }
+
+       
+
+        return true;
+    }
+    void OnDestroy() override
+    {
+    }
+    void OnUpdate(float dt) override
+    {
+        const float SPEED = 12.0f * dt;
+
+        if (Input::IsKeyDown(KEY_W))
+            camera->move(SPEED);
+        if (Input::IsKeyDown(KEY_S))
+            camera->move(-SPEED);
+
+        if (Input::IsKeyDown(KEY_A))
+            camera->strafe(-SPEED);
+        if (Input::IsKeyDown(KEY_D))
+            camera->strafe(SPEED);
+    }
+    void OnResize(u32 w, u32 h) override
+    {
+          camera->setAspectRatio((float)w / (float)h);
+       
+        
+    }
+    CameraFree *getCamera() { return camera; }
+};
+
 int main()
 {
 
     Device &device = Device::Instance();
 
-    if (!device.Create(screenWidth, screenHeight, "Game", true,1))
+    if (!device.Create(screenWidth, screenHeight, "Game", true, 1))
     {
         return 1;
     }
     Driver &driver = Driver::Instance();
     driver.SetClearDepth(1.0f);
     driver.SetClearColor(0.2f, 0.3f, 0.3f, 1.0f);
- 
-     RenderBatch batch;
-     batch.Init();
-    
-     Font font;
-     font.SetBatch(&batch);
-     font.LoadDefaultFont();
 
+    RenderBatch batch;
+    batch.Init();
 
-    float lastX{0};
-    float lastY{0};
+    Font font;
+    font.SetBatch(&batch);
+    font.LoadDefaultFont();
 
-    CameraFree camera(45.0f, (float)screenWidth / (float)screenHeight, 0.1f, 1000.0f);
-    camera.setPosition(0.0f, 0.5f, 10.0f);
+    GUI gui;
+    gui.Init(&batch, &font);
 
-
-    bool firstMouse{true};
     float mouseSensitivity{0.8f};
 
+    MainScene scene;
+    if (!scene.Init())
+    {
+        device.Close();
+        return 1;
+    }
+    scene.OnResize(device.GetWidth(), device.GetHeight());
 
-    while (device.IsRunning())
+    while (device.Run())
     {
 
         float dt = device.GetFrameTime();
-        const float SPEED = 12.0f * dt;
 
-        SDL_Event event;
-        while (device.PollEvents(&event))
+        if (device.IsResize())
         {
-            if (event.type == SDL_QUIT)
-            {
-                device.SetShouldClose(true);
-                break;
-            }else 
-            if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
-            {
-                device.SetShouldClose(true);
-                break;
-            }
-            else if (event.type == SDL_WINDOWEVENT)
-            {
-                if (event.window.event == SDL_WINDOWEVENT_RESIZED)
-                {
-                    screenWidth = event.window.data1;
-                    screenHeight = event.window.data2;
-    
-                    driver.SetViewPort(0, 0, screenWidth, screenHeight);
-                    camera.setAspectRatio((float)screenWidth / (float)screenHeight);
-                    break;
-                }
-            break;
-        }
+            driver.SetViewPort(0, 0, device.GetWidth(), device.GetHeight());
+            scene.OnResize(device.GetWidth(), device.GetHeight());
         }
 
-               int xposIn, yposIn;
-        u32 IsMouseDown = SDL_GetMouseState(&xposIn, &yposIn);
+        scene.Update(dt);
 
-        if (IsMouseDown & SDL_BUTTON(SDL_BUTTON_LEFT))
-        {
-            float xpos = static_cast<float>(xposIn);
-            float ypos = static_cast<float>(yposIn);
-
-            if (firstMouse)
-            {
-                lastX = xpos;
-                lastY = ypos;
-                firstMouse = false;
-            }
-
-            float xoffset = xpos - lastX;
-            float yoffset = ypos - lastY;
-
-            lastX = xpos;
-            lastY = ypos;
-             //fpsCamera.MouseLook(xoffset, yoffset);
-
-             camera.rotate(yoffset * mouseSensitivity,xoffset * mouseSensitivity);
-      
-        }
-        else
-        {
-            firstMouse = true;
-        }
-
-        const Uint8 *state = SDL_GetKeyboardState(NULL);
-        if (state[SDL_SCANCODE_W])
-            camera.move(SPEED);
-        if (state[SDL_SCANCODE_S])
-            camera.move(-SPEED);
-        if (state[SDL_SCANCODE_A])
-            camera.strafe(-SPEED);
-        if (state[SDL_SCANCODE_D])
-            camera.strafe(SPEED);
-
-        camera.update(1.0f);
-        const Mat4 &view = camera.getViewMatrix();
-        const Mat4 &proj = camera.getProjectionMatrix();
+        const Mat4 &view = scene.getViewMatrix();
+        const Mat4 &proj = scene.getProjectionMatrix();
         const Mat4 &mvp = proj * view;
+        const Vec3 &cameraPos = scene.getCamera()->getPosition();
 
         const Mat4 ortho = Mat4::Ortho(0.0f, (float)screenWidth, (float)screenHeight, 0.0f, -1.0f, 1.0f);
-        
 
-       driver.Clear(CLEAR_COLOR | CLEAR_DEPTH);
+        driver.Clear(CLEAR_COLOR | CLEAR_DEPTH);
 
+        scene.Render();
 
-       batch.SetMatrix(mvp);
-       driver.SetDepthTest(true);
-       driver.SetBlendEnable(false);
+        batch.SetMatrix(mvp);
+        driver.SetDepthTest(true);
+        driver.SetBlendEnable(false);
 
-       batch.Grid(10, 1.0f, true);
+        batch.Grid(10, 1.0f, true);
 
-       batch.Render();
- 
+        scene.Debug(&batch);
 
+        batch.Render();
 
-       batch.SetMatrix(ortho);
-       driver.SetDepthTest(false);
-       driver.SetBlendEnable(true);
-       driver.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
+        batch.SetMatrix(ortho);
+        driver.SetDepthTest(false);
+        driver.SetBlendEnable(true);
+        driver.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
 
-       batch.SetColor(255, 255, 255);
-//
-       font.Print(10,10,"Fps :%d",device.GetFPS());
+        gui.BeginFrame();
 
-         {
-        FloatRect bounds(100, 200, 400, 100);
-        
-        // Centro
-        font.PrintAligned("Centered Text", bounds, TextAlign::CENTER, TextVAlign::MIDDLE);
-        
-        // Direita
-        font.PrintAligned("Right Aligned", bounds, TextAlign::RIGHT, TextVAlign::TOP);
-        
-        // Esquerda (padrão)
-        font.PrintAligned("Left Aligned", bounds, TextAlign::LEFT, TextVAlign::BOTTOM);
-    }
+        // Stats window
+        gui.BeginWindow("Stats", screenWidth - 260, 10, 260, 170);
+        gui.Text(10, 10, "FPS %d Delta: %.2f ms", device.GetFPS(), dt);
 
-       {
-        const char* longText = "This is a very long text that needs to be wrapped "
-                              "to fit within a specific width. The word wrapping "
-                              "system will automatically break lines at word boundaries.";
-        
-        // Wrapping simples
-        font.PrintWrapped(longText, 100, 300, 400.0f);
-        
-        // Wrapping com estilo
-        FloatRect textBox(100, 400, 400, 200);
-        TextStyle style;
-        style.fontSize = 16;
-        style.lineSpacing = 5;
-        style.align = TextAlign::JUSTIFY;
-        style.valign = TextVAlign::TOP;
-        
-        font.PrintWrapped(longText, textBox, style);
-    }
-    {
-        // Sombra
-        font.PrintWithShadow("Text with Shadow", 100, 500,
-                            Color::WHITE, Color::BLACK, Vec2(2, 2));
-        
-        // Contorno
-        font.PrintWithOutline("Outlined Text", 100, 550,
-                             Color::YELLOW, Color::BLACK, 2.0f);
-        
-        // Ambos (usando TextStyle)
-        TextStyle fancyStyle;
-        fancyStyle.color = Color::WHITE;
-        fancyStyle.fontSize = 24;
-        fancyStyle.enableShadow = true;
-        fancyStyle.shadowColor.Set(0, 0, 0, 128);
-        fancyStyle.shadowOffset = Vec2(3, 3);
-        fancyStyle.enableOutline = true;
-        fancyStyle.outlineColor = Color::BLACK;
-        fancyStyle.outlineThickness = 1.5f;
-        
-        font.Print("Fancy Text!", 100, 600, fancyStyle);
-    }
+        int drawCalls = driver.GetCountDrawCall();
+        int meshs = driver.GetCountMesh();
+        int meshBuffers = driver.GetCountMeshBuffer();
+        int vertices = driver.GetCountVertex();
+        int triangles = driver.GetCountTriangle();
+        int textures = driver.GetCountTextures();
+        int shaders = driver.GetCountPrograms();
 
-     {
-        const char* text = "Measure this text";
-        
-        Vec2 size = font.GetTextSize(text);
-        float width = font.GetTextWidth(text);
-        float height = font.GetTextHeight(text);
-        
-        // Métricas detalhadas
-        TextMetrics metrics = font.MeasureText(text, 300.0f);
-        
-        // Desenhar caixa ao redor do texto
-        float x = 200, y = 700;
-        font.Print(text, x, y);
-        
-        // Debug: desenhar bounding box
-        batch.SetColor(255, 0, 0, 128);
-        batch.Rectangle(x, y, size.x, size.y, false);
-    }
+        gui.Text(10, 30, "Draw Calls: %d", drawCalls);
+        gui.Text(10, 50, "Mesh: %d    Buffers: %d", meshs, meshBuffers);
 
-      {
-        const char* multiline = "Line 1\nLine 2\nLine 3";
-        
-        font.SetFontSize(18);
-        font.SetLineSpacing(5); // Espaçamento extra entre linhas
-        font.Print(multiline, 400, 100);
-    }
+        gui.Text(10, 70, "Vertices: %d Triangles: %d", vertices, triangles);
+        gui.Text(10, 90, "Textures: %d Shaders: %d", textures, shaders);
 
-    {
-        // Definir região de clipping
-        font.SetClip(500, 200, 200, 50);
-        font.EnableClip(true);
-        
-        font.Print("This text will be clipped to the defined region", 500, 200);
-        
-        font.EnableClip(false);
-    }
+        gui.Text(10, 110, "Camera: (%.1f, %.1f, %.1f)", cameraPos.x, cameraPos.y, cameraPos.z);
 
-        // ========================================
-    {
-        // Título
-        TextStyle titleStyle;
-        titleStyle.fontSize = 32;
-        titleStyle.color.Set(255, 215, 0, 255); // Gold
-        titleStyle.enableOutline = true;
-        titleStyle.outlineColor = Color::BLACK;
-        titleStyle.outlineThickness = 2.0f;
-        
-        // Subtítulo
-        TextStyle subtitleStyle;
-        subtitleStyle.fontSize = 20;
-        subtitleStyle.color.Set(200, 200, 200, 255);
-        subtitleStyle.enableShadow = true;
-        subtitleStyle.shadowOffset = Vec2(1, 1);
-        
-        // Corpo de texto
-        TextStyle bodyStyle;
-        bodyStyle.fontSize = 16;
-        bodyStyle.color = Color::WHITE;
-        bodyStyle.spacing = 1.5f;
-        bodyStyle.lineSpacing = 3.0f;
-        
-        font.Print("Game Title", 300, 50, titleStyle);
-        font.Print("Chapter 1: The Beginning", 300, 90, subtitleStyle);
-        font.Print("Regular game text goes here...", 300, 120, bodyStyle);
-    }
+        gui.EndWindow();
 
-      {
-        // Menu
-        struct MenuItem
+        gui.EndFrame();
+        batch.Render();
+
+        if (Input::IsMouseDown(MouseButton::LEFT) && !gui.IsFocused())
         {
-            const char* text;
-            FloatRect bounds;
-            bool selected;
-        };
-        
-        MenuItem items[] = {
-            {"New Game", FloatRect(300, 200, 200, 40), false},
-            {"Continue", FloatRect(300, 250, 200, 40), true},
-            {"Options", FloatRect(300, 300, 200, 40), false},
-            {"Exit", FloatRect(300, 350, 200, 40), false}
-        };
-        
-        for (const auto& item : items)
-        {
-            TextStyle menuStyle;
-            menuStyle.fontSize = 22;
-            menuStyle.align = TextAlign::CENTER;
-            menuStyle.valign = TextVAlign::MIDDLE;
-            
-            if (item.selected)
-            {
-                menuStyle.color = Color::YELLOW;
-                menuStyle.enableOutline = true;
-                menuStyle.outlineColor = Color::BLACK;
-                menuStyle.outlineThickness = 1.5f;
-            }
-            else
-            {
-                menuStyle.color = Color::WHITE;
-            }
-            
-            font.PrintAligned(item.text, item.bounds,
-                            menuStyle.align, menuStyle.valign);
+            Vec2 mouseDelta = Input::GetMouseDelta();
+            scene.getCamera()->rotate(mouseDelta.y * mouseSensitivity, mouseDelta.x * mouseSensitivity);
         }
-    }
 
-      {
-        FloatRect dialogBox(50, 600, 700, 150);
-        
-        // Fundo do diálogo
-        batch.SetColor(0, 0, 0, 200);
-        batch.Rectangle(dialogBox.x, dialogBox.y, 
-                       dialogBox.width, dialogBox.height, true);
-        
-        // Nome do personagem
-        TextStyle nameStyle;
-        nameStyle.fontSize = 20;
-        nameStyle.color = Color::CYAN;
-        nameStyle.enableOutline = true;
-        nameStyle.outlineColor = Color::BLACK;
-        
-        font.Print("Hero:", dialogBox.x + 10, dialogBox.y + 10, nameStyle);
-        
-        // Texto do diálogo com wrapping
-        const char* dialogText = "This is a long dialogue that will automatically "
-                                "wrap to fit within the dialog box. The text "
-                                "rendering system handles this automatically!";
-        
-        FloatRect textArea(dialogBox.x + 10, dialogBox.y + 40,
-                          dialogBox.width - 20, dialogBox.height - 50);
-        
-        TextStyle dialogStyle;
-        dialogStyle.fontSize = 16;
-        dialogStyle.color = Color::WHITE;
-        dialogStyle.lineSpacing = 3;
-        
-        font.PrintWrapped(dialogText, textArea, dialogStyle);
-    }
-    
-    {
-        FloatRect tooltipBounds(400, 500, 250, 80);
-        
-        // Fundo semi-transparente
-        batch.SetColor(0, 0, 0, 180);
-        batch.Rectangle(tooltipBounds.x, tooltipBounds.y,
-                       tooltipBounds.width, tooltipBounds.height, true);
-        
-        // Borda
-        batch.SetColor(255, 255, 255, 255);
-        batch.Rectangle(tooltipBounds.x, tooltipBounds.y,
-                       tooltipBounds.width, tooltipBounds.height, false);
-        
-        // Texto centralizado
-        TextStyle tooltipStyle;
-        tooltipStyle.fontSize = 14;
-        tooltipStyle.color = Color::WHITE;
-        tooltipStyle.align = TextAlign::CENTER;
-        tooltipStyle.valign = TextVAlign::MIDDLE;
-        
-        FloatRect textArea(tooltipBounds.x + 10, tooltipBounds.y + 10,
-                          tooltipBounds.width - 20, tooltipBounds.height - 20);
-        
-        font.PrintWrapped("Press [E] to interact with this object", 
-                         textArea, tooltipStyle);
-    }
-
-
-       batch.Render();
- 
- 
-
+        batch.Render();
 
         device.Flip();
     }
 
-
+    scene.Release();
     font.Release();
     batch.Release();
-
-    MeshManager::Instance().UnloadAll();
-    ShaderManager::Instance().UnloadAll();
-    TextureManager::Instance().UnloadAll();
     device.Close();
 
     return 0;

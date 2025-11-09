@@ -5,17 +5,12 @@ project(Phoenix)
 
 add_subdirectory(core)
 add_subdirectory(main)
-add_subdirectory(shadow)
-add_subdirectory(csshadow)
-add_subdirectory(sponza)
-add_subdirectory(basic_ssao)
-add_subdirectory(animation)
-add_subdirectory(testgui)
-add_subdirectory(deferred)
+add_subdirectory(water)
+ 
 add_subdirectory(rtrender)
 
 add_subdirectory(exporter)
-add_subdirectory(test_stream)
+ 
  
 
 

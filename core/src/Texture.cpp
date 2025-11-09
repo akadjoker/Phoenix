@@ -172,6 +172,16 @@ void Texture::SetGenerateMipmaps(bool generate)
     }
 }
 
+u32 Texture::GetHandle() const
+{
+    if (!IsValid())
+    {
+        LogWarning("[Texture] Handle invalid");
+        return 0;
+    }
+    return m_handle;
+}
+
 void Texture::SetData(const void *data, u32 level)
 {
     if (!IsValid() || !data)
@@ -299,8 +309,17 @@ void Texture::SetSubDataCubeFace(u32 faceIndex, u32 x, u32 y, u32 w, u32 h, cons
 
 void Texture::Bind(u32 slot) const
 {
-    //glActiveTexture(GL_TEXTURE0 + slot);
-    //glBindTexture(ToGLTextureType(m_type), m_handle);
+    
+    if (!IsValid())
+    {
+        LogWarning("[Texture] Handle invalid");
+        return ;
+    }
+    
+ //   glActiveTexture(GL_TEXTURE0 + slot);
+//    glBindTexture(ToGLTextureType(m_type), m_handle);
+   //  LogInfo("[Texture] Binding to slot %u with handle %u", slot, m_handle);
+
      Driver::Instance().BindTexture(slot, ToGLTextureType(m_type), m_handle);
 }
 
@@ -761,6 +780,7 @@ Texture *TextureManager::Load(const std::string &path, bool generateMipmaps)
     Texture *texture = new Texture();
     texture->SetGenerateMipmaps(generateMipmaps);
     texture->SetName(Utils::GetFileName(path.c_str()));
+    texture->SetAnisotropy(8.0f);
 
     if (!texture->LoadFromFile(path.c_str()))
     {

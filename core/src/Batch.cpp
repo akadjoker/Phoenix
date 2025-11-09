@@ -33,7 +33,7 @@ RenderBatch::RenderBatch()
 void RenderBatch::Init(int numBuffers, int bufferElements)
 {
 
-    shader = ShaderManager::Instance().Get("2DShader");
+    shader = ShaderManager::Instance().Get("Batch");
 
     Texture *m_defaultTexture = TextureManager::Instance().GetDefault();
     defaultTextureId = m_defaultTexture->GetHandle();
@@ -195,7 +195,7 @@ void RenderBatch::Release()
     vertexBuffer.clear();
     m_defaultTexture = nullptr;
     shader = nullptr;
-    LogInfo("Render batch  unloaded successfully from VRAM (GPU)");
+    LogInfo("[BATCH] Unloaded.");
 }
 
 RenderBatch::~RenderBatch() { Release(); }
@@ -1298,8 +1298,8 @@ void RenderBatch::RoundedRectangle(int posX, int posY, int width, int height,
         SetMode(TRIANGLES);
 
         // Centro do retângulo
-        float cx = posX + width / 2.0f;
-        float cy = posY + height / 2.0f;
+      //  float cx = posX + width / 2.0f;
+      //  float cy = posY + height / 2.0f;
 
         // Cantos arredondados (4 quartos de círculo)
         float corners[4][2] = {

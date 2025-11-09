@@ -5,6 +5,7 @@
 #include "Texture.hpp"
 #include "Stream.hpp"
 #include "Batch.hpp"
+#include "Pixmap.hpp"
 #include "glad/glad.h"
 
 Material::Material()
@@ -36,7 +37,7 @@ MeshBuffer::MeshBuffer()
     buffer = new VertexArray();
     vb = nullptr;
     ib = nullptr;
-
+    m_boundBox.clear();
     m_vdirty = true;
     m_idirty = true;
 }
@@ -56,6 +57,7 @@ void MeshBuffer::Clear()
 
 u32 MeshBuffer::AddVertex(const Vertex &v)
 {
+    m_boundBox.expand(v.x, v.y, v.z);
     vertices.push_back(v);
     m_vdirty = true;
     return vertices.size() - 1;
@@ -92,7 +94,6 @@ u32 MeshBuffer::AddFace(u32 i0, u32 i1, u32 i2)
 void MeshBuffer::SetMaterial(u32 material)
 {
     m_material = material;
-    
 }
 
 void MeshBuffer::Build()
@@ -600,6 +601,15 @@ void MeshBuffer::CalculateNormals(bool smooth)
     m_idirty = true;
 }
 
+void MeshBuffer::CalculateBoundingBox()
+{
+    m_boundBox.clear();
+    for (const auto &v : vertices)
+    {
+        m_boundBox.expand(Vec3(v.x, v.y, v.z));
+    }
+}
+
 void MeshBuffer::Reverse()
 {
     // Inverte a ordem de winding de todos os triângulos
@@ -1028,7 +1038,7 @@ bool Mesh::SetBufferMaterial(u32 index, u32 material)
         return false;
     }
 
-    if (index >= buffers.size() )
+    if (index >= buffers.size())
     {
         LogWarning("[Mesh] Invalid mesh buffer index: %d", index);
         return false;
@@ -1135,6 +1145,18 @@ void Mesh::UpdateSkinning()
     }
 }
 
+void Mesh::CalculateBoundingBox()
+{
+    if (buffers.empty())
+        return;
+    m_boundBox.clear();
+    for (MeshBuffer *buffer : buffers)
+    {
+        buffer->CalculateBoundingBox();
+        m_boundBox.expand(buffer->GetBoundingBox());
+    }
+}
+
 void Mesh::Debug(RenderBatch *batch)
 {
 
@@ -1164,12 +1186,12 @@ void Mesh::CalculateBoneMatrices()
         {
             bone->parent = m_bones[bone->parentIndex];
 
-            //LogInfo("Bone[%d] %s → parent[%d] %s",i, bone->name.c_str(),                 bone->parentIndex, m_bones[bone->parentIndex]->name.c_str());
+            // LogInfo("Bone[%d] %s → parent[%d] %s",i, bone->name.c_str(),                 bone->parentIndex, m_bones[bone->parentIndex]->name.c_str());
         }
         else
         {
             bone->parent = nullptr;
-           // LogInfo("Bone[%d] %s → ROOT (no parent)", i, bone->name.c_str());
+            // LogInfo("Bone[%d] %s → ROOT (no parent)", i, bone->name.c_str());
         }
     }
     m_boneMatrices.resize(m_bones.size());
@@ -1357,6 +1379,7 @@ Mesh *MeshManager::Create(const std::string &name)
         return it->second;
     }
     Mesh *mesh = new Mesh();
+    mesh->m_boundBox.clear();
     m_meshes[name] = mesh;
     return mesh;
 }
@@ -1421,13 +1444,15 @@ Mesh *MeshManager::CreateCube(const std::string &name, float size)
     buffer->AddFace(v0, v2, v1);
     buffer->AddFace(v0, v3, v2);
 
+    mesh->m_boundBox.merge(buffer->GetBoundingBox());
     buffer->CalculateNormals();
+    //  mesh->CalculateBoundingBox();
     buffer->Build();
 
     return mesh;
 }
 
-Mesh *MeshManager::CreatePlane(const std::string &name, float width, float height, 
+Mesh *MeshManager::CreatePlane(const std::string &name, float width, float height,
                                int detailX, int detailY, float tilesH, float tilesV)
 {
     if (Exists(name))
@@ -1440,14 +1465,14 @@ Mesh *MeshManager::CreatePlane(const std::string &name, float width, float heigh
 
     float hw = width * 0.5f;
     float hh = height * 0.5f;
-
+    buffer->m_boundBox.clear();
     // Gera vértices
     for (int y = 0; y <= detailY; y++)
     {
         for (int x = 0; x <= detailX; x++)
         {
-            float u = ((float)x / detailX) * tilesH;  // Multiplica por tilesH
-            float v = ((float)y / detailY) * tilesV;  // Multiplica por tilesV
+            float u = ((float)x / detailX) * tilesH; // Multiplica por tilesH
+            float v = ((float)y / detailY) * tilesV; // Multiplica por tilesV
 
             float px = -hw + ((float)x / detailX) * width;
             float py = 0.0f;
@@ -1457,7 +1482,8 @@ Mesh *MeshManager::CreatePlane(const std::string &name, float width, float heigh
         }
     }
 
-    // Gera índices (mantém igual)
+    // LogInfo("[MeshManager] Created plane: %s (%f, %f, %f) - (%f, %f, %f)", name.c_str(),buffer->m_boundBox.min.x,buffer->m_boundBox.min.y,buffer->m_boundBox.min.z,buffer->m_boundBox.max.x,buffer->m_boundBox.max.y,buffer->m_boundBox.max.z);
+    //  Gera índices (mantém igual)
     for (int y = 0; y < detailY; y++)
     {
         for (int x = 0; x < detailX; x++)
@@ -1471,13 +1497,13 @@ Mesh *MeshManager::CreatePlane(const std::string &name, float width, float heigh
             buffer->AddFace(i1, i2, i3);
         }
     }
-
+    mesh->m_boundBox.clear();
+    mesh->m_boundBox.merge(buffer->m_boundBox);
     buffer->CalculateNormals();
     buffer->Build();
 
     return mesh;
 }
-
 
 Mesh *MeshManager::CreateSphere(const std::string &name, float radius, int segments, int rings)
 {
@@ -1702,13 +1728,13 @@ Mesh *MeshManager::CreateCone(const std::string &name, float radius, float heigh
 
 /**
  * Creates a simple quad (2 triangles) oriented according to the face normal
- * 
+ *
  * @param name Unique name for the mesh
  * @param face Normal direction (e.g., Vec3(0,1,0) for floor, Vec3(1,0,0) for side wall)
  * @param size Size of the quad (default: 1.0)
  * @param tilesU Texture tiling in U direction (default: 1.0)
  * @param tilesV Texture tiling in V direction (default: 1.0)
- * 
+ *
  * Face examples:
  *   Vec3( 0,  1,  0) = Floor   (facing up)
  *   Vec3( 0, -1,  0) = Ceiling (facing down)
@@ -1717,7 +1743,7 @@ Mesh *MeshManager::CreateCone(const std::string &name, float radius, float heigh
  *   Vec3( 0,  0,  1) = Wall front (facing +Z)
  *   Vec3( 0,  0, -1) = Wall back  (facing -Z)
  */
-Mesh* MeshManager::CreateQuad(const std::string& name, const Vec3& face, 
+Mesh *MeshManager::CreateQuad(const std::string &name, const Vec3 &face,
                               float size, float tilesU, float tilesV)
 {
     if (Exists(name))
@@ -1725,69 +1751,334 @@ Mesh* MeshManager::CreateQuad(const std::string& name, const Vec3& face,
         LogWarning("[MeshManager] Mesh already exists: %s", name.c_str());
         return Get(name);
     }
-    
-    Mesh* mesh = Create(name);
-    MeshBuffer* buffer = mesh->AddBuffer(0);
-    
+
+    Mesh *mesh = Create(name);
+    MeshBuffer *buffer = mesh->AddBuffer(0);
+
     // Normalize the face vector to ensure it's a unit vector
     Vec3 normal = face.normalized();
-    
+
     // Calculate tangent and bitangent vectors to form a coordinate system
     Vec3 tangent, bitangent;
-    
+
     // Choose an arbitrary vector that's not parallel to the normal
     Vec3 up = Vec3(0.0f, 1.0f, 0.0f);
-    if (fabs(normal.y) > 0.99f) // If normal is nearly vertical
+    if (fabs(normal.y) > 0.99f)      // If normal is nearly vertical
         up = Vec3(1.0f, 0.0f, 0.0f); // Use right vector instead
-    
+
     // Calculate tangent (perpendicular to normal)
     tangent = up.cross(normal).normalized();
-    
+
     // Calculate bitangent (perpendicular to both normal and tangent)
     bitangent = normal.cross(tangent).normalized();
-    
+
     // Half size
     float hs = size * 0.5f;
-    
+
     // Define quad corners in local space (centered at origin)
     // Using tangent and bitangent to orient the quad correctly
     Vec3 v0 = (-tangent - bitangent) * hs; // Bottom-left
-    Vec3 v1 = ( tangent - bitangent) * hs; // Bottom-right
-    Vec3 v2 = ( tangent + bitangent) * hs; // Top-right
+    Vec3 v1 = (tangent - bitangent) * hs;  // Bottom-right
+    Vec3 v2 = (tangent + bitangent) * hs;  // Top-right
     Vec3 v3 = (-tangent + bitangent) * hs; // Top-left
-    
+
     // Add vertices with proper normals and UVs
     // Order: position (x,y,z), normal (nx,ny,nz), texcoord (u,v)
-    
+
     // Vertex 0: Bottom-left
-    buffer->AddVertex(v0.x, v0.y, v0.z, 
-                     normal.x, normal.y, normal.z, 
-                     tilesU, 0.0f);
-    
+    buffer->AddVertex(v0.x, v0.y, v0.z,
+                      normal.x, normal.y, normal.z,
+                      tilesU, 0.0f);
+
     // Vertex 1: Bottom-right
-    buffer->AddVertex(v1.x, v1.y, v1.z, 
-                     normal.x, normal.y, normal.z, 
-                     0, 0.0f);
-    
+    buffer->AddVertex(v1.x, v1.y, v1.z,
+                      normal.x, normal.y, normal.z,
+                      0, 0.0f);
+
     // Vertex 2: Top-right
-    buffer->AddVertex(v2.x, v2.y, v2.z, 
-                     normal.x, normal.y, normal.z, 
-                     0, tilesV);
-    
+    buffer->AddVertex(v2.x, v2.y, v2.z,
+                      normal.x, normal.y, normal.z,
+                      0, tilesV);
+
     // Vertex 3: Top-left
-    buffer->AddVertex(v3.x, v3.y, v3.z, 
-                     normal.x, normal.y, normal.z, 
-                     tilesU, tilesV);
-    
+    buffer->AddVertex(v3.x, v3.y, v3.z,
+                      normal.x, normal.y, normal.z,
+                      tilesU, tilesV);
+
     // Add two triangles (counter-clockwise winding)
     buffer->AddFace(0, 1, 2); // First triangle
     buffer->AddFace(0, 2, 3); // Second triangle
-    
+
     buffer->Build();
-    
-    LogInfo("[MeshManager] Created quad '%s' facing (%g, %g, %g)", 
+    mesh->m_boundBox.merge(buffer->m_boundBox);
+
+    LogInfo("[MeshManager] Created quad '%s' facing (%g, %g, %g)",
             name.c_str(), normal.x, normal.y, normal.z);
+
+    return mesh;
+}
+
+Mesh *MeshManager::CreateHillPlane(
+    const std::string &name,
+    float width, float height,
+    int segmentsX, int segmentsY,
+    float hillHeight,
+    float hillCountX,
+    float hillCountY,
+    float tilesU,
+    float tilesV)
+{
+    if (Exists(name))
+    {
+        LogWarning("[MeshManager] Mesh already exists: %s", name.c_str());
+        return Get(name);
+    }
+
+    // Criar mesh e buffer
+    Mesh *mesh = Create(name);
+    MeshBuffer *buffer = mesh->AddBuffer(0);
+
+    // Calcular centro
+    float halfWidth = width * 0.5f;
+    float halfHeight = height * 0.5f;
+    Vec3 center(halfWidth, 0.0f, halfHeight);
+
+    // Garantir que hillCount não seja zero
+    if (hillCountX < 0.01f)
+        hillCountX = 1.0f;
+    if (hillCountY < 0.01f)
+        hillCountY = 1.0f;
+
+    // Texture coordinate step
+    float txStep = tilesU / (float)segmentsX;
+    float tyStep = tilesV / (float)segmentsY;
+
+    // Adicionar 1 para ter o número correto de tiles
+    int vertCountX = segmentsX + 1;
+    int vertCountY = segmentsY + 1;
+
+    buffer->m_boundBox.clear();
+
+ 
+    float sx = 0.0f;
+    float tsx = 0.0f;
+
+    for (int x = 0; x < vertCountX; ++x)
+    {
+        float sy = 0.0f;
+        float tsy = 0.0f;
+
+        for (int y = 0; y < vertCountY; ++y)
+        {
+            // Posição base
+            float px = sx - center.x;
+            float py = 0.0f;
+            float pz = sy - center.z;
+
+          
+            if (hillHeight != 0.0f)
+            {
+                py = sinf(px * hillCountX * Pi / center.x) *
+                     cosf(pz * hillCountY * Pi / center.z) *
+                     hillHeight;
+            }
+
+            // UV coordinates
+            float u = tsx;
+            float v = 1.0f - tsy; // Flip V
+
+            // Adicionar vértice
+            buffer->AddVertex(px, py, pz, 0.0f, 1.0f, 0.0f, u, v);
+
+            sy += height / segmentsY;
+            tsy += tyStep;
+        }
+
+        sx += width / segmentsX;
+        tsx += txStep;
+    }
+
+ 
+    for (int x = 0; x < segmentsX; ++x)
+    {
+        for (int y = 0; y < segmentsY; ++y)
+        {
+            int current = x * vertCountY + y;
+            int next = current + vertCountY;
+
+            // Triângulo 1
+            buffer->AddFace(current, current + 1, next);
+
+            // Triângulo 2
+            buffer->AddFace(current + 1, next + 1, next);
+        }
+    }
+
+ 
+    buffer->CalculateNormals();
+ 
+    mesh->m_boundBox.clear();
+    mesh->m_boundBox.merge(buffer->m_boundBox);
+    buffer->Build();
+
+    LogInfo("[MeshManager] Created hill plane: %s (%dx%d, height=%.2f)",
+            name.c_str(), segmentsX, segmentsY, hillHeight);
+
+    return mesh;
+}
+
+
+// MeshManager.cpp
+
+Mesh* MeshManager::CreateTerrainFromHeightmap(
+    const std::string& name,
+    const std::string& heightmapPath,
+    float width, float height, float maxHeight,
+    int detailX, int detailY,
+    float tilesU, float tilesV)
+{
+    if (Exists(name))
+    {
+        LogWarning("[MeshManager] Mesh already exists: %s", name.c_str());
+        return Get(name);
+    }
+
+ 
+    Pixmap heightmap;
+    if (!heightmap.Load(heightmapPath.c_str()))
+    {
+        LogError("[MeshManager] Failed to load heightmap: %s", heightmapPath.c_str());
+        return nullptr;
+    }
+
+    LogInfo("[MeshManager] Loaded heightmap: %s (%dx%d, %d components)", 
+            heightmapPath.c_str(), 
+            heightmap.width, 
+            heightmap.height,
+            heightmap.components);
+
+ 
+    Pixmap* grayscale = nullptr;
+    const Pixmap* sourceMap = &heightmap;
     
+    if (heightmap.components > 1)
+    {
+        // Se for RGB/RGBA, converte para grayscale
+        grayscale = new Pixmap(heightmap.width, heightmap.height, 1);
+        
+        for (int y = 0; y < heightmap.height; y++)
+        {
+            for (int x = 0; x < heightmap.width; x++)
+            {
+                Color pixel = heightmap.GetPixelColor(x, y);
+      
+                u8 gray = (u8)((pixel.r + pixel.g + pixel.b) / 3);
+                grayscale->SetPixel(x, y, gray, gray, gray, 255);
+            }
+        }
+        
+        sourceMap = grayscale;
+        LogInfo("[MeshManager] Converted heightmap to grayscale");
+    }
+
+    // Criar terrain
+    Mesh* terrain = CreateTerrainFromPixmap(
+        name, 
+        sourceMap,
+        width, height, maxHeight,
+        detailX, detailY,
+        tilesU, tilesV
+    );
+
+    // Limpar grayscale se foi criado
+    if (grayscale)
+        delete grayscale;
+
+    return terrain;
+}
+
+Mesh* MeshManager::CreateTerrainFromPixmap(
+    const std::string& name,
+    const Pixmap* heightmap,
+    float width, float height, float maxHeight,
+    int detailX, int detailY,
+    float tilesU, float tilesV)
+{
+    // Criar mesh e buffer
+    Mesh* mesh = Create(name);
+    MeshBuffer* buffer = mesh->AddBuffer(0);
+
+    // Calcular dimensões
+    float halfWidth = width * 0.5f;
+    float halfHeight = height * 0.5f;
+    
+    int vertCountX = detailX + 1;
+    int vertCountY = detailY + 1;
+
+    buffer->m_boundBox.clear();
+
+ 
+    for (int y = 0; y < vertCountY; ++y)
+    {
+        for (int x = 0; x < vertCountX; ++x)
+        {
+            // Posição normalizada [0, 1]
+            float nx = (float)x / detailX;
+            float ny = (float)y / detailY;
+
+            // Posição world space
+            float px = -halfWidth + nx * width;
+            float pz = -halfHeight + ny * height;
+
+ 
+            int imgX = (int)(nx * (heightmap->width - 1));
+            int imgY = (int)(ny * (heightmap->height - 1));
+   
+            Color pixel = heightmap->GetPixelColor(imgX, imgY);
+            
+            // Normalizar altura [0, 255] -> [0, 1]
+            float heightValue = pixel.r / 255.0f; // Usar canal R (grayscale)
+            float py = heightValue * maxHeight;
+
+            // UV coordinates
+            float u = nx * tilesU;
+            float v = ny * tilesV;
+
+            // Adicionar vértice
+            buffer->AddVertex(px, py, pz, 0.0f, 1.0f, 0.0f, u, v);
+        }
+    }
+
+ 
+    for (int y = 0; y < detailY; ++y)
+    {
+        for (int x = 0; x < detailX; ++x)
+        {
+            int i0 = y * vertCountX + x;
+            int i1 = i0 + 1;
+            int i2 = (y + 1) * vertCountX + x;
+            int i3 = i2 + 1;
+
+            // Triângulo 1
+            buffer->AddFace(i0, i2, i1);
+            
+            // Triângulo 2
+            buffer->AddFace(i1, i2, i3);
+        }
+    }
+
+ 
+    buffer->CalculateNormals();
+ 
+    mesh->m_boundBox.clear();
+    mesh->m_boundBox.merge(buffer->m_boundBox);
+    buffer->Build();
+
+    LogInfo("[MeshManager] Created terrain: %s (%d verts, %d tris)", 
+            name.c_str(), 
+            buffer->GetVertexCount(),
+            buffer->GetIndexCount());
+
     return mesh;
 }
 
@@ -2268,7 +2559,7 @@ bool MeshReader::Load(const std::string &filename, Mesh *mesh)
             mesh->GetBufferCount(), mesh->GetMaterialCount(),
             mesh->GetBoneCount());
 
-  //  ValidateBoneHierarchy(mesh);
+    //  ValidateBoneHierarchy(mesh);
 
     return true;
 }
@@ -2350,8 +2641,8 @@ void MeshReader::ReadSkeletonChunk(Mesh *mesh, const ChunkHeader &header)
         Bone *bone = mesh->AddBone(ReadCString());
 
         bone->parentIndex = m_stream->ReadInt();
-//
-     //   LogInfo("[MeshReader] Bone: %s Parent(%d)", bone->name.c_str(), bone->parentIndex);
+        //
+        //   LogInfo("[MeshReader] Bone: %s Parent(%d)", bone->name.c_str(), bone->parentIndex);
 
         // Local transform
         for (int j = 0; j < 16; j++)
@@ -2445,7 +2736,7 @@ void MeshReader::ReadIndicesChunk(MeshBuffer *buffer, const ChunkHeader &header)
 void MeshReader::ReadSkinChunk(MeshBuffer *buffer, const ChunkHeader &header)
 {
     u32 numVertices = m_stream->ReadUInt();
-   // LogInfo("ReadSkinChunk numVertices %d", numVertices);
+    // LogInfo("ReadSkinChunk numVertices %d", numVertices);
 
     buffer->m_skinData.resize(numVertices);
     buffer->m_isSkinned = true;
@@ -2715,7 +3006,7 @@ bool AnimReader::ReadChannelChunk(Channel &channel)
     u32 numKeys = m_stream->ReadUInt();
     channel.keyframes.reserve(numKeys);
 
-    //LogInfo("[AnimReader] Reading channel: %s (%d keyframes)", channel.boneName.c_str(), numKeys);
+    // LogInfo("[AnimReader] Reading channel: %s (%d keyframes)", channel.boneName.c_str(), numKeys);
 
     // Read all keyframes
     for (u32 i = 0; i < numKeys; i++)

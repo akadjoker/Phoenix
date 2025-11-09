@@ -107,7 +107,7 @@ bool Shader::Create(const char *vertexShader, const char *fragmentShader)
         glGetActiveUniform(m_Program, i, sizeof(name) - 1, &namelen, &num, &type, name);
         name[namelen] = 0;
         addUniform(((char *)&name[0]));
-        LogInfo("SHADER: [ID %i] Active uniform (%s) set at location: %i", m_Program, name, glGetUniformLocation(m_Program, name));
+        LogInfo("[SHADER] [ID %i] Active uniform (%s) set at location: %i", m_Program, name, glGetUniformLocation(m_Program, name));
     }
 
     return linked;
@@ -129,7 +129,7 @@ bool Shader::addUniform(const char *name)
     location = glGetUniformLocation(m_Program, name);
     if (location == -1)
     {
-        LogError("SHADER: [ID %i] Failed to find shader uniform: %s", m_Program, name);
+        LogError("[SHADER] [ID %i] Failed to find shader uniform: %s", m_Program, name);
         return false;
     }
     m_UniformCache.emplace(name, location);
@@ -155,7 +155,7 @@ int Shader::GetUniformLocation(const char *name) const
     int loc = glGetUniformLocation(m_Program, name);
     if (loc < 0)
         return loc;
-    LogWarning("SHADER: [ID %i] Failed to find shader uniform: %s", m_Program, name);
+    LogWarning("[SHADER] [ID %i] Failed to find shader uniform: %s", m_Program, name);
     m_UniformCache.emplace(name, loc);
     return loc;
 }
@@ -335,16 +335,16 @@ void ShaderManager::Init()
                     color = texture(texture0, TexCoord) * vertexColor;
                 });
 
-        if (ShaderManager::Instance().Create("2DShader",vShader, fShader))
+        if (ShaderManager::Instance().Create("Batch",vShader, fShader))
         {
-            Shader *shader = ShaderManager::Instance().Get("2DShader");
+            Shader *shader = ShaderManager::Instance().Get("Batch");
 
             shader->Create(vShader, fShader);
-            Logger::Instance().Info("Batch Shader Created");
+            Logger::Instance().Info("[ShaderManager] Batch Shader Created");
         }
         else
         {
-            Logger::Instance().Error("Failed to create Batch Shader");
+            Logger::Instance().Error("[ShaderManager]  Failed to create Batch Shader");
         }
     
 }

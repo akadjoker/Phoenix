@@ -3,7 +3,7 @@
 #include "Ray.hpp"
 
 Camera3D::Camera3D(const std::string &name)
-    : Node3D(name),
+    : GameObject(name),
       fov(45.0f),
       aspectRatio(16.0f / 9.0f),
       nearPlane(0.1f),
@@ -14,7 +14,7 @@ Camera3D::Camera3D(const std::string &name)
 }
 
 Camera3D::Camera3D(float fov, float aspect, float near, float far, const std::string &name)
-    : Node3D(name),
+    : GameObject(name),
       fov(fov),
       aspectRatio(aspect),
       nearPlane(near),
@@ -142,13 +142,14 @@ Ray Camera3D::screenPointToRay(float screenX, float screenY, float screenWidth, 
 
     return Ray(getPosition(), direction);
 }
-
+ 
 // ==================== Utilities ====================
 
 Vec3 Camera3D::getTarget()
 {
-    Vec3 localForward = Vec3(0, 0, -1);
-    return getLocalPosition() + getLocalRotation() * localForward;
+   // Vec3 localForward = Vec3(0, 0, -1);
+   // return getLocalPosition() + getLocalRotation() * localForward;
+    return getPosition() + forward() * farPlane;
 }
 
 void Camera3D::update(float deltaTime)
@@ -255,12 +256,12 @@ void CameraFPS::setYaw(float degrees)
     markViewDirty();
 }
 
-float CameraFPS::getPitch() const
+float CameraFPS::getLookPitch() const
 {
     return pitch;
 }
 
-float CameraFPS::getYaw() const
+float CameraFPS::getLookYaw() const
 {
     return yaw;
 }

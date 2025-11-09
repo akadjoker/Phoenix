@@ -229,13 +229,4 @@ void Frustum::getCorners(Vec3 outCorners[8]) const
     Plane3D::Intersect3Planes(planes[PLANE_FAR], planes[PLANE_LEFT], planes[PLANE_TOP], outCorners[7]);
 }
 
-void Frustum::print() const
-{
-    // std::cout << "Frustum Planes:" << std::endl;
-    // std::cout << "  Left:   "; planes[PLANE_LEFT].print();
-    // std::cout << "  Right:  "; planes[PLANE_RIGHT].print();
-    // std::cout << "  Bottom: "; planes[PLANE_BOTTOM].print();
-    // std::cout << "  Top:    "; planes[PLANE_TOP].print();
-    // std::cout << "  Near:   "; planes[PLANE_NEAR].print();
-    // std::cout << "  Far:    "; planes[PLANE_FAR].print();
-}
+ 

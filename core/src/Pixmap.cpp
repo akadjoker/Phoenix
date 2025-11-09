@@ -202,15 +202,23 @@ void Pixmap::Fill(u32 rgba)
 bool Pixmap::Load(const char *file_name)
 {
 
-    pixels = stbi_load(file_name, &width, &height, &components, 0);
-
-    if (pixels == nullptr)
+    unsigned int bytesRead=0;
+    unsigned char * data = Utils::LoadFileData(file_name, &bytesRead);
+    if (!data)
     {
-        LogError("Failed to load image: %s", file_name);
+        LogError("[PIXMAP] Failed to load image: %s", file_name);
+        return false;
+    
+    }
+    if (!LoadFromMemory(data, bytesRead))
+    {
+        LogError("[PIXMAP] Failed to load image: %s", file_name);
         return false;
     }
 
-    // Log(0, "PIXMAP: Load image: %s (%d,%d) bpp:%d", file_name, width, height, components);
+    free(data);
+
+     LogInfo( "[PIXMAP] Load image: %s (%d,%d) bpp:%d", file_name, width, height, components);
 
     return true;
 }

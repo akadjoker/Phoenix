@@ -18,6 +18,7 @@ class RenderBatch;
 class MeshWriter;
 class MeshLoader;
 class Animator;
+class Pixmap;
 
 constexpr u32 MESH_MAGIC = 0x4D455348; // "MESH"
 constexpr u32 MESH_VERSION = 100;      // 1.00
@@ -123,6 +124,7 @@ private:
     VertexArray *buffer;
     VertexBuffer *vb;
     IndexBuffer *ib;
+    BoundingBox m_boundBox;
     u32 m_material{0};
     friend class Mesh;
     friend class MeshManager;
@@ -146,7 +148,7 @@ public:
     u32 GetIndexCount() const { return indices.size(); }
 
     void SetMaterial(u32 material);
-    u32  GetMaterial() const { return m_material; }
+    u32 GetMaterial() const { return m_material; }
 
     void Build();
 
@@ -180,6 +182,9 @@ public:
     void Rotate(const Vec3 &axis, float angle);
     void Scale(const Vec3 &scale);
     void Scale(float uniformScale);
+
+    BoundingBox GetBoundingBox() { return m_boundBox; }
+    const BoundingBox &GetBoundingBox() const { return m_boundBox; }
 
     void Reverse();
     void FlipNormals();
@@ -257,15 +262,12 @@ enum class PlayMode
     PingPong
 };
 
- 
-
 class AnimationLayer
 {
 public:
     AnimationLayer(Mesh *mesh);
     ~AnimationLayer();
 
-    
     void AddAnimation(const std::string &name, Animation *anim);
     Animation *GetAnimation(const std::string &name);
     Animation *LoadAnimation(const std::string &name, const std::string &filename);
@@ -273,13 +275,12 @@ public:
     // Controle de playback (animação única)
     void Play(const std::string &animName, PlayMode mode = PlayMode::Loop,
               float blendTime = 0.3f);
-    void PlayOneShot(const std::string &animName, const std::string &returnTo,float blendTime = 0.3f,PlayMode toMode = PlayMode::Loop);
+    void PlayOneShot(const std::string &animName, const std::string &returnTo, float blendTime = 0.3f, PlayMode toMode = PlayMode::Loop);
     void CrossFade(const std::string &toAnim, float duration);
     void Stop(float blendOutTime = 0.3f);
     void Pause();
     void Resume();
 
- 
     // Update
     void Update(float deltaTime);
 
@@ -313,40 +314,34 @@ private:
     float m_blendTime;
     float m_blendDuration;
 
- 
-    
     // OneShot
     std::string m_returnToAnim;
     bool m_shouldReturn;
-    
+
     PlayMode m_currentMode;
     PlayMode m_toReturnMode;
     float m_defaultBlendTime;
     bool m_isPingPongReverse;
-     
+
     // Métodos privados
     void UpdateBlending(float deltaTime);
     void UpdateLayers(float deltaTime);
     bool CheckAnimationEnd();
 };
 
-
 class Animator
 {
 
-    std::vector<AnimationLayer*> layers;
+    std::vector<AnimationLayer *> layers;
     Mesh *m_mesh;
-public:
 
+public:
     Animator(Mesh *mesh);
     ~Animator();
     void Update(float deltaTime);
 
-    AnimationLayer* AddLayer();
-    AnimationLayer* GetLayer(u32 index);
-
-
-
+    AnimationLayer *AddLayer();
+    AnimationLayer *GetLayer(u32 index);
 };
 
 class Mesh
@@ -386,6 +381,8 @@ public:
 
     void UpdateSkinning();
 
+    void CalculateBoundingBox();
+
     void Debug(RenderBatch *batch);
 
     void CalculateBoneMatrices();
@@ -400,11 +397,15 @@ public:
     void SetBoneStatic(u32 index);
     void ResetBones();
 
+    const BoundingBox &GetBoundingBox() const { return m_boundBox; }
+    BoundingBox &GetBoundingBox() { return m_boundBox; }
+
 private:
     std::vector<Bone *> m_bones;
     std::vector<Mat4> m_boneMatrices;
     std::vector<MeshBuffer *> buffers;
     std::vector<Material *> materials;
+    BoundingBox m_boundBox;
 
     friend class MeshBuffer;
     friend class MeshManager;
@@ -635,10 +636,33 @@ public:
     Mesh *CreateSphere(const std::string &name, float radius = 1.0f, int segments = 32, int rings = 16);
     Mesh *CreateCylinder(const std::string &name, float radius = 1.0f, float height = 2.0f, int segments = 32, bool caps = true);
     Mesh *CreateCone(const std::string &name, float radius = 1.0f, float height = 2.0f, int segments = 32);
-    Mesh* CreateQuad(const std::string& name, const Vec3& face, 
+    Mesh *CreateQuad(const std::string &name, const Vec3 &face,
                      float size = 1.0f, float tilesU = 1.0f, float tilesV = 1.0f);
-  
+    Mesh *CreateHillPlane(
+        const std::string &name,
+        float width, float height,
+        int segmentsX, int segmentsY,
+        float hillHeight = 0.0f,
+        float hillCountX = 1.0f,
+        float hillCountY = 1.0f,
+        float tilesU = 1.0f,
+        float tilesV = 1.0f);
 
+    Mesh *CreateTerrainFromHeightmap(
+        const std::string &name,
+        const std::string &heightmapPath,
+        float width, float height, float maxHeight,
+        int detailX = 128, int detailY = 128,
+        float tilesU = 1.0f, float tilesV = 1.0f);
+
+    Mesh *CreateTerrainFromPixmap(
+        const std::string &name,
+        const Pixmap *heightmap,
+        float width, float height, float maxHeight,
+        int detailX = 128, int detailY = 128,
+        float tilesU = 1.0f, float tilesV = 1.0f);
+
+  
     void UnloadAll();
 
     Mesh *Load(const std::string &name, const std::string &filename);

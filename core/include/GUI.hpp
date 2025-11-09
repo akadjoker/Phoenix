@@ -158,8 +158,10 @@ public:
     void Release();
 
     // Frame
-    void BeginFrame();
+    bool BeginFrame();
     void EndFrame();
+
+    bool IsFocused() ;
 
     // Windows
     bool BeginWindow(const char *title, float x, float y, float width, float height, bool *open = nullptr);
@@ -191,7 +193,7 @@ public:
     void ProgressBar(float progress, float x, float y, float w, float h,
                      Orientation orient = Orientation::Horizontal, const char *overlay = nullptr);
 
-bool TextInput(const char *label, char *buffer, size_t bufferSize, 
+    bool TextInput(const char *label, char *buffer, size_t bufferSize, 
                float x, float y, float w, float h = 0);
 
     // RadioButton - retorna true se selecionado
@@ -320,6 +322,8 @@ private:
     u32 m_nextControlID = 0;
     u32 GetNextControlID();
     u32   m_activeControl;
+    bool m_isFocused = false;
+    u32 focusCounter;
 
  
 };

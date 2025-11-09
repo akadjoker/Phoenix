@@ -80,4 +80,6 @@ namespace Utils
     const char *GetFileName(const char *filePath);
     const char *GetFileNameWithoutExt(const char *filePath);
     const char *GetDirectoryPath(const char *filePath);
+    bool ChangeDirectory(const char *dir);
+        unsigned char *LoadFileData(const char *fileName, unsigned int *bytesRead);
 };

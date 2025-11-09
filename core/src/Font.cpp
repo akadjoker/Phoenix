@@ -1076,7 +1076,7 @@ bool Font::LoadBMFont(const char* fntPath, const char* texturePath)
     
     std::string line;
     std::string textureFile;
-    int scaleW = 0, scaleH = 0;
+   // int scaleW = 0, scaleH = 0;
     
     std::vector<GlyphInfo> glyphs;
     std::vector<FloatRect> recs;
@@ -1100,8 +1100,8 @@ bool Font::LoadBMFont(const char* fntPath, const char* texturePath)
                     int value = std::stoi(token.substr(pos + 1));
                     
                     if (key == "lineHeight") m_baseSize = value;
-                    else if (key == "scaleW") scaleW = value;
-                    else if (key == "scaleH") scaleH = value;
+                   // else if (key == "scaleW") scaleW = value;
+                  //  else if (key == "scaleH") scaleH = value;
                 }
             }
         }

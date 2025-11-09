@@ -939,10 +939,7 @@ int main()
     font.Release();
     batch.Release();
 
-    RenderTargetManager::Instance().RemoveAll();
-    MeshManager::Instance().UnloadAll();
-    ShaderManager::Instance().UnloadAll();
-    TextureManager::Instance().UnloadAll();
+
 
     device.Close();
 
