@@ -360,7 +360,7 @@ int main()
     // ============================================
     // TEXTURE LOADING
     // ============================================
-    TextureManager::Instance().SetLoadPath("assets/");
+    TextureManager::Instance().SetLoadPath("../assets/");
     TextureManager::Instance().Add("wall.jpg", true);
     TextureManager::Instance().Add("marm.jpg", true);
     TextureManager::Instance().Add("sinbad/sinbad_body.tga", false);
@@ -390,7 +390,7 @@ int main()
     water->AddMaterial("reflection");
 
     // Character model
-    Mesh *meshModel = MeshManager::Instance().Load("sinbad", "assets/sinbad/sinbad.h3d");
+    Mesh *meshModel = MeshManager::Instance().Load("sinbad", "../assets/sinbad/sinbad.h3d");
 
     if (meshModel)
     {
@@ -416,11 +416,11 @@ int main()
     Animator animator(meshModel);
 
     AnimationLayer *torsoLayer = animator.AddLayer();
-    torsoLayer->LoadAnimation("topRun", "assets/sinbad/sinbad_RunTop.anim");
+    torsoLayer->LoadAnimation("topRun", "../assets/sinbad/sinbad_RunTop.anim");
     torsoLayer->Play("topRun", PlayMode::Loop);
 
     AnimationLayer *legsLayer = animator.AddLayer();
-    legsLayer->LoadAnimation("legsRun", "assets/sinbad/sinbad_RunBase.anim");
+    legsLayer->LoadAnimation("legsRun", "../assets/sinbad/sinbad_RunBase.anim");
     legsLayer->Play("legsRun", PlayMode::Loop);
 
     // ============================================

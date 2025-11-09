@@ -208,7 +208,7 @@ Vec2 Vec2::FromAngleDeg(float angleDeg)
 {
     return FromAngle(angleDeg * DEG_TO_RAD);
 }
- 
+
 float Vec2::Dot(const Vec2 &a, const Vec2 &b)
 {
     return a.dot(b);
@@ -245,9 +245,8 @@ Vec2 operator*(float scalar, const Vec2 &vec)
     return vec * scalar;
 }
 
- 
 // ==================== Vec3 ====================
- 
+
 Vec3::Vec3() : x(0.0f), y(0.0f), z(0.0f) {}
 
 Vec3::Vec3(float x, float y, float z) : x(x), y(y), z(z) {}
@@ -256,20 +255,18 @@ Vec3::Vec3(float scalar) : x(scalar), y(scalar), z(scalar) {}
 
 Vec3::Vec3(const Vec2 &xy, float z) : x(xy.x), y(xy.y), z(z) {}
 
- 
 float &Vec3::operator[](int index)
 {
-     SDL_assert(index >= 0 && index < 3 && "Vec3 index out of range");
-     return (&x)[index];
+    SDL_assert(index >= 0 && index < 3 && "Vec3 index out of range");
+    return (&x)[index];
 }
 
 const float &Vec3::operator[](int index) const
 {
-     SDL_assert(index >= 0 && index < 3 && "Vec3 index out of range");
-     return (&x)[index];
+    SDL_assert(index >= 0 && index < 3 && "Vec3 index out of range");
+    return (&x)[index];
 }
 
- 
 Vec3 Vec3::operator+(const Vec3 &other) const
 {
     return Vec3(x + other.x, y + other.y, z + other.z);
@@ -300,7 +297,6 @@ Vec3 Vec3::operator/(float scalar) const
     return Vec3(x / scalar, y / scalar, z / scalar);
 }
 
- 
 Vec3 &Vec3::operator+=(const Vec3 &other)
 {
     x += other.x;
@@ -349,13 +345,11 @@ Vec3 &Vec3::operator/=(float scalar)
     return *this;
 }
 
- 
 Vec3 Vec3::operator-() const
 {
     return Vec3(-x, -y, -z);
 }
 
- 
 bool Vec3::operator==(const Vec3 &other) const
 {
     const float epsilon = 1e-6f;
@@ -369,7 +363,6 @@ bool Vec3::operator!=(const Vec3 &other) const
     return !(*this == other);
 }
 
- 
 float Vec3::lengthSquared() const
 {
     return x * x + y * y + z * z;
@@ -413,7 +406,7 @@ Vec3 Vec3::cross(const Vec3 &other) const
         z * other.x - x * other.z,
         x * other.y - y * other.x);
 }
- 
+
 float Vec3::AngleBetween(const Vec3 &a, const Vec3 &b)
 {
     float dot = Dot(a, b);
@@ -512,11 +505,8 @@ Vec3 operator*(float scalar, const Vec3 &vec)
     return vec * scalar;
 }
 
- 
-
 // ==================== Vec4 ====================
 
- 
 Vec4::Vec4() : x(0.0f), y(0.0f), z(0.0f), w(0.0f) {}
 
 Vec4::Vec4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
@@ -541,8 +531,6 @@ float &Vec4::operator[](int index)
         return w;
     SDL_assert(false && "Vec4 index out of range");
     return x;
-
-    
 }
 
 const float &Vec4::operator[](int index) const
@@ -556,9 +544,9 @@ const float &Vec4::operator[](int index) const
         return z;
     if (index == 3)
         return w;
-    
+
     SDL_assert(false && "Vec4 index out of range");
-    return x;   
+    return x;
 }
 
 // Operadores aritméticos
@@ -592,7 +580,6 @@ Vec4 Vec4::operator/(float scalar) const
     return Vec4(x / scalar, y / scalar, z / scalar, w / scalar);
 }
 
- 
 Vec4 &Vec4::operator+=(const Vec4 &other)
 {
     x += other.x;
@@ -742,8 +729,6 @@ Vec4 operator*(float scalar, const Vec4 &vec)
 {
     return vec * scalar;
 }
-
- 
 
 // ==================== Mat3 ====================
 
@@ -1084,7 +1069,6 @@ Mat3 operator*(float scalar, const Mat3 &mat)
 
 // ==================== Mat4 ====================
 
- 
 Mat4::Mat4()
 {
     // Identidade
@@ -1336,29 +1320,70 @@ float Mat4::determinant() const
     return det;
 }
 
- 
-Vec3 Mat4::TransformPoint(const Vec3& point) const
+Vec3 Mat4::TransformPoint(const Vec3 &point) const
 {
     // Aplica rotação + translação
-    float x = m[0]*point.x + m[4]*point.y + m[8]*point.z  + m[12];
-    float y = m[1]*point.x + m[5]*point.y + m[9]*point.z  + m[13];
-    float z = m[2]*point.x + m[6]*point.y + m[10]*point.z + m[14];
-    float w = m[3]*point.x + m[7]*point.y + m[11]*point.z + m[15];
-    
-    return Vec3(x/w, y/w, z/w);
+    float x = m[0] * point.x + m[4] * point.y + m[8] * point.z + m[12];
+    float y = m[1] * point.x + m[5] * point.y + m[9] * point.z + m[13];
+    float z = m[2] * point.x + m[6] * point.y + m[10] * point.z + m[14];
+    float w = m[3] * point.x + m[7] * point.y + m[11] * point.z + m[15];
+
+    return Vec3(x / w, y / w, z / w);
 }
 
-Vec3 Mat4::TransformVector(const Vec3& vec) const
+Vec3 Mat4::TransformVector(const Vec3 &vec) const
 {
     // Só rotação, SEM translação
-    float x = m[0]*vec.x + m[4]*vec.y + m[8]*vec.z;
-    float y = m[1]*vec.x + m[5]*vec.y + m[9]*vec.z;
-    float z = m[2]*vec.x + m[6]*vec.y + m[10]*vec.z;
-    
+    float x = m[0] * vec.x + m[4] * vec.y + m[8] * vec.z;
+    float y = m[1] * vec.x + m[5] * vec.y + m[9] * vec.z;
+    float z = m[2] * vec.x + m[6] * vec.y + m[10] * vec.z;
+
     return Vec3(x, y, z);
 }
 
+void Mat4::TransformBox(BoundingBox &box) const
+{
 
+    const float Amin[3] = {box.min.x, box.min.y, box.min.z};
+    const float Amax[3] = {box.max.x, box.max.y, box.max.z};
+
+    float Bmin[3];
+    float Bmax[3];
+
+    Bmin[0] = Bmax[0] = m[12];
+    Bmin[1] = Bmax[1] = m[13];
+    Bmin[2] = Bmax[2] = m[14];
+
+    for (unsigned int i = 0; i < 3; ++i)
+    {
+        for (unsigned int j = 0; j < 3; ++j)
+        {
+            float t = m[(j << 2) + i];
+
+            const float a = t * Amin[j];
+            const float b = t * Amax[j];
+
+            if (a < b)
+            {
+                Bmin[i] += a;
+                Bmax[i] += b;
+            }
+            else
+            {
+                Bmin[i] += b;
+                Bmax[i] += a;
+            }
+        }
+    }
+
+    box.min.x = Bmin[0];
+    box.min.y = Bmin[1];
+    box.min.z = Bmin[2];
+
+    box.max.x = Bmax[0];
+    box.max.y = Bmax[1];
+    box.max.z = Bmax[2];
+}
 Mat4 Mat4::inverse() const
 {
     // Método de adjunta
@@ -1409,14 +1434,11 @@ Mat4 Mat4::Identity()
     return Mat4();
 }
 
-
-
-
-Quat MatrixToQuaternion(const Mat4& m)
+Quat MatrixToQuaternion(const Mat4 &m)
 {
     Quat q;
     float trace = m.m[0] + m.m[5] + m.m[10];
-    
+
     if (trace > 0.0f)
     {
         float s = sqrt(trace + 1.0f) * 2.0f;
@@ -1449,46 +1471,50 @@ Quat MatrixToQuaternion(const Mat4& m)
         q.y = (m.m[6] + m.m[9]) / s;
         q.z = 0.25f * s;
     }
-    
+
     return q;
 }
 
-void Mat4::DecomposeMatrix(const Mat4& matrix, Vec3* outPosition, Quat* outRotation)
+void Mat4::DecomposeMatrix(const Mat4 &matrix, Vec3 *outPosition, Quat *outRotation)
 {
     // Extrai posição (última coluna)
     outPosition->x = matrix.m[12];
     outPosition->y = matrix.m[13];
     outPosition->z = matrix.m[14];
-    
+
     // Extrai rotação (3x3 superior esquerdo)
     // Remove scale primeiro
     Vec3 scale;
-    scale.x = sqrt(matrix.m[0]*matrix.m[0] + matrix.m[1]*matrix.m[1] + matrix.m[2]*matrix.m[2]);
-    scale.y = sqrt(matrix.m[4]*matrix.m[4] + matrix.m[5]*matrix.m[5] + matrix.m[6]*matrix.m[6]);
-    scale.z = sqrt(matrix.m[8]*matrix.m[8] + matrix.m[9]*matrix.m[9] + matrix.m[10]*matrix.m[10]);
-    
+    scale.x = sqrt(matrix.m[0] * matrix.m[0] + matrix.m[1] * matrix.m[1] + matrix.m[2] * matrix.m[2]);
+    scale.y = sqrt(matrix.m[4] * matrix.m[4] + matrix.m[5] * matrix.m[5] + matrix.m[6] * matrix.m[6]);
+    scale.z = sqrt(matrix.m[8] * matrix.m[8] + matrix.m[9] * matrix.m[9] + matrix.m[10] * matrix.m[10]);
+
     // Matriz de rotação (sem scale)
     Mat4 rotMatrix = matrix;
-    rotMatrix.m[0] /= scale.x; rotMatrix.m[1] /= scale.x; rotMatrix.m[2] /= scale.x;
-    rotMatrix.m[4] /= scale.y; rotMatrix.m[5] /= scale.y; rotMatrix.m[6] /= scale.y;
-    rotMatrix.m[8] /= scale.z; rotMatrix.m[9] /= scale.z; rotMatrix.m[10] /= scale.z;
-    
+    rotMatrix.m[0] /= scale.x;
+    rotMatrix.m[1] /= scale.x;
+    rotMatrix.m[2] /= scale.x;
+    rotMatrix.m[4] /= scale.y;
+    rotMatrix.m[5] /= scale.y;
+    rotMatrix.m[6] /= scale.y;
+    rotMatrix.m[8] /= scale.z;
+    rotMatrix.m[9] /= scale.z;
+    rotMatrix.m[10] /= scale.z;
+
     // Converte matriz de rotação → Quaternion
     *outRotation = MatrixToQuaternion(rotMatrix);
 }
 
-
 Mat4 Mat4::Inverse(const Mat4 &mat)
 {
     Mat4 inv;
-    
+
     float det = mat.determinant();
     if (std::fabs(det) < 1e-6f)
     {
         return Mat4(); // Retorna identidade se não inversível
     }
 
- 
     float invDet = 1.0f / det;
 
     // Calcular matriz de cofatores e transpor (adjunta)
@@ -1824,99 +1850,118 @@ bool BoundingBox::contains(const Vec3 &point) const
            point.z >= min.z && point.z <= max.z;
 }
 
-// ==================== CSM Namespace ====================
-
-namespace CSM
+bool BoundingBox::merge(const BoundingBox &b)
 {
+    bool changed = false;
 
-    void calculateCascadeSplits(float near, float far, int numCascades, float lambda, float *outSplits)
+    // Ignore zero-size boxes
+    if (min == max)
     {
-        // lambda controla o blend entre logarítmico (0) e linear (1)
-        // Valor típico: 0.5
-
-        outSplits[0] = near;
-
-        for (int i = 1; i < numCascades; i++)
+        changed = true;
+        min = b.min;
+        max = b.max;
+    }
+    else if (b.min != b.max)
+    {
+        if (b.min.x < min.x)
         {
-            float t = static_cast<float>(i) / static_cast<float>(numCascades);
-
-            // Split logarítmico
-            float logSplit = near * std::pow(far / near, t);
-
-            // Split linear
-            float linearSplit = near + (far - near) * t;
-
-            // Blend
-            outSplits[i] = lambda * logSplit + (1.0f - lambda) * linearSplit;
+            changed = true;
+            min.x = b.min.x;
+        }
+        if (b.min.y < min.y)
+        {
+            changed = true;
+            min.y = b.min.y;
+        }
+        if (b.min.z < min.z)
+        {
+            changed = true;
+            min.z = b.min.z;
         }
 
-        outSplits[numCascades] = far;
-    }
-
-    Mat4 createCascadeProjection(float fovYRad, float aspect, float nearSplit, float farSplit)
-    {
-        return Mat4::Perspective(fovYRad, aspect, nearSplit, farSplit);
-    }
-
-    void extractFrustumCorners(const Mat4 &projView, Vec3 corners[8])
-    {
-        Mat4 invProjView = projView.inverse();
-
-        // Cantos do NDC cube
-        Vec4 ndcCorners[8] = {
-            Vec4(-1, -1, -1, 1), Vec4(1, -1, -1, 1),
-            Vec4(1, 1, -1, 1), Vec4(-1, 1, -1, 1),
-            Vec4(-1, -1, 1, 1), Vec4(1, -1, 1, 1),
-            Vec4(1, 1, 1, 1), Vec4(-1, 1, 1, 1)};
-
-        for (int i = 0; i < 8; i++)
+        if (b.max.x > max.x)
         {
-            Vec4 worldSpace = invProjView * ndcCorners[i];
-            corners[i] = Vec3(worldSpace.x / worldSpace.w,
-                              worldSpace.y / worldSpace.w,
-                              worldSpace.z / worldSpace.w);
+            changed = true;
+            max.x = b.max.x;
+        }
+        if (b.max.y > max.y)
+        {
+            changed = true;
+            max.y = b.max.y;
+        }
+        if (b.max.z > max.z)
+        {
+            changed = true;
+            max.z = b.max.z;
         }
     }
 
-    BoundingBox calculateAABB(const Vec3 *points, int count)
-    {
-        if (count == 0)
-            return BoundingBox();
+    return changed;
+}
 
-        BoundingBox box(points[0], points[0]);
-        for (int i = 1; i < count; i++)
+Vec3 BoundingBox::getCorner(unsigned int index) const
+{
+    switch (index)
+    {
+    case 0:
+        return Vec3(min.x, min.y, max.z);
+    case 1:
+        return Vec3(max.x, min.y, max.z);
+    case 2:
+        return Vec3(max.x, max.y, max.z);
+    case 3:
+        return Vec3(min.x, max.y, max.z);
+    case 4:
+        return Vec3(min.x, min.y, min.z);
+    case 5:
+        return Vec3(max.x, min.y, min.z);
+    case 6:
+        return Vec3(max.x, max.y, min.z);
+    case 7:
+        return Vec3(min.x, max.y, min.z);
+    default:
+        return Vec3();
+    }
+}
+
+void BoundingBox::transform(const Mat4 &m)
+{
+    // Efficient algorithm for transforming an AABB, taken from Graphics
+    // Gems
+
+    float minA[3] = {min.x, min.y, min.z}, minB[3];
+    float maxA[3] = {max.x, max.y, max.z}, maxB[3];
+
+    for (unsigned int i = 0; i < 3; ++i)
+    {
+        minB[i] = m(3, i);
+        maxB[i] = m(3, i);
+
+        for (unsigned j = 0; j < 3; ++j)
         {
-            box.expand(points[i]);
+            float x = minA[j] * m(j, i);
+            float y = maxA[j] * m(j, i);
+            minB[i] += Min(x, y);
+            maxB[i] += Max(x, y);
         }
-        return box;
     }
 
-    Mat4 createLightOrtho(const Vec3 corners[8], const Mat4 &lightView, float *outNear, float *outFar)
-    {
-        // Transformar corners para light space
-        Vec3 lightSpaceCorners[8];
-        for (int i = 0; i < 8; i++)
-        {
-            lightSpaceCorners[i] = lightView * corners[i];
-        }
+    min = Vec3(minB[0], minB[1], minB[2]);
+    max = Vec3(maxB[0], maxB[1], maxB[2]);
+}
 
-        // Calcular BoundingBox
-        BoundingBox box = calculateAABB(lightSpaceCorners, 8);
+BoundingBox BoundingBox::Transform(const BoundingBox &box, const Mat4 &m)
+{
+    BoundingBox result(box);
+    result.transform(m);
+    return result;
+}
 
-        // Expandir near/far para capturar objetos fora do frustum
-        float zRange = box.max.z - box.min.z;
-        box.min.z -= zRange * 0.5f; // Extend backwards
-        box.max.z += zRange * 0.1f; // Small extension forward
-
-        if (outNear)
-            *outNear = box.min.z;
-        if (outFar)
-            *outFar = box.max.z;
-
-        return Mat4::Ortho(box.min.x, box.max.x, box.min.y, box.max.y, box.min.z, box.max.z);
-    }
-
-} // namespace CSM
+void BoundingBox::Transform(const BoundingBox &box, const Mat4 &m, BoundingBox &out)
+{
+    out.merge(box);
+    out.transform(m);
+}
 
 // ==================== Quat ====================
 
@@ -1945,13 +1990,13 @@ Quat::Quat(const Vec3 &eulerAnglesRad)
 float &Quat::operator[](int index)
 {
     if (index == 0)
-    return x;
+        return x;
     if (index == 1)
-    return y;
+        return y;
     if (index == 2)
-    return z;
+        return z;
     if (index == 3)
-    return w;
+        return w;
     SDL_assert(false && "Quat index out of range");
     return x;
 }

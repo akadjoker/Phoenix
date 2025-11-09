@@ -21,7 +21,6 @@ const float M_INFINITY = 1.0e30f;
 
 #define ToRadians(x) (float)(((x) * Pi / 180.0f))
 #define ToDegrees(x) (float)(((x) * 180.0f / Pi))
- 
 
 inline float Sin(float a) { return sin(a * Pi / 180); }
 inline float Cos(float a) { return cos(a * Pi / 180); }
@@ -212,12 +211,10 @@ typedef Rectangle<float> FloatRect;
 typedef Size<int> IntSize;
 typedef Size<float> FloatSize;
 
-
-
-
 class Quat;
 class Mat4;
 class Mat3;
+class BoundingBox;
 
 class Vec2
 {
@@ -286,8 +283,6 @@ public:
 
 // Scalar * Vec2
 Vec2 operator*(float scalar, const Vec2 &vec);
-
- 
 
 class Vec3
 {
@@ -360,8 +355,6 @@ public:
 // Scalar * Vec3
 Vec3 operator*(float scalar, const Vec3 &vec);
 
- 
-
 class Vec4
 {
 public:
@@ -421,8 +414,6 @@ public:
 // Scalar * Vec4
 Vec4 operator*(float scalar, const Vec4 &vec);
 
- 
-
 // ==================== Mat3 ====================
 
 class Mat3
@@ -449,8 +440,6 @@ public:
     Mat3 operator*(const Mat3 &other) const;
     Mat3 operator*(float scalar) const;
     Mat3 operator/(float scalar) const;
-
-
 
     // Transformação de vetores
     Vec3 operator*(const Vec3 &vec) const;
@@ -485,8 +474,6 @@ public:
 
 // Scalar * Mat3
 Mat3 operator*(float scalar, const Mat3 &mat);
-
- 
 
 // ==================== Mat4 ====================
 
@@ -537,8 +524,9 @@ public:
     float determinant() const;
     Mat4 inverse() const;
 
-    Vec3 TransformPoint(const Vec3& point) const;
-    Vec3 TransformVector(const Vec3& vec) const;
+    Vec3 TransformPoint(const Vec3 &point) const;
+    Vec3 TransformVector(const Vec3 &vec) const;
+    void TransformBox(BoundingBox &box) const;
 
     // Funções de criação de transformações
     static Mat4 Identity();
@@ -555,7 +543,7 @@ public:
     static Mat4 RotationZDeg(float angleDeg);
     static Mat4 Rotation(const Vec3 &axis, float angleRad);
     static Mat4 RotationDeg(const Vec3 &axis, float angleDeg);
-    static void DecomposeMatrix(const Mat4& matrix, Vec3* outPosition, Quat* outRotation);
+    static void DecomposeMatrix(const Mat4 &matrix, Vec3 *outPosition, Quat *outRotation);
 
     // Funções para câmera/projeção
     static Mat4 LookAt(const Vec3 &eye, const Vec3 &center, const Vec3 &up);
@@ -570,9 +558,6 @@ public:
 
 // Scalar * Mat4
 Mat4 operator*(float scalar, const Mat4 &mat);
- 
-
-// ==================== Funções auxiliares para CSM ====================
 
 // BoundingBox (Axis-Aligned Bounding Box)
 struct BoundingBox
@@ -583,14 +568,30 @@ struct BoundingBox
     BoundingBox();
     BoundingBox(const Vec3 &min, const Vec3 &max);
 
+    BoundingBox(const BoundingBox &box) : min(box.min), max(box.max) {}
+
+    BoundingBox &operator=(const BoundingBox &box)
+    {
+        if (this == &box)
+            return *this;
+        min = box.min;
+        max = box.max;
+        return *this;
+    }
+
     void expand(const Vec3 &point);
     void expand(const BoundingBox &other);
     Vec3 center() const;
     Vec3 size() const;
     bool contains(const Vec3 &point) const;
+    bool merge(const BoundingBox &other);
+    Vec3 getCorner(unsigned int index) const;
+    void transform(const Mat4 &m);
+
+    static BoundingBox Transform(const BoundingBox &box, const Mat4 &m);
+    static void Transform(const BoundingBox &box, const Mat4 &m, BoundingBox &out);
 };
 
- 
 // ==================== Quat ====================
 
 class Quat
@@ -675,4 +676,3 @@ public:
 
 // Scalar * Quat
 Quat operator*(float scalar, const Quat &quat);
-

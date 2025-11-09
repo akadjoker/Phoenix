@@ -4,9 +4,7 @@
 #include "Shader.hpp"
 #include "Texture.hpp"
 
-
 #define BATCH_DRAWCALLS 256
-
 
 #define LINES 0x0001
 #define TRIANGLES 0x0004
@@ -30,18 +28,15 @@ RenderBatch::RenderBatch()
     bufferCount = 0;
     drawCounter = 1;
     use_matrix = false;
-    modelMatrix= Mat4::Identity();
+    modelMatrix = Mat4::Identity();
 }
 void RenderBatch::Init(int numBuffers, int bufferElements)
 {
 
-    shader= ShaderManager::Instance().Get("2DShader");
+    shader = ShaderManager::Instance().Get("2DShader");
 
-    Texture* m_defaultTexture = TextureManager::Instance().GetDefault();
+    Texture *m_defaultTexture = TextureManager::Instance().GetDefault();
     defaultTextureId = m_defaultTexture->GetHandle();
-
-
-    
 
     for (int i = 0; i < numBuffers; i++)
     {
@@ -51,13 +46,11 @@ void RenderBatch::Init(int numBuffers, int bufferElements)
     vertexCounter = 0;
     currentBuffer = 0;
 
-
     for (int i = 0; i < numBuffers; i++)
     {
         vertexBuffer[i]->elementCount = bufferElements;
 
         int k = 0;
-
 
         for (int j = 0; j <= bufferElements; j++)
         {
@@ -102,7 +95,6 @@ void RenderBatch::Init(int numBuffers, int bufferElements)
             vertexBuffer[i]->colors.push_back(colorb);
             vertexBuffer[i]->colors.push_back(colora);
 
-
             vertexBuffer[i]->indices.push_back(k);
             vertexBuffer[i]->indices.push_back(k + 1);
             vertexBuffer[i]->indices.push_back(k + 2);
@@ -110,11 +102,9 @@ void RenderBatch::Init(int numBuffers, int bufferElements)
             vertexBuffer[i]->indices.push_back(k + 2);
             vertexBuffer[i]->indices.push_back(k + 3);
 
-
             k += 4;
         }
     }
-
 
     for (int i = 0; i < numBuffers; i++)
     {
@@ -137,7 +127,6 @@ void RenderBatch::Init(int numBuffers, int bufferElements)
         glEnableVertexAttribArray(1);
         glVertexAttribPointer(1, 2, GL_FLOAT, 0, 0, 0);
 
-
         glGenBuffers(1, &vertexBuffer[i]->vboId[2]);
         glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer[i]->vboId[2]);
         glBufferData(GL_ARRAY_BUFFER,
@@ -146,7 +135,6 @@ void RenderBatch::Init(int numBuffers, int bufferElements)
         glEnableVertexAttribArray(2);
         glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, 0);
 
-
         glGenBuffers(1, &vertexBuffer[i]->vboId[3]);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertexBuffer[i]->vboId[3]);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER,
@@ -154,9 +142,7 @@ void RenderBatch::Init(int numBuffers, int bufferElements)
                      vertexBuffer[i]->indices.data(), GL_STATIC_DRAW);
     }
 
-
     glBindVertexArray(0);
-
 
     for (int i = 0; i < BATCH_DRAWCALLS; i++)
     {
@@ -168,10 +154,9 @@ void RenderBatch::Init(int numBuffers, int bufferElements)
     }
 
     bufferCount = numBuffers; // Record buffer count
-    drawCounter = 1; // Reset draws counter
-    currentDepth = -1.0f; // Reset depth value
+    drawCounter = 1;          // Reset draws counter
+    currentDepth = -1.0f;     // Reset depth value
 }
-
 
 void UnloadVertexArray(unsigned int vaoId)
 {
@@ -179,10 +164,10 @@ void UnloadVertexArray(unsigned int vaoId)
     glDeleteVertexArrays(1, &vaoId);
 }
 
-
 void RenderBatch::Release()
 {
-    if (vertexBuffer.size() == 0) return;
+    if (vertexBuffer.size() == 0)
+        return;
 
     for (int i = 0; i < (int)vertexBuffer.size(); i++)
     {
@@ -208,16 +193,12 @@ void RenderBatch::Release()
     }
     draws.clear();
     vertexBuffer.clear();
-    m_defaultTexture = nullptr; 
-    shader=nullptr;
+    m_defaultTexture = nullptr;
+    shader = nullptr;
     LogInfo("Render batch  unloaded successfully from VRAM (GPU)");
 }
 
 RenderBatch::~RenderBatch() { Release(); }
-
-
- 
-
 
 void RenderBatch::Render()
 {
@@ -243,8 +224,8 @@ void RenderBatch::Render()
         glActiveTexture(GL_TEXTURE0);
         if (shader)
         {
-        shader->Bind();
-        shader->SetUniformMat4("mvp", viewMatrix.m);
+            shader->Bind();
+            shader->SetUniformMat4("mvp", viewMatrix.m);
         }
 
         unsigned int currentTex = 0xFFFFFFFFu;
@@ -258,9 +239,9 @@ void RenderBatch::Render()
             }
 
             const int mode = (draws[i]->mode == LINES) ? GL_LINES
-                : (draws[i]->mode == TRIANGLES)
-                ? GL_TRIANGLES
-                : GL_TRIANGLES; // QUAD -> indices
+                             : (draws[i]->mode == TRIANGLES)
+                                 ? GL_TRIANGLES
+                                 : GL_TRIANGLES; // QUAD -> indices
 
             if (draws[i]->mode == LINES || draws[i]->mode == TRIANGLES)
             {
@@ -279,7 +260,6 @@ void RenderBatch::Render()
 
         glBindTexture(GL_TEXTURE_2D, 0);
         glBindVertexArray(0);
-
     }
 
     // reset do batch
@@ -293,7 +273,8 @@ void RenderBatch::Render()
     }
     drawCounter = 1;
 
-    if (++currentBuffer >= bufferCount) currentBuffer = 0;
+    if (++currentBuffer >= bufferCount)
+        currentBuffer = 0;
 }
 
 void RenderBatch::Line3D(float startX, float startY, float startZ, float endX,
@@ -308,8 +289,7 @@ bool RenderBatch::CheckRenderBatchLimit(int vCount)
 {
     bool overflow = false;
 
-
-    if ((vertexCounter + vCount)>= (vertexBuffer[currentBuffer]->elementCount * 4))
+    if ((vertexCounter + vCount) >= (vertexBuffer[currentBuffer]->elementCount * 4))
     {
         overflow = true;
 
@@ -324,10 +304,8 @@ bool RenderBatch::CheckRenderBatchLimit(int vCount)
         draws[drawCounter - 1]->textureId = currentTexture;
     }
 
-
     return overflow;
 }
-
 
 void RenderBatch::SetMode(int mode)
 {
@@ -355,14 +333,14 @@ void RenderBatch::SetMode(int mode)
             }
         }
 
-        if (drawCounter >= BATCH_DRAWCALLS) Render();
+        if (drawCounter >= BATCH_DRAWCALLS)
+            Render();
 
         draws[drawCounter - 1]->mode = mode;
         draws[drawCounter - 1]->vertexCount = 0;
         draws[drawCounter - 1]->textureId = defaultTextureId;
     }
 }
-
 
 void RenderBatch::BeginTransform(const Mat4 &transform)
 {
@@ -372,7 +350,6 @@ void RenderBatch::BeginTransform(const Mat4 &transform)
 }
 
 void RenderBatch::SetMatrix(const Mat4 &matrix) { viewMatrix = matrix; }
-
 
 void RenderBatch::EndTransform() { use_matrix = false; }
 
@@ -384,25 +361,22 @@ void RenderBatch::Vertex3f(float x, float y, float z)
 
     if (use_matrix)
     {
-        tx = modelMatrix[0] * x + modelMatrix[4] * y + modelMatrix[8] * z+ modelMatrix[12];
-        ty = modelMatrix[1] * x + modelMatrix[5] * y + modelMatrix[9] * z+ modelMatrix[13];
-        tz = modelMatrix[2] * x + modelMatrix[6] * y + modelMatrix[10] * z+ modelMatrix[14];
+        tx = modelMatrix[0] * x + modelMatrix[4] * y + modelMatrix[8] * z + modelMatrix[12];
+        ty = modelMatrix[1] * x + modelMatrix[5] * y + modelMatrix[9] * z + modelMatrix[13];
+        tz = modelMatrix[2] * x + modelMatrix[6] * y + modelMatrix[10] * z + modelMatrix[14];
     }
 
     if (vertexCounter > (vertexBuffer[currentBuffer]->elementCount * 4 - 4))
     {
-        if ((draws[drawCounter - 1]->mode == LINES)
-            && (draws[drawCounter - 1]->vertexCount % 2 == 0))
+        if ((draws[drawCounter - 1]->mode == LINES) && (draws[drawCounter - 1]->vertexCount % 2 == 0))
         {
             CheckRenderBatchLimit(2 + 1);
         }
-        else if ((draws[drawCounter - 1]->mode == TRIANGLES)
-                 && (draws[drawCounter - 1]->vertexCount % 3 == 0))
+        else if ((draws[drawCounter - 1]->mode == TRIANGLES) && (draws[drawCounter - 1]->vertexCount % 3 == 0))
         {
             CheckRenderBatchLimit(3 + 1);
         }
-        else if ((draws[drawCounter - 1]->mode == QUAD)
-                 && (draws[drawCounter - 1]->vertexCount % 4 == 0))
+        else if ((draws[drawCounter - 1]->mode == QUAD) && (draws[drawCounter - 1]->vertexCount % 4 == 0))
         {
             CheckRenderBatchLimit(4 + 1);
         }
@@ -412,10 +386,8 @@ void RenderBatch::Vertex3f(float x, float y, float z)
     vertexBuffer[currentBuffer]->vertices[3 * vertexCounter + 1] = ty;
     vertexBuffer[currentBuffer]->vertices[3 * vertexCounter + 2] = tz;
 
-
     vertexBuffer[currentBuffer]->texcoords[2 * vertexCounter] = texcoordx;
     vertexBuffer[currentBuffer]->texcoords[2 * vertexCounter + 1] = texcoordy;
-
 
     vertexBuffer[currentBuffer]->colors[4 * vertexCounter] = colorr;
     vertexBuffer[currentBuffer]->colors[4 * vertexCounter + 1] = colorg;
@@ -426,9 +398,7 @@ void RenderBatch::Vertex3f(float x, float y, float z)
     draws[drawCounter - 1]->vertexCount++;
 }
 
-
 void RenderBatch::Vertex2f(float x, float y) { Vertex3f(x, y, currentDepth); }
-
 
 void RenderBatch::TexCoord2f(float x, float y)
 {
@@ -444,16 +414,15 @@ void RenderBatch::SetColor(const Color &color)
     colora = color.a;
 }
 
-
 unsigned char floatToUnsignedChar(float value)
 {
-    float normalizedValue = (value < 0.0f) ? 0.0f
-        : (value > 1.0f)                   ? 1.0f
-                                           : value;
+    float normalizedValue = (value < 0.0f)   ? 0.0f
+                            : (value > 1.0f) ? 1.0f
+                                             : value;
     float scaledValue = normalizedValue * 255.0f;
-    scaledValue = (scaledValue < 0) ? 0
-        : (scaledValue > 255)       ? 255
-                                    : scaledValue;
+    scaledValue = (scaledValue < 0)     ? 0
+                  : (scaledValue > 255) ? 255
+                                        : scaledValue;
     return (unsigned char)scaledValue;
 }
 
@@ -471,7 +440,6 @@ void RenderBatch::SetColor(u8 r, u8 g, u8 b, u8 a)
     colorb = b;
     colora = a;
 }
-
 
 void RenderBatch::SetAlpha(float a) { colora = floatToUnsignedChar(a); }
 
@@ -511,14 +479,14 @@ void RenderBatch::SetTexture(unsigned int id)
                 }
             }
 
-            if (drawCounter >= BATCH_DRAWCALLS) Render();
+            if (drawCounter >= BATCH_DRAWCALLS)
+                Render();
 
             draws[drawCounter - 1]->textureId = id;
             draws[drawCounter - 1]->vertexCount = 0;
         }
     }
 }
-
 
 void RenderBatch::Line2D(int startPosX, int startPosY, int endPosX, int endPosY)
 {
@@ -533,7 +501,6 @@ void RenderBatch::Line2D(const Vec2 &start, const Vec2 &end)
     Vertex2f(start.x, start.y);
     Vertex2f(end.x, end.y);
 }
-
 
 void RenderBatch::Circle(int centerX, int centerY, float radius, bool fill)
 {
@@ -578,10 +545,8 @@ void RenderBatch::Rectangle(int posX, int posY, int width, int height,
     {
         SetMode(TRIANGLES);
 
-
         float x = posX;
         float y = posY;
-
 
         Vertex2f(x, y);
         Vertex2f(x, y + height);
@@ -594,7 +559,6 @@ void RenderBatch::Rectangle(int posX, int posY, int width, int height,
     else
     {
         SetMode(LINES);
-
 
         Vertex2f(posX, posY);
         Vertex2f(posX + width, posY);
@@ -616,7 +580,6 @@ void RenderBatch::Line3D(const Vec3 &start, const Vec3 &end)
     Vertex3f(start.x, start.y, start.z);
     Vertex3f(end.x, end.y, end.z);
 }
-
 
 void RenderBatch::Box(const BoundingBox &box)
 {
@@ -721,7 +684,6 @@ void RenderBatch::Cube(const Vec3 &position, float w, float h, float d,
     }
 }
 
-
 void RenderBatch::Sphere(const Vec3 &position, float radius, int rings,
                          int slices, bool wire)
 {
@@ -735,7 +697,6 @@ void RenderBatch::Sphere(const Vec3 &position, float radius, int rings,
     if (wire)
     {
         SetMode(LINES);
-
 
         for (int i = 0; i < rings; ++i)
         {
@@ -883,7 +844,6 @@ void RenderBatch::Cone(const Vec3 &position, float radius, float height,
         }
     }
 }
-
 
 void RenderBatch::Cylinder(const Vec3 &position, float radius, float height,
                            int segments, bool wire)
@@ -1153,9 +1113,7 @@ void RenderBatch::Quad(u32 texture, float x, float y, float width, float height)
     float top = 0;
     float bottom = 1;
 
-
     SetTexture(texture);
-
 
     float x1 = x;
     float y1 = y;
@@ -1168,7 +1126,6 @@ void RenderBatch::Quad(u32 texture, float x, float y, float width, float height)
 
     Vec2 coords[4];
     Vec2 texcoords[4];
-
 
     coords[0].x = x1;
     coords[0].y = y1;
@@ -1188,7 +1145,6 @@ void RenderBatch::Quad(u32 texture, float x, float y, float width, float height)
     texcoords[3].x = right;
     texcoords[3].y = top;
 
-
     Quad(coords, texcoords);
 }
 
@@ -1196,12 +1152,10 @@ void RenderBatch::Quad(Texture *texture, float x, float y, float width,
                        float height)
 {
 
-
     float left = 0;
     float right = 1;
     float top = 0;
     float bottom = 1;
-
 
     if (texture != nullptr)
     {
@@ -1213,7 +1167,6 @@ void RenderBatch::Quad(Texture *texture, float x, float y, float width,
         SetTexture(defaultTextureId);
     }
 
-
     float x1 = x;
     float y1 = y;
     float x2 = x;
@@ -1225,7 +1178,6 @@ void RenderBatch::Quad(Texture *texture, float x, float y, float width,
 
     Vec2 coords[4];
     Vec2 texcoords[4];
-
 
     coords[0].x = x1;
     coords[0].y = y1;
@@ -1245,21 +1197,17 @@ void RenderBatch::Quad(Texture *texture, float x, float y, float width,
     texcoords[3].x = right;
     texcoords[3].y = top;
 
-
     Quad(coords, texcoords);
 }
-
 
 void RenderBatch::Quad(Texture *texture, const FloatRect &src, float x,
                        float y, float width, float height)
 {
 
-
     float left = 0;
     float right = 1;
     float top = 0;
     float bottom = 1;
-
 
     int widthTex = 1;
     int heightTex = 1;
@@ -1271,12 +1219,10 @@ void RenderBatch::Quad(Texture *texture, const FloatRect &src, float x,
         SetTexture(texture->GetHandle());
     }
 
-
     left = (2.0f * src.x + 1.0f) / (2.0f * widthTex);
     right = left + (src.width * 2.0f - 2.0f) / (2.0f * widthTex);
     top = (2.0f * src.y + 1.0f) / (2 * heightTex);
     bottom = top + (src.height * 2.0f - 2.0f) / (2.0f * heightTex);
-
 
     float x1 = x;
     float y1 = y;
@@ -1289,7 +1235,6 @@ void RenderBatch::Quad(Texture *texture, const FloatRect &src, float x,
 
     Vec2 coords[4];
     Vec2 texcoords[4];
-
 
     coords[0].x = x1;
     coords[0].y = y1;
@@ -1308,7 +1253,6 @@ void RenderBatch::Quad(Texture *texture, const FloatRect &src, float x,
     texcoords[2].y = bottom;
     texcoords[3].x = right;
     texcoords[3].y = top;
-
 
     Quad(coords, texcoords);
 }
@@ -1327,87 +1271,88 @@ void RenderBatch::Triangle(float x1, float y1, float x2, float y2, float x3, flo
         SetMode(LINES);
         Vertex2f(x1, y1);
         Vertex2f(x2, y2);
-        
+
         Vertex2f(x2, y2);
         Vertex2f(x3, y3);
-        
+
         Vertex2f(x3, y3);
         Vertex2f(x1, y1);
     }
 }
 
-void RenderBatch::RoundedRectangle(int posX, int posY, int width, int height, 
+void RenderBatch::RoundedRectangle(int posX, int posY, int width, int height,
                                    float roundness, int segments, bool fill)
 {
-    if (roundness <= 0) 
+    if (roundness <= 0)
     {
         Rectangle(posX, posY, width, height, fill);
         return;
     }
-    
-    float radius = (roundness > width/2.0f || roundness > height/2.0f) 
-                   ? fmin(width/2.0f, height/2.0f) : roundness;
-    
+
+    float radius = (roundness > width / 2.0f || roundness > height / 2.0f)
+                       ? fmin(width / 2.0f, height / 2.0f)
+                       : roundness;
+
     if (fill)
     {
         SetMode(TRIANGLES);
-        
+
         // Centro do retângulo
         float cx = posX + width / 2.0f;
         float cy = posY + height / 2.0f;
-        
+
         // Cantos arredondados (4 quartos de círculo)
         float corners[4][2] = {
-            {posX + radius, posY + radius},               // Top-left
-            {posX + width - radius, posY + radius},       // Top-right
+            {posX + radius, posY + radius},                  // Top-left
+            {posX + width - radius, posY + radius},          // Top-right
             {posX + width - radius, posY + height - radius}, // Bottom-right
-            {posX + radius, posY + height - radius}       // Bottom-left
+            {posX + radius, posY + height - radius}          // Bottom-left
         };
-        
+
         float angles[4] = {180.0f, 270.0f, 0.0f, 90.0f}; // Ângulos iniciais
-        
+
         // Desenha os cantos arredondados
         for (int corner = 0; corner < 4; corner++)
         {
             float startAngle = angles[corner] * DEG2RAD;
             float endAngle = (angles[corner] + 90.0f) * DEG2RAD;
             float angleStep = (endAngle - startAngle) / segments;
-            
+
             for (int i = 0; i < segments; i++)
             {
                 float angle1 = startAngle + angleStep * i;
                 float angle2 = startAngle + angleStep * (i + 1);
-                
+
                 Vertex2f(corners[corner][0], corners[corner][1]);
-                Vertex2f(corners[corner][0] + cos(angle1) * radius, 
-                        corners[corner][1] + sin(angle1) * radius);
-                Vertex2f(corners[corner][0] + cos(angle2) * radius, 
-                        corners[corner][1] + sin(angle2) * radius);
+                Vertex2f(corners[corner][0] + cos(angle1) * radius,
+                         corners[corner][1] + sin(angle1) * radius);
+                Vertex2f(corners[corner][0] + cos(angle2) * radius,
+                         corners[corner][1] + sin(angle2) * radius);
             }
         }
-        
+
         // Retângulo central
         Vertex2f(posX + radius, posY);
         Vertex2f(posX + radius, posY + height);
         Vertex2f(posX + width - radius, posY);
-        
+
         Vertex2f(posX + width - radius, posY);
         Vertex2f(posX + radius, posY + height);
         Vertex2f(posX + width - radius, posY + height);
-        
+
         // Laterais
         Vertex2f(posX, posY + radius);
         Vertex2f(posX + radius, posY + radius);
         Vertex2f(posX, posY + height - radius);
-        
+
         Vertex2f(posX + radius, posY + radius);
         Vertex2f(posX + radius, posY + height - radius);
         Vertex2f(posX, posY + height - radius);
-        
+
         Vertex2f(posX + width - radius, posY + radius);
         Vertex2f(posX + width, posY + radius);
         Vertex2f(posX + width - radius, posY + height - radius);
-        
+
         Vertex2f(posX + width, posY + radius);
         Vertex2f(posX + width, posY + height - radius);
         Vertex2f(posX + width - radius, posY + height - radius);
@@ -1419,12 +1364,12 @@ void RenderBatch::Ellipse(int centerX, int centerY, float radiusX, float radiusY
     if (fill)
     {
         SetMode(TRIANGLES);
-        
+
         float x = centerX;
         float y = centerY;
         float angle = 0.0f;
         float angleInc = 2.0f * PI / 360.0f;
-        
+
         for (int i = 0; i < 360; i++)
         {
             Vertex2f(x, y);
@@ -1436,12 +1381,12 @@ void RenderBatch::Ellipse(int centerX, int centerY, float radiusX, float radiusY
     else
     {
         SetMode(LINES);
-        
+
         float x = centerX;
         float y = centerY;
         float angle = 0.0f;
         float angleInc = 2.0f * PI / 360.0f;
-        
+
         for (int i = 0; i < 360; i++)
         {
             Vertex2f(x + cos(angle) * radiusX, y + sin(angle) * radiusY);
@@ -1451,18 +1396,19 @@ void RenderBatch::Ellipse(int centerX, int centerY, float radiusX, float radiusY
     }
 }
 
-void RenderBatch::Polygon(int centerX, int centerY, int sides, float radius, 
-                         float rotation, bool fill)
+void RenderBatch::Polygon(int centerX, int centerY, int sides, float radius,
+                          float rotation, bool fill)
 {
-    if (sides < 3) return;
-    
+    if (sides < 3)
+        return;
+
     if (fill)
     {
         SetMode(TRIANGLES);
-        
+
         float angle = rotation * DEG2RAD;
         float angleInc = 2.0f * PI / sides;
-        
+
         for (int i = 0; i < sides; i++)
         {
             Vertex2f(centerX, centerY);
@@ -1474,10 +1420,10 @@ void RenderBatch::Polygon(int centerX, int centerY, int sides, float radius,
     else
     {
         SetMode(LINES);
-        
+
         float angle = rotation * DEG2RAD;
         float angleInc = 2.0f * PI / sides;
-        
+
         for (int i = 0; i < sides; i++)
         {
             Vertex2f(centerX + cos(angle) * radius, centerY + sin(angle) * radius);
@@ -1487,16 +1433,16 @@ void RenderBatch::Polygon(int centerX, int centerY, int sides, float radius,
     }
 }
 
-void RenderBatch::CircleSector(int centerX, int centerY, float radius, 
-                              float startAngle, float endAngle, int segments, bool fill)
+void RenderBatch::CircleSector(int centerX, int centerY, float radius,
+                               float startAngle, float endAngle, int segments, bool fill)
 {
     if (fill)
     {
         SetMode(TRIANGLES);
-        
+
         float angleStep = (endAngle - startAngle) / segments;
         float angle = startAngle * DEG2RAD;
-        
+
         for (int i = 0; i < segments; i++)
         {
             Vertex2f(centerX, centerY);
@@ -1508,10 +1454,10 @@ void RenderBatch::CircleSector(int centerX, int centerY, float radius,
     else
     {
         SetMode(LINES);
-        
+
         float angleStep = (endAngle - startAngle) / segments;
         float angle = startAngle * DEG2RAD;
-        
+
         // Linhas do arco
         for (int i = 0; i < segments; i++)
         {
@@ -1519,12 +1465,12 @@ void RenderBatch::CircleSector(int centerX, int centerY, float radius,
             angle += angleStep * DEG2RAD;
             Vertex2f(centerX + cos(angle) * radius, centerY + sin(angle) * radius);
         }
-        
+
         // Linhas do centro
         angle = startAngle * DEG2RAD;
         Vertex2f(centerX, centerY);
         Vertex2f(centerX + cos(angle) * radius, centerY + sin(angle) * radius);
-        
+
         angle = endAngle * DEG2RAD;
         Vertex2f(centerX, centerY);
         Vertex2f(centerX + cos(angle) * radius, centerY + sin(angle) * radius);
@@ -1534,14 +1480,14 @@ void RenderBatch::CircleSector(int centerX, int centerY, float radius,
 void RenderBatch::Grid(int posX, int posY, int width, int height, int cellWidth, int cellHeight)
 {
     SetMode(LINES);
-    
+
     // Linhas verticais
     for (int x = posX; x <= posX + width; x += cellWidth)
     {
         Vertex2f(x, posY);
         Vertex2f(x, posY + height);
     }
-    
+
     // Linhas horizontais
     for (int y = posY; y <= posY + height; y += cellHeight)
     {
@@ -1550,12 +1496,13 @@ void RenderBatch::Grid(int posX, int posY, int width, int height, int cellWidth,
     }
 }
 
-void RenderBatch::Polyline(const Vec2* points, int pointCount)
+void RenderBatch::Polyline(const Vec2 *points, int pointCount)
 {
-    if (pointCount < 2) return;
-    
+    if (pointCount < 2)
+        return;
+
     SetMode(LINES);
-    
+
     for (int i = 0; i < pointCount - 1; i++)
     {
         Vertex2f(points[i].x, points[i].y);
@@ -1563,29 +1510,33 @@ void RenderBatch::Polyline(const Vec2* points, int pointCount)
     }
 }
 
-
-void RenderBatch::TexturedPolygon(const Vec2* points, int pointCount, unsigned int textureId)
+void RenderBatch::TexturedPolygon(const Vec2 *points, int pointCount, unsigned int textureId)
 {
-    if (pointCount < 3) return;
-    
+    if (pointCount < 3)
+        return;
+
     SetTexture(textureId);
     SetMode(TRIANGLES);
-    
+
     // Calcular bounding box para mapear UVs
     float minX = points[0].x, maxX = points[0].x;
     float minY = points[0].y, maxY = points[0].y;
-    
+
     for (int i = 1; i < pointCount; i++)
     {
-        if (points[i].x < minX) minX = points[i].x;
-        if (points[i].x > maxX) maxX = points[i].x;
-        if (points[i].y < minY) minY = points[i].y;
-        if (points[i].y > maxY) maxY = points[i].y;
+        if (points[i].x < minX)
+            minX = points[i].x;
+        if (points[i].x > maxX)
+            maxX = points[i].x;
+        if (points[i].y < minY)
+            minY = points[i].y;
+        if (points[i].y > maxY)
+            maxY = points[i].y;
     }
-    
+
     float width = maxX - minX;
     float height = maxY - minY;
-    
+
     // Calcular centróide para triangulação em leque
     float centerX = 0, centerY = 0;
     for (int i = 0; i < pointCount; i++)
@@ -1595,26 +1546,26 @@ void RenderBatch::TexturedPolygon(const Vec2* points, int pointCount, unsigned i
     }
     centerX /= pointCount;
     centerY /= pointCount;
-    
+
     // UV do centro
     float centerU = (centerX - minX) / width;
     float centerV = (centerY - minY) / height;
-    
+
     // Triangulação em leque a partir do centro
     for (int i = 0; i < pointCount; i++)
     {
         int next = (i + 1) % pointCount;
-        
+
         // Centro
         TexCoord2f(centerU, centerV);
         Vertex2f(centerX, centerY);
-        
+
         // Ponto atual
         float u1 = (points[i].x - minX) / width;
         float v1 = (points[i].y - minY) / height;
         TexCoord2f(u1, v1);
         Vertex2f(points[i].x, points[i].y);
-        
+
         // Próximo ponto
         float u2 = (points[next].x - minX) / width;
         float v2 = (points[next].y - minY) / height;
@@ -1623,20 +1574,19 @@ void RenderBatch::TexturedPolygon(const Vec2* points, int pointCount, unsigned i
     }
 }
 
- 
-
-void RenderBatch::TexturedPolygonCustomUV(const TexVertex* vertices, int vertexCount, 
+void RenderBatch::TexturedPolygonCustomUV(const TexVertex *vertices, int vertexCount,
                                           unsigned int textureId)
 {
-    if (vertexCount < 3) return;
-    
+    if (vertexCount < 3)
+        return;
+
     SetTexture(textureId);
     SetMode(TRIANGLES);
-    
+
     // Calcular centróide
     float centerX = 0, centerY = 0;
     float centerU = 0, centerV = 0;
-    
+
     for (int i = 0; i < vertexCount; i++)
     {
         centerX += vertices[i].position.x;
@@ -1648,171 +1598,171 @@ void RenderBatch::TexturedPolygonCustomUV(const TexVertex* vertices, int vertexC
     centerY /= vertexCount;
     centerU /= vertexCount;
     centerV /= vertexCount;
-    
+
     // Triangulação em leque
     for (int i = 0; i < vertexCount; i++)
     {
         int next = (i + 1) % vertexCount;
-        
+
         // Centro
         TexCoord2f(centerU, centerV);
         Vertex2f(centerX, centerY);
-        
+
         // Ponto atual
         TexCoord2f(vertices[i].texCoord.x, vertices[i].texCoord.y);
         Vertex2f(vertices[i].position.x, vertices[i].position.y);
-        
+
         // Próximo ponto
         TexCoord2f(vertices[next].texCoord.x, vertices[next].texCoord.y);
         Vertex2f(vertices[next].position.x, vertices[next].position.y);
     }
 }
 
-void RenderBatch::TexturedQuad(const Vec2& p1, const Vec2& p2, const Vec2& p3, const Vec2& p4,
+void RenderBatch::TexturedQuad(const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, const Vec2 &p4,
                                unsigned int textureId)
 {
     SetTexture(textureId);
     SetMode(TRIANGLES);
-    
+
     // Triângulo 1
     TexCoord2f(0.0f, 0.0f);
     Vertex2f(p1.x, p1.y);
-    
+
     TexCoord2f(1.0f, 0.0f);
     Vertex2f(p2.x, p2.y);
-    
+
     TexCoord2f(1.0f, 1.0f);
     Vertex2f(p3.x, p3.y);
-    
+
     // Triângulo 2
     TexCoord2f(0.0f, 0.0f);
     Vertex2f(p1.x, p1.y);
-    
+
     TexCoord2f(1.0f, 1.0f);
     Vertex2f(p3.x, p3.y);
-    
+
     TexCoord2f(0.0f, 1.0f);
     Vertex2f(p4.x, p4.y);
 }
 
 // Sobrecarga com UVs customizados
-void RenderBatch::TexturedQuad(const Vec2& p1, const Vec2& p2, const Vec2& p3, const Vec2& p4,
-                               const Vec2& uv1, const Vec2& uv2, const Vec2& uv3, const Vec2& uv4,
+void RenderBatch::TexturedQuad(const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, const Vec2 &p4,
+                               const Vec2 &uv1, const Vec2 &uv2, const Vec2 &uv3, const Vec2 &uv4,
                                unsigned int textureId)
 {
     SetTexture(textureId);
     SetMode(TRIANGLES);
-    
+
     // Triângulo 1
     TexCoord2f(uv1.x, uv1.y);
     Vertex2f(p1.x, p1.y);
-    
+
     TexCoord2f(uv2.x, uv2.y);
     Vertex2f(p2.x, p2.y);
-    
+
     TexCoord2f(uv3.x, uv3.y);
     Vertex2f(p3.x, p3.y);
-    
+
     // Triângulo 2
     TexCoord2f(uv1.x, uv1.y);
     Vertex2f(p1.x, p1.y);
-    
+
     TexCoord2f(uv3.x, uv3.y);
     Vertex2f(p3.x, p3.y);
-    
+
     TexCoord2f(uv4.x, uv4.y);
     Vertex2f(p4.x, p4.y);
 }
 
-void RenderBatch::TexturedTriangle(const Vec2& p1, const Vec2& p2, const Vec2& p3,
+void RenderBatch::TexturedTriangle(const Vec2 &p1, const Vec2 &p2, const Vec2 &p3,
                                    unsigned int textureId)
 {
     SetTexture(textureId);
     SetMode(TRIANGLES);
-    
+
     TexCoord2f(0.0f, 0.0f);
     Vertex2f(p1.x, p1.y);
-    
+
     TexCoord2f(1.0f, 0.0f);
     Vertex2f(p2.x, p2.y);
-    
+
     TexCoord2f(0.5f, 1.0f);
     Vertex2f(p3.x, p3.y);
 }
 
 // Com UVs customizados
-void RenderBatch::TexturedTriangle(const Vec2& p1, const Vec2& p2, const Vec2& p3,
-                                   const Vec2& uv1, const Vec2& uv2, const Vec2& uv3,
+void RenderBatch::TexturedTriangle(const Vec2 &p1, const Vec2 &p2, const Vec2 &p3,
+                                   const Vec2 &uv1, const Vec2 &uv2, const Vec2 &uv3,
                                    unsigned int textureId)
 {
     SetTexture(textureId);
     SetMode(TRIANGLES);
-    
+
     TexCoord2f(uv1.x, uv1.y);
     Vertex2f(p1.x, p1.y);
-    
+
     TexCoord2f(uv2.x, uv2.y);
     Vertex2f(p2.x, p2.y);
-    
+
     TexCoord2f(uv3.x, uv3.y);
     Vertex2f(p3.x, p3.y);
 }
 
-
-void RenderBatch::BezierQuadratic(const Vec2& p0, const Vec2& p1, const Vec2& p2, 
+void RenderBatch::BezierQuadratic(const Vec2 &p0, const Vec2 &p1, const Vec2 &p2,
                                   int segments)
 {
     SetMode(LINES);
-    
+
     for (int i = 0; i < segments; i++)
     {
         float t1 = (float)i / segments;
         float t2 = (float)(i + 1) / segments;
-        
+
         // Ponto atual
-        float x1 = (1-t1)*(1-t1)*p0.x + 2*(1-t1)*t1*p1.x + t1*t1*p2.x;
-        float y1 = (1-t1)*(1-t1)*p0.y + 2*(1-t1)*t1*p1.y + t1*t1*p2.y;
-        
+        float x1 = (1 - t1) * (1 - t1) * p0.x + 2 * (1 - t1) * t1 * p1.x + t1 * t1 * p2.x;
+        float y1 = (1 - t1) * (1 - t1) * p0.y + 2 * (1 - t1) * t1 * p1.y + t1 * t1 * p2.y;
+
         // Próximo ponto
-        float x2 = (1-t2)*(1-t2)*p0.x + 2*(1-t2)*t2*p1.x + t2*t2*p2.x;
-        float y2 = (1-t2)*(1-t2)*p0.y + 2*(1-t2)*t2*p1.y + t2*t2*p2.y;
-        
+        float x2 = (1 - t2) * (1 - t2) * p0.x + 2 * (1 - t2) * t2 * p1.x + t2 * t2 * p2.x;
+        float y2 = (1 - t2) * (1 - t2) * p0.y + 2 * (1 - t2) * t2 * p1.y + t2 * t2 * p2.y;
+
         Vertex2f(x1, y1);
         Vertex2f(x2, y2);
     }
 }
 
-void RenderBatch::BezierCubic(const Vec2& p0, const Vec2& p1, const Vec2& p2, 
-                              const Vec2& p3, int segments)
+void RenderBatch::BezierCubic(const Vec2 &p0, const Vec2 &p1, const Vec2 &p2,
+                              const Vec2 &p3, int segments)
 {
     SetMode(LINES);
-    
+
     for (int i = 0; i < segments; i++)
     {
         float t1 = (float)i / segments;
         float t2 = (float)(i + 1) / segments;
-        
+
         // Ponto atual (t1)
         float mt1 = 1 - t1;
-        float x1 = mt1*mt1*mt1*p0.x + 3*mt1*mt1*t1*p1.x + 3*mt1*t1*t1*p2.x + t1*t1*t1*p3.x;
-        float y1 = mt1*mt1*mt1*p0.y + 3*mt1*mt1*t1*p1.y + 3*mt1*t1*t1*p2.y + t1*t1*t1*p3.y;
-        
+        float x1 = mt1 * mt1 * mt1 * p0.x + 3 * mt1 * mt1 * t1 * p1.x + 3 * mt1 * t1 * t1 * p2.x + t1 * t1 * t1 * p3.x;
+        float y1 = mt1 * mt1 * mt1 * p0.y + 3 * mt1 * mt1 * t1 * p1.y + 3 * mt1 * t1 * t1 * p2.y + t1 * t1 * t1 * p3.y;
+
         // Próximo ponto (t2)
         float mt2 = 1 - t2;
-        float x2 = mt2*mt2*mt2*p0.x + 3*mt2*mt2*t2*p1.x + 3*mt2*t2*t2*p2.x + t2*t2*t2*p3.x;
-        float y2 = mt2*mt2*mt2*p0.y + 3*mt2*mt2*t2*p1.y + 3*mt2*t2*t2*p2.y + t2*t2*t2*p3.y;
-        
+        float x2 = mt2 * mt2 * mt2 * p0.x + 3 * mt2 * mt2 * t2 * p1.x + 3 * mt2 * t2 * t2 * p2.x + t2 * t2 * t2 * p3.x;
+        float y2 = mt2 * mt2 * mt2 * p0.y + 3 * mt2 * mt2 * t2 * p1.y + 3 * mt2 * t2 * t2 * p2.y + t2 * t2 * t2 * p3.y;
+
         Vertex2f(x1, y1);
         Vertex2f(x2, y2);
     }
 }
 
-void RenderBatch::CatmullRomSpline(const Vec2* points, int pointCount, int segments)
+void RenderBatch::CatmullRomSpline(const Vec2 *points, int pointCount, int segments)
 {
-    if (pointCount < 4) return;
-    
+    if (pointCount < 4)
+        return;
+
     SetMode(LINES);
-    
+
     // Para cada segmento entre pontos
     for (int i = 0; i < pointCount - 3; i++)
     {
@@ -1820,52 +1770,53 @@ void RenderBatch::CatmullRomSpline(const Vec2* points, int pointCount, int segme
         Vec2 p1 = points[i + 1];
         Vec2 p2 = points[i + 2];
         Vec2 p3 = points[i + 3];
-        
+
         for (int s = 0; s < segments; s++)
         {
             float t1 = (float)s / segments;
             float t2 = (float)(s + 1) / segments;
-            
+
             // Calcular ponto atual
             float t1_2 = t1 * t1;
             float t1_3 = t1_2 * t1;
-            
+
             float x1 = 0.5f * ((2 * p1.x) +
-                              (-p0.x + p2.x) * t1 +
-                              (2*p0.x - 5*p1.x + 4*p2.x - p3.x) * t1_2 +
-                              (-p0.x + 3*p1.x - 3*p2.x + p3.x) * t1_3);
-            
+                               (-p0.x + p2.x) * t1 +
+                               (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t1_2 +
+                               (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t1_3);
+
             float y1 = 0.5f * ((2 * p1.y) +
-                              (-p0.y + p2.y) * t1 +
-                              (2*p0.y - 5*p1.y + 4*p2.y - p3.y) * t1_2 +
-                              (-p0.y + 3*p1.y - 3*p2.y + p3.y) * t1_3);
-            
+                               (-p0.y + p2.y) * t1 +
+                               (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t1_2 +
+                               (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t1_3);
+
             // Calcular próximo ponto
             float t2_2 = t2 * t2;
             float t2_3 = t2_2 * t2;
-            
+
             float x2 = 0.5f * ((2 * p1.x) +
-                              (-p0.x + p2.x) * t2 +
-                              (2*p0.x - 5*p1.x + 4*p2.x - p3.x) * t2_2 +
-                              (-p0.x + 3*p1.x - 3*p2.x + p3.x) * t2_3);
-            
+                               (-p0.x + p2.x) * t2 +
+                               (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2_2 +
+                               (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t2_3);
+
             float y2 = 0.5f * ((2 * p1.y) +
-                              (-p0.y + p2.y) * t2 +
-                              (2*p0.y - 5*p1.y + 4*p2.y - p3.y) * t2_2 +
-                              (-p0.y + 3*p1.y - 3*p2.y + p3.y) * t2_3);
-            
+                               (-p0.y + p2.y) * t2 +
+                               (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2_2 +
+                               (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t2_3);
+
             Vertex2f(x1, y1);
             Vertex2f(x2, y2);
         }
     }
 }
 
-void RenderBatch::BSpline(const Vec2* points, int pointCount, int segments, int degree)
+void RenderBatch::BSpline(const Vec2 *points, int pointCount, int segments, int degree)
 {
-    if (pointCount < degree + 1) return;
-    
+    if (pointCount < degree + 1)
+        return;
+
     SetMode(LINES);
-    
+
     // B-Spline cúbica uniforme (grau 3)
     for (int i = 0; i < pointCount - 3; i++)
     {
@@ -1873,128 +1824,129 @@ void RenderBatch::BSpline(const Vec2* points, int pointCount, int segments, int 
         Vec2 p1 = points[i + 1];
         Vec2 p2 = points[i + 2];
         Vec2 p3 = points[i + 3];
-        
+
         for (int s = 0; s < segments; s++)
         {
             float t1 = (float)s / segments;
             float t2 = (float)(s + 1) / segments;
-            
+
             // Matriz de B-Spline cúbica uniforme
             float t1_2 = t1 * t1;
             float t1_3 = t1_2 * t1;
-            
-            float b0_1 = (1 - 3*t1 + 3*t1_2 - t1_3) / 6.0f;
-            float b1_1 = (4 - 6*t1_2 + 3*t1_3) / 6.0f;
-            float b2_1 = (1 + 3*t1 + 3*t1_2 - 3*t1_3) / 6.0f;
+
+            float b0_1 = (1 - 3 * t1 + 3 * t1_2 - t1_3) / 6.0f;
+            float b1_1 = (4 - 6 * t1_2 + 3 * t1_3) / 6.0f;
+            float b2_1 = (1 + 3 * t1 + 3 * t1_2 - 3 * t1_3) / 6.0f;
             float b3_1 = t1_3 / 6.0f;
-            
-            float x1 = b0_1*p0.x + b1_1*p1.x + b2_1*p2.x + b3_1*p3.x;
-            float y1 = b0_1*p0.y + b1_1*p1.y + b2_1*p2.y + b3_1*p3.y;
-            
+
+            float x1 = b0_1 * p0.x + b1_1 * p1.x + b2_1 * p2.x + b3_1 * p3.x;
+            float y1 = b0_1 * p0.y + b1_1 * p1.y + b2_1 * p2.y + b3_1 * p3.y;
+
             float t2_2 = t2 * t2;
             float t2_3 = t2_2 * t2;
-            
-            float b0_2 = (1 - 3*t2 + 3*t2_2 - t2_3) / 6.0f;
-            float b1_2 = (4 - 6*t2_2 + 3*t2_3) / 6.0f;
-            float b2_2 = (1 + 3*t2 + 3*t2_2 - 3*t2_3) / 6.0f;
+
+            float b0_2 = (1 - 3 * t2 + 3 * t2_2 - t2_3) / 6.0f;
+            float b1_2 = (4 - 6 * t2_2 + 3 * t2_3) / 6.0f;
+            float b2_2 = (1 + 3 * t2 + 3 * t2_2 - 3 * t2_3) / 6.0f;
             float b3_2 = t2_3 / 6.0f;
-            
-            float x2 = b0_2*p0.x + b1_2*p1.x + b2_2*p2.x + b3_2*p3.x;
-            float y2 = b0_2*p0.y + b1_2*p1.y + b2_2*p2.y + b3_2*p3.y;
-            
+
+            float x2 = b0_2 * p0.x + b1_2 * p1.x + b2_2 * p2.x + b3_2 * p3.x;
+            float y2 = b0_2 * p0.y + b1_2 * p1.y + b2_2 * p2.y + b3_2 * p3.y;
+
             Vertex2f(x1, y1);
             Vertex2f(x2, y2);
         }
     }
 }
- 
 
-void RenderBatch::HermiteSpline(const HermitePoint* points, int pointCount, int segments)
+void RenderBatch::HermiteSpline(const HermitePoint *points, int pointCount, int segments)
 {
-    if (pointCount < 2) return;
-    
+    if (pointCount < 2)
+        return;
+
     SetMode(LINES);
-    
+
     for (int i = 0; i < pointCount - 1; i++)
     {
         Vec2 p0 = points[i].position;
         Vec2 m0 = points[i].tangent;
         Vec2 p1 = points[i + 1].position;
         Vec2 m1 = points[i + 1].tangent;
-        
+
         for (int s = 0; s < segments; s++)
         {
             float t1 = (float)s / segments;
             float t2 = (float)(s + 1) / segments;
-            
+
             // Funções base de Hermite
             float t1_2 = t1 * t1;
             float t1_3 = t1_2 * t1;
-            
-            float h00_1 = 2*t1_3 - 3*t1_2 + 1;
-            float h10_1 = t1_3 - 2*t1_2 + t1;
-            float h01_1 = -2*t1_3 + 3*t1_2;
+
+            float h00_1 = 2 * t1_3 - 3 * t1_2 + 1;
+            float h10_1 = t1_3 - 2 * t1_2 + t1;
+            float h01_1 = -2 * t1_3 + 3 * t1_2;
             float h11_1 = t1_3 - t1_2;
-            
-            float x1 = h00_1*p0.x + h10_1*m0.x + h01_1*p1.x + h11_1*m1.x;
-            float y1 = h00_1*p0.y + h10_1*m0.y + h01_1*p1.y + h11_1*m1.y;
-            
+
+            float x1 = h00_1 * p0.x + h10_1 * m0.x + h01_1 * p1.x + h11_1 * m1.x;
+            float y1 = h00_1 * p0.y + h10_1 * m0.y + h01_1 * p1.y + h11_1 * m1.y;
+
             float t2_2 = t2 * t2;
             float t2_3 = t2_2 * t2;
-            
-            float h00_2 = 2*t2_3 - 3*t2_2 + 1;
-            float h10_2 = t2_3 - 2*t2_2 + t2;
-            float h01_2 = -2*t2_3 + 3*t2_2;
+
+            float h00_2 = 2 * t2_3 - 3 * t2_2 + 1;
+            float h10_2 = t2_3 - 2 * t2_2 + t2;
+            float h01_2 = -2 * t2_3 + 3 * t2_2;
             float h11_2 = t2_3 - t2_2;
-            
-            float x2 = h00_2*p0.x + h10_2*m0.x + h01_2*p1.x + h11_2*m1.x;
-            float y2 = h00_2*p0.y + h10_2*m0.y + h01_2*p1.y + h11_2*m1.y;
-            
+
+            float x2 = h00_2 * p0.x + h10_2 * m0.x + h01_2 * p1.x + h11_2 * m1.x;
+            float y2 = h00_2 * p0.y + h10_2 * m0.y + h01_2 * p1.y + h11_2 * m1.y;
+
             Vertex2f(x1, y1);
             Vertex2f(x2, y2);
         }
     }
 }
 
-void RenderBatch::ThickSpline(const Vec2* points, int pointCount, float thickness, 
+void RenderBatch::ThickSpline(const Vec2 *points, int pointCount, float thickness,
                               int segments)
 {
-    if (pointCount < 2) return;
-    
+    if (pointCount < 2)
+        return;
+
     SetMode(TRIANGLES);
-    
+
     float halfThickness = thickness * 0.5f;
-    
+
     for (int i = 0; i < pointCount - 1; i++)
     {
         Vec2 p0 = points[i];
         Vec2 p1 = points[i + 1];
-        
+
         // Calcular perpendicular
         float dx = p1.x - p0.x;
         float dy = p1.y - p0.y;
-        float len = sqrt(dx*dx + dy*dy);
-        
+        float len = sqrt(dx * dx + dy * dy);
+
         if (len > 0)
         {
             dx /= len;
             dy /= len;
-            
+
             // Perpendicular
             float px = -dy * halfThickness;
             float py = dx * halfThickness;
-            
+
             // Vértices do quad
             Vec2 v0 = {p0.x + px, p0.y + py};
             Vec2 v1 = {p0.x - px, p0.y - py};
             Vec2 v2 = {p1.x + px, p1.y + py};
             Vec2 v3 = {p1.x - px, p1.y - py};
-            
+
             // Triângulo 1
             Vertex2f(v0.x, v0.y);
             Vertex2f(v1.x, v1.y);
             Vertex2f(v2.x, v2.y);
-            
+
             // Triângulo 2
             Vertex2f(v1.x, v1.y);
             Vertex2f(v3.x, v3.y);
