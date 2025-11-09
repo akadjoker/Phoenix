@@ -1,0 +1,698 @@
+
+
+#include "Core.hpp"
+
+int screenWidth = 1024;
+int screenHeight = 768;
+
+class QuadRenderer
+{
+private:
+    GLuint quadVAO, quadVBO;
+
+    void setupQuad()
+    {
+        float quadVertices[] = {
+            // positions        // texture coords
+            -1.0f,
+            1.0f,
+            0.0f,
+            0.0f,
+            1.0f, // Top-left
+            -1.0f,
+            -1.0f,
+            0.0f,
+            0.0f,
+            0.0f, // Bottom-left
+            1.0f,
+            1.0f,
+            0.0f,
+            1.0f,
+            1.0f, // Top-right
+            1.0f,
+            -1.0f,
+            0.0f,
+            1.0f,
+            0.0f, // Bottom-right
+        };
+
+        glGenVertexArrays(1, &quadVAO);
+        glGenBuffers(1, &quadVBO);
+        glBindVertexArray(quadVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_DYNAMIC_DRAW);
+
+        // Position attribute (3 floats)
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
+
+        // Texture coord attribute (2 floats)
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
+
+        glBindVertexArray(0);
+    }
+
+public:
+    QuadRenderer()
+    {
+        setupQuad();
+    }
+    void render(float x, float y, float w, float h, int screenWidth, int screenHeight)
+    {
+        float left = (2.0f * x) / screenWidth - 1.0f;
+        float right = (2.0f * (x + w)) / screenWidth - 1.0f;
+        float top = 1.0f - (2.0f * y) / screenHeight;
+        float bottom = 1.0f - (2.0f * (y + h)) / screenHeight;
+
+        float quadVertices[] = {
+            // positions           // texture coords
+            left,
+            top,
+            0.0f,
+            0.0f,
+            1.0f, // Top-left
+            left,
+            bottom,
+            0.0f,
+            0.0f,
+            0.0f, // Bottom-left
+            right,
+            top,
+            0.0f,
+            1.0f,
+            1.0f, // Top-right
+            right,
+            bottom,
+            0.0f,
+            1.0f,
+            0.0f, // Bottom-right
+        };
+
+        glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quadVertices), quadVertices);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glBindVertexArray(quadVAO);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glBindVertexArray(0);
+    }
+
+    void render()
+    {
+        glBindVertexArray(quadVAO);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glBindVertexArray(0);
+    }
+};
+
+const char *shadowVertexShader = R"(
+#version 300 es
+precision highp float;
+ 
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aNormal;
+layout (location = 2) in vec2 aTexCoords;
+
+
+
+ 
+out vec3 FragPos;
+out vec3 Normal;
+out vec2 TexCoords;
+ 
+
+
+uniform mat4 projection;
+uniform mat4 view;
+uniform mat4 model;
+
+
+void main()
+{
+    FragPos = vec3(model * vec4(aPos, 1.0));
+    Normal = transpose(inverse(mat3(model))) * aNormal;
+    TexCoords = aTexCoords;
+ 
+    gl_Position = projection * view * model * vec4(aPos, 1.0);
+}
+
+)";
+
+const char *shadowFragmentShader = R"(
+#version 300 es
+precision highp float;
+out vec4 FragColor;
+
+ 
+in vec3 FragPos;
+in vec3 Normal;
+in vec2 TexCoords;
+ 
+ 
+
+uniform sampler2D diffuseTexture;
+ 
+
+uniform vec3 lightPos;
+uniform vec3 viewPos;
+
+ 
+
+void main()
+{           
+    vec3 color = texture(diffuseTexture, TexCoords).rgb;
+    vec3 normal = normalize(Normal);
+    vec3 lightColor = vec3(0.3);
+    // ambient
+    vec3 ambient = 0.6 * lightColor;
+    // diffuse
+    vec3 lightDir = normalize(lightPos - FragPos);
+    float diff = max(dot(lightDir, normal), 0.0);
+    vec3 diffuse = diff * lightColor;
+    // specular
+    vec3 viewDir = normalize(viewPos - FragPos);
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = 0.0;
+    vec3 halfwayDir = normalize(lightDir + viewDir);  
+    spec = pow(max(dot(normal, halfwayDir), 0.0), 64.0);
+    vec3 specular = spec * lightColor;    
+ 
+                    
+    vec3 lighting = (ambient +  diffuse + specular) * color;    
+    
+    FragColor = vec4(lighting, 1.0);
+}
+
+)";
+
+const char *solidVertexShader = R"(
+#version 300 es
+precision highp float;
+ 
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aNormal;
+layout (location = 2) in vec2 aTexCoords;
+
+
+
+ 
+out vec3 FragPos;
+out vec3 Normal;
+out vec2 TexCoords;
+ 
+
+
+uniform mat4 projection;
+uniform mat4 view;
+uniform mat4 model;
+
+
+void main()
+{
+    FragPos = vec3(model * vec4(aPos, 1.0));
+    Normal = transpose(inverse(mat3(model))) * aNormal;
+    TexCoords = aTexCoords; 
+    gl_Position = projection * view * model * vec4(aPos, 1.0);
+}
+
+)";
+
+const char *solidFragmentShader = R"(
+#version 300 es
+precision highp float;
+
+out vec4 FragColor;
+
+in vec3 FragPos;
+in vec3 Normal;
+in vec2 TexCoords;
+
+uniform sampler2D u_reflectionTexture;  // A textura renderizada da reflexão
+uniform vec3 u_viewPos;                  // Posição da câmera
+uniform float u_fresnelPower;            // Controle do fresnel (default: 3.0)
+uniform float u_fresnelMin;              // Reflexão mínima (default: 0.05)
+uniform vec3 u_mirrorTint;               // Cor base do espelho (default: vec3(0.9, 0.95, 1.0))
+
+void main()
+{           
+    vec3 N = normalize(Normal);
+    vec3 V = normalize(u_viewPos - FragPos);
+    
+    // Fresnel-Schlick simplificado
+    // Mais reflexão em ângulos rasantes (grazing angles)
+    float NdotV = max(dot(N, V), 0.0);
+    float fresnel = pow(1.0 - NdotV, u_fresnelPower);
+    
+    // Mapeia para range [fresnelMin, 1.0]
+    fresnel = mix(u_fresnelMin, 1.0, fresnel);
+    
+    // Sample da textura de reflexão
+    vec3 reflection = texture(u_reflectionTexture, TexCoords).rgb;
+    
+    // Base color do espelho (ligeiramente azulado/prateado)
+    vec3 baseColor = u_mirrorTint * 0.1;
+    
+    // Combina base color com reflexão usando fresnel
+    vec3 color = mix(baseColor, reflection, fresnel);
+    
+    // adiciona um pequeno specular highlight
+     vec3 specular = vec3(pow(NdotV, 50.0)) * 0.2;
+     color += specular;
+    
+    FragColor = vec4(color, 1.0);
+}
+)";
+
+
+
+
+const char *mirrorFragmentShaderAdvanced = R"(
+#version 300 es
+precision highp float;
+
+out vec4 FragColor;
+
+in vec3 FragPos;
+in vec3 Normal;
+in vec2 TexCoords;
+
+uniform sampler2D u_reflectionTexture;
+uniform vec3 u_viewPos;
+const vec3 u_F0= vec3(0.95);  // Reflectance at normal incidence (default: vec3(0.95) para espelho)
+
+// Fresnel-Schlick equation
+vec3 fresnelSchlick(float cosTheta, vec3 F0)
+{
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+void main()
+{           
+    vec3 N = normalize(Normal);
+    vec3 V = normalize(u_viewPos - FragPos);
+    
+    // Fresnel usando a equação de Schlick
+    float NdotV = max(dot(N, V), 0.0);
+    vec3 F = fresnelSchlick(NdotV, u_F0);
+    
+    // Sample da textura de reflexão
+    vec3 reflection = texture(u_reflectionTexture, TexCoords).rgb;
+    
+    // Base tint do espelho (muito subtil)
+    vec3 mirrorTint = vec3(0.98, 0.99, 1.0);
+    reflection *= mirrorTint;
+    
+    // Aplica fresnel
+    vec3 color = reflection * F;
+    
+    // Darkening nas bordas (vignette effect)
+    float edgeDarken = smoothstep(0.0, 0.3, NdotV);
+    color *= edgeDarken;
+    
+    FragColor = vec4(color, 1.0);
+}
+)";
+
+
+int main()
+{
+
+    Device &device = Device::Instance();
+
+    if (!device.Create(screenWidth, screenHeight, "Shadow", true, 1))
+    {
+        return 1;
+    }
+    Driver &driver = Driver::Instance();
+    driver.SetClearDepth(1.0f);
+    driver.SetClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    driver.SetViewPort(0, 0, screenWidth, screenHeight);
+
+    RenderBatch batch;
+    batch.Init();
+
+    Font font;
+    font.SetBatch(&batch);
+    font.LoadDefaultFont();
+
+    GUI gui;
+    gui.Init(&batch, &font);
+
+    float lastX{0};
+    float lastY{0};
+
+    CameraFree camera(45.0f, (float)screenWidth / (float)screenHeight, 0.1f, 1000.0f);
+    camera.setPosition(0.0f, 0.5f, 10.0f);
+
+    bool firstMouse{true};
+    float mouseSensitivity{0.8f};
+
+    //******************************************* */
+
+    Shader *shader = ShaderManager::Instance().Create("shader", shadowVertexShader, shadowFragmentShader);
+    Shader *solid = ShaderManager::Instance().Create("solid", solidVertexShader, solidFragmentShader);
+    if (!shader || !solid)
+    {
+        return 1;
+    }
+
+    Vec3 lightPos(-2, 4.0f, -4.0f);
+
+    Vec3 cubePositions[] = {
+        Vec3(0.0f, 0.0f, 0.0f),
+        Vec3(2.0f, 5.0f, -15.0f),
+        Vec3(-1.5f, 2.2f, -2.5f),
+        Vec3(-3.8f, 2.0f, -12.3f),
+        Vec3(2.4f, -0.4f, -3.5f),
+        Vec3(-1.7f, 3.0f, -7.5f),
+        Vec3(1.3f, 2.0f, -2.5f),
+        Vec3(1.5f, 2.0f, -2.5f),
+        Vec3(1.5f, 0.2f, -1.5f),
+        Vec3(-1.3f, 1.0f, -1.5f)};
+
+    QuadRenderer quad;
+
+    TextureManager::Instance().SetLoadPath("assets/");
+    TextureManager::Instance().Add("wall.jpg", true);
+    TextureManager::Instance().Add("marm.jpg", true);
+
+    TextureManager::Instance().Add("sinbad/sinbad_body.tga", false);
+    TextureManager::Instance().Add("sinbad/sinbad_clothes.tga", false);
+    TextureManager::Instance().Add("sinbad/sinbad_sword.tga", false);
+
+    Mesh *meshModel = MeshManager::Instance().Load("sinbad", "assets/sinbad/sinbad.h3d");
+
+    Material *material = meshModel->AddMaterial("body");
+    material->SetTexture(0, TextureManager::Instance().Get("sinbad_body"));
+    material = meshModel->AddMaterial("clothes");
+    material->SetTexture(0, TextureManager::Instance().Get("sinbad_clothes"));
+    material = meshModel->AddMaterial("sword");
+    material->SetTexture(0, TextureManager::Instance().Get("sinbad_sword"));
+
+    meshModel->SetBufferMaterial(0, 1); // olhos
+    meshModel->SetBufferMaterial(1, 1); // tronco
+    meshModel->SetBufferMaterial(2, 2); // rings
+    meshModel->SetBufferMaterial(3, 1);
+    meshModel->SetBufferMaterial(4, 3); // espada
+    meshModel->SetBufferMaterial(5, 2);
+    meshModel->SetBufferMaterial(6, 2); // pernas
+
+    Animator animator = Animator(meshModel);
+
+    AnimationLayer *torsoLayer = animator.AddLayer();
+
+    torsoLayer->LoadAnimation("topIdle", "assets/sinbad/sinbad_IdleTop.anim");
+    torsoLayer->LoadAnimation("topSliceHorizontal", "assets/sinbad/sinbad_SliceHorizontal.anim");
+    torsoLayer->LoadAnimation("topSliceVertical", "assets/sinbad/sinbad_SliceVertical.anim");
+    torsoLayer->LoadAnimation("topRun", "assets/sinbad/sinbad_RunTop.anim");
+    torsoLayer->LoadAnimation("legsRun", "assets/sinbad/sinbad_RunBase.anim");
+    torsoLayer->Play("topRun", PlayMode::Loop);
+
+    AnimationLayer *legsLayer = animator.AddLayer();
+    legsLayer->LoadAnimation("legsIdle", "assets/sinbad/sinbad_IdleBase.anim");
+    legsLayer->LoadAnimation("legsRun", "assets/sinbad/sinbad_RunBase.anim");
+    legsLayer->Play("legsRun", PlayMode::Loop);
+
+    Mesh *plane = MeshManager::Instance().CreatePlane("plane", 10, 10, 50, 50, 20, 20);
+    plane->AddMaterial("marm");
+    plane->GetMaterial(0)->SetTexture(0, TextureManager::Instance().Get("marm"));
+
+    Mesh *mirror = MeshManager::Instance().CreateQuad("mirror", Vec3(1, 0, 0), 5.0f);
+    mirror->AddMaterial("rt");
+
+    Mesh *cube = MeshManager::Instance().CreateCube("cube");
+    cube->AddMaterial("wall");
+    cube->GetMaterial(0)->SetTexture(0, TextureManager::Instance().Get("wall"));
+
+    auto &rtMgr = RenderTargetManager::Instance();
+
+    RenderTarget *rt = rtMgr.Create("basic_rt", 512, 512);
+    rt->AddColorAttachment(TextureFormat::RGBA8);
+    rt->AddDepthAttachment(TextureFormat::DEPTH24);
+    rt->Finalize();
+
+    Vec3 mirrosPosition = Vec3(0.0f, 5.0f, 10.0f);
+    Vec3 mirrorLookAt = Vec3(0, 0, 0);
+
+    float mirrorHeight = 0.0f; // Y position do espelho
+
+    float m_fresnelPower = 3.0f;                 // Quanto maior, mais abrupta a transição
+    float m_fresnelMin = 0.05f;                  // Reflexão mínima (5%)
+    Vec3 m_mirrorTint = Vec3(0.9f, 0.95f, 1.0f); // Tint azulado
+
+    while (device.IsRunning())
+    {
+
+        float dt = device.GetFrameTime();
+        const float SPEED = 12.0f * dt;
+
+        // lightPos.x = sin(device.GetTime()) * 3.0f;
+        // lightPos.z = cos(device.GetTime()) * 2.0f;
+        // lightPos.y = 5.0 + cos(device.GetTime()) * 1.0f;
+
+        Input::Update();
+        SDL_Event event;
+
+        while (SDL_PollEvent(&event))
+        {
+            switch (event.type)
+            {
+            case SDL_QUIT:
+                device.SetShouldClose(true);
+                break;
+            case SDL_WINDOWEVENT:
+            {
+                if (event.window.event == SDL_WINDOWEVENT_RESIZED)
+                {
+                    screenWidth = event.window.data1;
+                    screenHeight = event.window.data2;
+                    driver.SetViewPort(0, 0, screenWidth, screenHeight);
+                    camera.setAspectRatio((float)screenWidth / (float)screenHeight);
+                }
+            }
+            case SDL_MOUSEBUTTONDOWN:
+                Input::OnMouseDown(event.button);
+                break;
+            case SDL_MOUSEBUTTONUP:
+                Input::OnMouseUp(event.button);
+                break;
+            case SDL_MOUSEMOTION:
+                Input::OnMouseMove(event.motion);
+                break;
+            case SDL_MOUSEWHEEL:
+                Input::OnMouseWheel(event.wheel);
+                break;
+            case SDL_KEYDOWN:
+            {
+                if (event.key.keysym.sym == SDLK_ESCAPE)
+                {
+                    device.SetShouldClose(true);
+                    break;
+                }
+                Input::OnKeyDown(event.key);
+                break;
+            }
+            case SDL_KEYUP:
+                Input::OnKeyUp(event.key);
+                break;
+            case SDL_TEXTINPUT:
+            {
+                Input::OnTextInput(event.text);
+                break;
+            }
+            }
+        }
+
+        int xposIn, yposIn;
+        u32 IsMouseDown = SDL_GetMouseState(&xposIn, &yposIn);
+
+        if (IsMouseDown & SDL_BUTTON(SDL_BUTTON_RIGHT))
+        {
+            float xpos = static_cast<float>(xposIn);
+            float ypos = static_cast<float>(yposIn);
+
+            if (firstMouse)
+            {
+                lastX = xpos;
+                lastY = ypos;
+                firstMouse = false;
+            }
+
+            float xoffset = xpos - lastX;
+            float yoffset = ypos - lastY;
+
+            lastX = xpos;
+            lastY = ypos;
+
+            camera.rotate(yoffset * mouseSensitivity, xoffset * mouseSensitivity);
+        }
+        else
+        {
+            firstMouse = true;
+        }
+
+        const Uint8 *state = SDL_GetKeyboardState(NULL);
+        if (state[SDL_SCANCODE_W])
+            camera.move(SPEED);
+        if (state[SDL_SCANCODE_S])
+            camera.move(-SPEED);
+        if (state[SDL_SCANCODE_A])
+            camera.strafe(-SPEED);
+        if (state[SDL_SCANCODE_D])
+            camera.strafe(SPEED);
+
+        camera.update(1.0f);
+
+        animator.Update(dt);
+
+        driver.SetCulling(CullMode::None);
+        driver.SetDepthTest(true);
+        driver.Clear(CLEAR_COLOR | CLEAR_DEPTH);
+
+        const Vec3 cameraPos = camera.getPosition();
+        Vec3 reflectedCamPos = camera.getPosition();
+        reflectedCamPos.y = 2.0f * mirrorHeight - cameraPos.y;
+
+        Vec3 camTarget = camera.getTarget();
+        Vec3 reflectedCamTarget = camTarget;
+        reflectedCamTarget.y = 2.0f * mirrorHeight - camTarget.y;
+
+     //   Mat4 view = Mat4::LookAt(reflectedCamPos, reflectedCamTarget, Vec3(0, 1, 0));
+        Mat4 view = Mat4::LookAt(mirrosPosition, mirrorLookAt, Vec3(0.0f, 1.0f, 0.0f));
+        Mat4 proj = Mat4::Perspective(45.0f, rt->GetWidth() / (float)rt->GetHeight(), 0.1f, 1000.0f);
+
+        rt->Bind();
+        driver.Clear(CLEAR_COLOR | CLEAR_DEPTH);
+
+        driver.SetDepthTest(true);
+        driver.SetBlendEnable(false);
+
+        shader->Bind();
+        shader->SetUniform("diffuseTexture", 0);
+
+        shader->SetUniformMat4("projection", proj.m);
+        shader->SetUniformMat4("view", view.m);
+
+        shader->SetUniform("lightPos", lightPos.x, lightPos.y, lightPos.z);
+        shader->SetUniform("viewPos", cameraPos.x, cameraPos.y, cameraPos.z);
+
+        Mat4 model = Mat4::Scale(Vec3(2.0f));
+        shader->SetUniformMat4("model", model.m);
+        driver.DrawMesh(plane);
+        for (int i = 0; i < 10; i++)
+        {
+            model = Mat4::Translation(cubePositions[i]) * Mat4::Scale(Vec3(1.0f));
+            shader->SetUniformMat4("model", model.m);
+            driver.DrawMesh(cube);
+        }
+
+        model = Mat4::Translation(Vec3(-2.0f, 0.5f, 0.0f)) * Mat4::Scale(Vec3(0.1f));
+        shader->SetUniformMat4("model", model.m);
+        driver.DrawMesh(meshModel);
+
+        rt->Unbind();
+
+        view = camera.getViewMatrix();
+        proj = camera.getProjectionMatrix();
+
+        shader->Bind();
+        shader->SetUniform("diffuseTexture", 0);
+
+        shader->SetUniformMat4("projection", proj.m);
+        shader->SetUniformMat4("view", view.m);
+
+        shader->SetUniform("lightPos", lightPos.x, lightPos.y, lightPos.z);
+        shader->SetUniform("viewPos", cameraPos.x, cameraPos.y, cameraPos.z);
+
+        model = Mat4::Scale(Vec3(2.0f));
+        shader->SetUniformMat4("model", model.m);
+        driver.DrawMesh(plane);
+        for (int i = 0; i < 10; i++)
+        {
+            model = Mat4::Translation(cubePositions[i]) * Mat4::Scale(Vec3(1.0f));
+            shader->SetUniformMat4("model", model.m);
+            driver.DrawMesh(cube);
+        }
+
+        model = Mat4::Translation(Vec3(-2.0f, 0.5f, 0.0f)) * Mat4::Scale(Vec3(0.1f));
+        shader->SetUniformMat4("model", model.m);
+        driver.DrawMesh(meshModel);
+
+        Texture *renderedTexture = rt->GetColorTexture(0);
+
+        mirror->SetTexture(0, renderedTexture);
+
+        solid->Bind();
+        solid->SetUniform("diffuse", 0);
+        solid->SetUniformMat4("projection", proj.m);
+        solid->SetUniformMat4("view", view.m);
+        solid->SetUniform("u_viewPos", cameraPos.x, cameraPos.y, cameraPos.z);
+        solid->SetUniform("u_fresnelPower", m_fresnelPower);
+        solid->SetUniform("u_fresnelMin", m_fresnelMin);
+        solid->SetUniform("u_mirrorTint", m_mirrorTint.x, m_mirrorTint.y, m_mirrorTint.z);
+        solid->SetUniform("u_reflectionTexture", 0);
+ 
+
+        model = Mat4::Translation(Vec3(-3.0f, 0.5f, 0.0f));
+        shader->SetUniformMat4("model", model.m);
+
+        driver.DrawMesh(mirror);
+
+        const Mat4 ortho = Mat4::Ortho(0.0f, (float)screenWidth, (float)screenHeight, 0.0f, -1.0f, 1.0f);
+
+        batch.SetMatrix(ortho);
+        driver.SetDepthTest(false);
+        driver.SetBlendEnable(true);
+        driver.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
+
+        gui.BeginFrame();
+
+        gui.BeginWindow("Settings", 100, 100, 200, 300);
+
+        float Y = 10;
+
+ 
+        gui.SliderFloat("power", &m_fresnelPower, 0.0f, 10.0f, 10, Y + 20, 190, 20);
+
+        Y += 40;
+  
+        gui.SliderFloat("min", &m_fresnelMin, 0.0f, 1.0f, 10, Y + 20, 190, 20);
+
+        // mirror position
+        Y += 40;
+        gui.Text(10, Y, "Mirror position");
+        gui.SliderFloat("X", &mirrosPosition.x, -5.0f, 5.0f, 10, Y + 20, 190, 20);
+        gui.SliderFloat("Y", &mirrosPosition.y, -5.0f, 5.0f, 10, Y + 40, 190, 20);
+        gui.SliderFloat("Z", &mirrosPosition.z, -5.0f, 5.0f, 10, Y + 60, 190, 20);
+
+        // light position
+        Y += 80;
+        gui.Text(10, Y, "Light position");
+        gui.SliderFloat("X", &lightPos.x, -5.0f, 5.0f, 10, Y + 20, 190, 20);
+        gui.SliderFloat("Y", &lightPos.y, -5.0f, 5.0f, 10, Y + 40, 190, 20);
+        gui.SliderFloat("Z", &lightPos.z, -5.0f, 5.0f, 10, Y + 60, 190, 20);
+
+        gui.EndWindow();
+
+        gui.EndFrame();
+
+        batch.Render();
+
+        driver.SetBlendEnable(false);
+
+        device.Flip();
+        driver.Reset();
+    }
+
+    font.Release();
+    batch.Release();
+    RenderTargetManager::Instance().RemoveAll();
+
+    MeshManager::Instance().UnloadAll();
+    ShaderManager::Instance().UnloadAll();
+    TextureManager::Instance().UnloadAll();
+    device.Close();
+
+    return 0;
+}

@@ -361,6 +361,8 @@ public:
     void Render();
     void CalculateNormals();
 
+    void SetTexture(u32 layer, Texture *texture);
+
     Material *AddMaterial(const std::string &name);
     Material *GetMaterial(u32 index) const { return materials[index]; }
     u32 GetMaterialCount() const { return materials.size(); }
@@ -633,6 +635,9 @@ public:
     Mesh *CreateSphere(const std::string &name, float radius = 1.0f, int segments = 32, int rings = 16);
     Mesh *CreateCylinder(const std::string &name, float radius = 1.0f, float height = 2.0f, int segments = 32, bool caps = true);
     Mesh *CreateCone(const std::string &name, float radius = 1.0f, float height = 2.0f, int segments = 32);
+    Mesh* CreateQuad(const std::string& name, const Vec3& face, 
+                     float size = 1.0f, float tilesU = 1.0f, float tilesV = 1.0f);
+  
 
     void UnloadAll();
 

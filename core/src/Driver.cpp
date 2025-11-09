@@ -603,3 +603,17 @@ void Driver::Clear(unsigned mask)
     if (bits & GL_COLOR_BUFFER_BIT)
         SetColorWrite(prevColorWrite);
 }
+
+
+void Driver::RestoreViewPort()
+{
+    SetViewPort(m_saveviewport.x, m_saveviewport.y, m_saveviewport.width, m_saveviewport.height);
+}
+
+void Driver::SaveViewPort()
+{
+    m_saveviewport.x = m_viewport.x;
+    m_saveviewport.y = m_viewport.y;
+    m_saveviewport.width = m_viewport.width;
+    m_saveviewport.height = m_viewport.height;
+}

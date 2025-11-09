@@ -590,25 +590,7 @@ struct BoundingBox
     bool contains(const Vec3 &point) const;
 };
 
-// Funções para Cascaded Shadow Maps
-namespace CSM
-{
-    // Calcula splits para cascatas usando esquema logarítmico/linear
-    void calculateCascadeSplits(float near, float far, int numCascades, float lambda, float *outSplits);
-
-    // Cria matriz de projeção perspective para uma cascade específica
-    Mat4 createCascadeProjection(float fovYRad, float aspect, float nearSplit, float farSplit);
-
-    // Extrai frustum corners de projection * view matrix
-    void extractFrustumCorners(const Mat4 &projView, Vec3 corners[8]);
-
-    // Calcula BoundingBox a partir de pontos
-    BoundingBox calculateAABB(const Vec3 *points, int count);
-
-    // Cria matriz ortho que engloba os corners no espaço da luz
-    Mat4 createLightOrtho(const Vec3 corners[8], const Mat4 &lightView, float *outNear, float *outFar);
-}
-
+ 
 // ==================== Quat ====================
 
 class Quat
@@ -693,3 +675,4 @@ public:
 
 // Scalar * Quat
 Quat operator*(float scalar, const Quat &quat);
+

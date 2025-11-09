@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Transform.hpp"
+class Ray;
 
 class Camera
 {
@@ -33,6 +34,9 @@ public:
     Vec3 getForward();
     Vec3 getRight();
     Vec3 getUp();
+    Vec3 getTarget();
+
+    Ray screenPointToRay(float screenX, float screenY, float screenWidth, float screenHeight);
 
     // Setters básicos
     void setPosition(const Vec3 &position);

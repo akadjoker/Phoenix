@@ -369,7 +369,7 @@ public:
 
         // 2. Blur (ping-pong)
         bool horizontal = true;
-        int blurAmount = 4; // Quantidade de passes
+        int blurAmount = 10; // Quantidade de passes
 
         blurShader->Bind();
         for (int i = 0; i < blurAmount; i++)

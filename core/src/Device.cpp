@@ -3,6 +3,7 @@
 #include "Device.hpp"
 #include "Utils.hpp"
 #include "Driver.hpp"
+#include "Input.hpp"
 #include "glad/glad.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -77,6 +78,7 @@ bool Device::Create(int width, int height, const char *title, bool vzync, u16 mo
     m_previous = m_current;
     m_frame = m_update + m_draw;
 
+ 
     // // Atributos de contexto antes de criar a janela
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 
@@ -370,4 +372,10 @@ void Device::Flip()
     }
 
     m_is_resize = false;
+}
+
+bool Device::IsRunning() const
+{
+
+    return  m_ready && !m_shouldclose;
 }

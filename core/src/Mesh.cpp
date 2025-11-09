@@ -979,6 +979,14 @@ void Mesh::CalculateNormals()
     }
 }
 
+void Mesh::SetTexture(u32 layer, Texture *texture)
+{
+    for (Material *material : materials)
+    {
+        material->SetTexture(layer, texture);
+    }
+}
+
 Material *Mesh::AddMaterial(const std::string &name)
 {
     Material *material = new Material();
@@ -1691,6 +1699,98 @@ Mesh *MeshManager::CreateCone(const std::string &name, float radius, float heigh
 
     return mesh;
 }
+
+/**
+ * Creates a simple quad (2 triangles) oriented according to the face normal
+ * 
+ * @param name Unique name for the mesh
+ * @param face Normal direction (e.g., Vec3(0,1,0) for floor, Vec3(1,0,0) for side wall)
+ * @param size Size of the quad (default: 1.0)
+ * @param tilesU Texture tiling in U direction (default: 1.0)
+ * @param tilesV Texture tiling in V direction (default: 1.0)
+ * 
+ * Face examples:
+ *   Vec3( 0,  1,  0) = Floor   (facing up)
+ *   Vec3( 0, -1,  0) = Ceiling (facing down)
+ *   Vec3( 1,  0,  0) = Wall right (facing +X)
+ *   Vec3(-1,  0,  0) = Wall left  (facing -X)
+ *   Vec3( 0,  0,  1) = Wall front (facing +Z)
+ *   Vec3( 0,  0, -1) = Wall back  (facing -Z)
+ */
+Mesh* MeshManager::CreateQuad(const std::string& name, const Vec3& face, 
+                              float size, float tilesU, float tilesV)
+{
+    if (Exists(name))
+    {
+        LogWarning("[MeshManager] Mesh already exists: %s", name.c_str());
+        return Get(name);
+    }
+    
+    Mesh* mesh = Create(name);
+    MeshBuffer* buffer = mesh->AddBuffer(0);
+    
+    // Normalize the face vector to ensure it's a unit vector
+    Vec3 normal = face.normalized();
+    
+    // Calculate tangent and bitangent vectors to form a coordinate system
+    Vec3 tangent, bitangent;
+    
+    // Choose an arbitrary vector that's not parallel to the normal
+    Vec3 up = Vec3(0.0f, 1.0f, 0.0f);
+    if (fabs(normal.y) > 0.99f) // If normal is nearly vertical
+        up = Vec3(1.0f, 0.0f, 0.0f); // Use right vector instead
+    
+    // Calculate tangent (perpendicular to normal)
+    tangent = up.cross(normal).normalized();
+    
+    // Calculate bitangent (perpendicular to both normal and tangent)
+    bitangent = normal.cross(tangent).normalized();
+    
+    // Half size
+    float hs = size * 0.5f;
+    
+    // Define quad corners in local space (centered at origin)
+    // Using tangent and bitangent to orient the quad correctly
+    Vec3 v0 = (-tangent - bitangent) * hs; // Bottom-left
+    Vec3 v1 = ( tangent - bitangent) * hs; // Bottom-right
+    Vec3 v2 = ( tangent + bitangent) * hs; // Top-right
+    Vec3 v3 = (-tangent + bitangent) * hs; // Top-left
+    
+    // Add vertices with proper normals and UVs
+    // Order: position (x,y,z), normal (nx,ny,nz), texcoord (u,v)
+    
+    // Vertex 0: Bottom-left
+    buffer->AddVertex(v0.x, v0.y, v0.z, 
+                     normal.x, normal.y, normal.z, 
+                     tilesU, 0.0f);
+    
+    // Vertex 1: Bottom-right
+    buffer->AddVertex(v1.x, v1.y, v1.z, 
+                     normal.x, normal.y, normal.z, 
+                     0, 0.0f);
+    
+    // Vertex 2: Top-right
+    buffer->AddVertex(v2.x, v2.y, v2.z, 
+                     normal.x, normal.y, normal.z, 
+                     0, tilesV);
+    
+    // Vertex 3: Top-left
+    buffer->AddVertex(v3.x, v3.y, v3.z, 
+                     normal.x, normal.y, normal.z, 
+                     tilesU, tilesV);
+    
+    // Add two triangles (counter-clockwise winding)
+    buffer->AddFace(0, 1, 2); // First triangle
+    buffer->AddFace(0, 2, 3); // Second triangle
+    
+    buffer->Build();
+    
+    LogInfo("[MeshManager] Created quad '%s' facing (%g, %g, %g)", 
+            name.c_str(), normal.x, normal.y, normal.z);
+    
+    return mesh;
+}
+
 
 void MeshManager::UnloadAll()
 {

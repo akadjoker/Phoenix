@@ -20,7 +20,7 @@ public:
     Color() : r(255), g(255), b(255), a(255) {}
     Color(u8 r, u8 g, u8 b, u8 a) : r(r), g(g), b(b), a(a) {}
     Color(u8 r, u8 g, u8 b) : r(r), g(g), b(b), a(255) {}
-    Color(float r, float g, float b, float a) : r((u8)(r * 255.0f)), g((u8)(g * 255.0f)), b((u8)(b * 255.0f)), a((u8)(a * 255.0f)) {}
+   // Color(float r, float g, float b, float a) : r((u8)(r * 255.0f)), g((u8)(g * 255.0f)), b((u8)(b * 255.0f)), a((u8)(a * 255.0f)) {}
     Color(u32 color) : r((color >> 24) & 0xFF), g((color >> 16) & 0xFF), b((color >> 8) & 0xFF), a(color & 0xFF) {}
 
 

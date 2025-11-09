@@ -37,7 +37,7 @@ public:
     void SetCloseKey(Sint32 key) { m_closekey = key; }
     bool IsReady() const { return m_ready && !m_shouldclose; }
     bool IsResize() const { return m_is_resize; }
-    bool IsRunning() const { return m_ready && !m_shouldclose; }
+    bool IsRunning() const;
 
 
     SDL_Window*   GetWindow() const { return m_window; }

@@ -193,6 +193,13 @@ public:
     u32 GetCountPrograms() const { return m_countPrograms; }
     u32 GetCountTextures() const { return m_countTextures; }
 
+    IntRect GetViewport() const { return m_viewport; }
+    IntRect GetScissorBox() const { return m_scissorBox; }
+
+    void SaveViewPort();
+    void RestoreViewPort();
+ 
+
 
 private:
     Driver();
@@ -260,6 +267,7 @@ private:
     bool m_scissorEnabled = false;
     IntRect m_scissorBox = {0, 0, 0, 0};
     IntRect m_viewport = {0, 0, 0, 0};
+    IntRect m_saveviewport = {0, 0, 0, 0};
 
     // ---- Color Write ----
     ColorWriteMask m_colorWriteMask = ColorWriteMask::RGBA;

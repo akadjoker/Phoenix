@@ -4,6 +4,7 @@
 #include "Config.hpp"
 #include "glad/glad.h"
 #include "Utils.hpp"
+#include "RenderTarget.hpp"
 #include "Stream.hpp"
 #include "Device.hpp"
 #include "Driver.hpp"
@@ -19,7 +20,8 @@
 #include "Plane3D.hpp"
 #include "Batch.hpp"
 #include "Font.hpp"
-
+#include "Input.hpp"
+#include "GUI.hpp"
  
 
 

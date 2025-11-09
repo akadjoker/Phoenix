@@ -37,8 +37,8 @@ public:
     bool intersectRay(const Vec3 &rayOrigin, const Vec3 &rayDirection,
                       float &outT, float &outU, float &outV) const;
 
-    // Versão simples que só retorna se interseta
-    bool intersectRay(const Vec3 &rayOrigin, const Vec3 &rayDirection) const;
+    bool intersectRay(const Vec3 &rayOrigin, const Vec3 &rayDirection ) const;
+    bool intersectRay(const Vec3 &rayOrigin, const Vec3 &rayDirection, float &outT) const;
 
     // Ponto mais próximo no triângulo
     Vec3 closestPoint(const Vec3 &point) const;

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Camera.hpp"
+#include "Ray.hpp"
 
 Camera::Camera()
     : fov(45.0f), aspectRatio(16.0f / 9.0f), nearPlane(0.1f), farPlane(100.0f), viewDirty(true), projectionDirty(true) {}
@@ -32,6 +33,36 @@ Vec3 Camera::getForward()
 {
     return transform.getRotation() * Vec3(0, 0, -1);
 }
+
+Vec3 Camera::getTarget()
+{
+    //return transform.getLocalPosition() + (transform.getRotation() * Vec3(0, 0, -1));
+
+      Vec3 localForward = Vec3(0, 0, -1); // Forward sem rotação world
+    return transform.getLocalPosition() + transform.getLocalRotation() * localForward;
+}
+Ray Camera::screenPointToRay(float screenX, float screenY, float screenWidth, float screenHeight)
+{
+    // Converte coordenadas de ecrã para NDC (-1 a 1)
+    float x = (2.0f * screenX) / screenWidth - 1.0f;
+    float y = 1.0f - (2.0f * screenY) / screenHeight;
+    
+    // Ray em clip space
+    Vec4 rayClip(x, y, -1.0f, 1.0f);
+    
+    // Ray em eye space
+    Mat4 invProj = getProjectionMatrix().inverse();
+    Vec4 rayEye = invProj * rayClip;
+    rayEye = Vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
+    
+    // Ray em world space
+    Mat4 invView = getViewMatrix().inverse();
+    Vec4 rayWorld = invView * rayEye;
+    Vec3 direction = Vec3(rayWorld.x, rayWorld.y, rayWorld.z).normalized();
+    
+    return Ray(getPosition(), direction);
+}
+
 
 Vec3 Camera::getRight() 
 {

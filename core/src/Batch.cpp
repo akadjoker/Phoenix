@@ -11,7 +11,8 @@
 #define LINES 0x0001
 #define TRIANGLES 0x0004
 #define QUAD 0x0008
-
+#define PI 3.14159265358979323846f
+#define DEG2RAD (PI / 180.0f)
 
 RenderBatch::RenderBatch()
 {
@@ -1312,4 +1313,692 @@ void RenderBatch::Quad(Texture *texture, const FloatRect &src, float x,
     Quad(coords, texcoords);
 }
 
+void RenderBatch::Triangle(float x1, float y1, float x2, float y2, float x3, float y3, bool fill)
+{
+    if (fill)
+    {
+        SetMode(TRIANGLES);
+        Vertex2f(x1, y1);
+        Vertex2f(x2, y2);
+        Vertex2f(x3, y3);
+    }
+    else
+    {
+        SetMode(LINES);
+        Vertex2f(x1, y1);
+        Vertex2f(x2, y2);
+        
+        Vertex2f(x2, y2);
+        Vertex2f(x3, y3);
+        
+        Vertex2f(x3, y3);
+        Vertex2f(x1, y1);
+    }
+}
+
+void RenderBatch::RoundedRectangle(int posX, int posY, int width, int height, 
+                                   float roundness, int segments, bool fill)
+{
+    if (roundness <= 0) 
+    {
+        Rectangle(posX, posY, width, height, fill);
+        return;
+    }
+    
+    float radius = (roundness > width/2.0f || roundness > height/2.0f) 
+                   ? fmin(width/2.0f, height/2.0f) : roundness;
+    
+    if (fill)
+    {
+        SetMode(TRIANGLES);
+        
+        // Centro do retângulo
+        float cx = posX + width / 2.0f;
+        float cy = posY + height / 2.0f;
+        
+        // Cantos arredondados (4 quartos de círculo)
+        float corners[4][2] = {
+            {posX + radius, posY + radius},               // Top-left
+            {posX + width - radius, posY + radius},       // Top-right
+            {posX + width - radius, posY + height - radius}, // Bottom-right
+            {posX + radius, posY + height - radius}       // Bottom-left
+        };
+        
+        float angles[4] = {180.0f, 270.0f, 0.0f, 90.0f}; // Ângulos iniciais
+        
+        // Desenha os cantos arredondados
+        for (int corner = 0; corner < 4; corner++)
+        {
+            float startAngle = angles[corner] * DEG2RAD;
+            float endAngle = (angles[corner] + 90.0f) * DEG2RAD;
+            float angleStep = (endAngle - startAngle) / segments;
+            
+            for (int i = 0; i < segments; i++)
+            {
+                float angle1 = startAngle + angleStep * i;
+                float angle2 = startAngle + angleStep * (i + 1);
+                
+                Vertex2f(corners[corner][0], corners[corner][1]);
+                Vertex2f(corners[corner][0] + cos(angle1) * radius, 
+                        corners[corner][1] + sin(angle1) * radius);
+                Vertex2f(corners[corner][0] + cos(angle2) * radius, 
+                        corners[corner][1] + sin(angle2) * radius);
+            }
+        }
+        
+        // Retângulo central
+        Vertex2f(posX + radius, posY);
+        Vertex2f(posX + radius, posY + height);
+        Vertex2f(posX + width - radius, posY);
+        
+        Vertex2f(posX + width - radius, posY);
+        Vertex2f(posX + radius, posY + height);
+        Vertex2f(posX + width - radius, posY + height);
+        
+        // Laterais
+        Vertex2f(posX, posY + radius);
+        Vertex2f(posX + radius, posY + radius);
+        Vertex2f(posX, posY + height - radius);
+        
+        Vertex2f(posX + radius, posY + radius);
+        Vertex2f(posX + radius, posY + height - radius);
+        Vertex2f(posX, posY + height - radius);
+        
+        Vertex2f(posX + width - radius, posY + radius);
+        Vertex2f(posX + width, posY + radius);
+        Vertex2f(posX + width - radius, posY + height - radius);
+        
+        Vertex2f(posX + width, posY + radius);
+        Vertex2f(posX + width, posY + height - radius);
+        Vertex2f(posX + width - radius, posY + height - radius);
+    }
+}
+
+void RenderBatch::Ellipse(int centerX, int centerY, float radiusX, float radiusY, bool fill)
+{
+    if (fill)
+    {
+        SetMode(TRIANGLES);
+        
+        float x = centerX;
+        float y = centerY;
+        float angle = 0.0f;
+        float angleInc = 2.0f * PI / 360.0f;
+        
+        for (int i = 0; i < 360; i++)
+        {
+            Vertex2f(x, y);
+            Vertex2f(x + cos(angle) * radiusX, y + sin(angle) * radiusY);
+            angle += angleInc;
+            Vertex2f(x + cos(angle) * radiusX, y + sin(angle) * radiusY);
+        }
+    }
+    else
+    {
+        SetMode(LINES);
+        
+        float x = centerX;
+        float y = centerY;
+        float angle = 0.0f;
+        float angleInc = 2.0f * PI / 360.0f;
+        
+        for (int i = 0; i < 360; i++)
+        {
+            Vertex2f(x + cos(angle) * radiusX, y + sin(angle) * radiusY);
+            angle += angleInc;
+            Vertex2f(x + cos(angle) * radiusX, y + sin(angle) * radiusY);
+        }
+    }
+}
+
+void RenderBatch::Polygon(int centerX, int centerY, int sides, float radius, 
+                         float rotation, bool fill)
+{
+    if (sides < 3) return;
+    
+    if (fill)
+    {
+        SetMode(TRIANGLES);
+        
+        float angle = rotation * DEG2RAD;
+        float angleInc = 2.0f * PI / sides;
+        
+        for (int i = 0; i < sides; i++)
+        {
+            Vertex2f(centerX, centerY);
+            Vertex2f(centerX + cos(angle) * radius, centerY + sin(angle) * radius);
+            angle += angleInc;
+            Vertex2f(centerX + cos(angle) * radius, centerY + sin(angle) * radius);
+        }
+    }
+    else
+    {
+        SetMode(LINES);
+        
+        float angle = rotation * DEG2RAD;
+        float angleInc = 2.0f * PI / sides;
+        
+        for (int i = 0; i < sides; i++)
+        {
+            Vertex2f(centerX + cos(angle) * radius, centerY + sin(angle) * radius);
+            angle += angleInc;
+            Vertex2f(centerX + cos(angle) * radius, centerY + sin(angle) * radius);
+        }
+    }
+}
+
+void RenderBatch::CircleSector(int centerX, int centerY, float radius, 
+                              float startAngle, float endAngle, int segments, bool fill)
+{
+    if (fill)
+    {
+        SetMode(TRIANGLES);
+        
+        float angleStep = (endAngle - startAngle) / segments;
+        float angle = startAngle * DEG2RAD;
+        
+        for (int i = 0; i < segments; i++)
+        {
+            Vertex2f(centerX, centerY);
+            Vertex2f(centerX + cos(angle) * radius, centerY + sin(angle) * radius);
+            angle += angleStep * DEG2RAD;
+            Vertex2f(centerX + cos(angle) * radius, centerY + sin(angle) * radius);
+        }
+    }
+    else
+    {
+        SetMode(LINES);
+        
+        float angleStep = (endAngle - startAngle) / segments;
+        float angle = startAngle * DEG2RAD;
+        
+        // Linhas do arco
+        for (int i = 0; i < segments; i++)
+        {
+            Vertex2f(centerX + cos(angle) * radius, centerY + sin(angle) * radius);
+            angle += angleStep * DEG2RAD;
+            Vertex2f(centerX + cos(angle) * radius, centerY + sin(angle) * radius);
+        }
+        
+        // Linhas do centro
+        angle = startAngle * DEG2RAD;
+        Vertex2f(centerX, centerY);
+        Vertex2f(centerX + cos(angle) * radius, centerY + sin(angle) * radius);
+        
+        angle = endAngle * DEG2RAD;
+        Vertex2f(centerX, centerY);
+        Vertex2f(centerX + cos(angle) * radius, centerY + sin(angle) * radius);
+    }
+}
+
+void RenderBatch::Grid(int posX, int posY, int width, int height, int cellWidth, int cellHeight)
+{
+    SetMode(LINES);
+    
+    // Linhas verticais
+    for (int x = posX; x <= posX + width; x += cellWidth)
+    {
+        Vertex2f(x, posY);
+        Vertex2f(x, posY + height);
+    }
+    
+    // Linhas horizontais
+    for (int y = posY; y <= posY + height; y += cellHeight)
+    {
+        Vertex2f(posX, y);
+        Vertex2f(posX + width, y);
+    }
+}
+
+void RenderBatch::Polyline(const Vec2* points, int pointCount)
+{
+    if (pointCount < 2) return;
+    
+    SetMode(LINES);
+    
+    for (int i = 0; i < pointCount - 1; i++)
+    {
+        Vertex2f(points[i].x, points[i].y);
+        Vertex2f(points[i + 1].x, points[i + 1].y);
+    }
+}
+
+
+void RenderBatch::TexturedPolygon(const Vec2* points, int pointCount, unsigned int textureId)
+{
+    if (pointCount < 3) return;
+    
+    SetTexture(textureId);
+    SetMode(TRIANGLES);
+    
+    // Calcular bounding box para mapear UVs
+    float minX = points[0].x, maxX = points[0].x;
+    float minY = points[0].y, maxY = points[0].y;
+    
+    for (int i = 1; i < pointCount; i++)
+    {
+        if (points[i].x < minX) minX = points[i].x;
+        if (points[i].x > maxX) maxX = points[i].x;
+        if (points[i].y < minY) minY = points[i].y;
+        if (points[i].y > maxY) maxY = points[i].y;
+    }
+    
+    float width = maxX - minX;
+    float height = maxY - minY;
+    
+    // Calcular centróide para triangulação em leque
+    float centerX = 0, centerY = 0;
+    for (int i = 0; i < pointCount; i++)
+    {
+        centerX += points[i].x;
+        centerY += points[i].y;
+    }
+    centerX /= pointCount;
+    centerY /= pointCount;
+    
+    // UV do centro
+    float centerU = (centerX - minX) / width;
+    float centerV = (centerY - minY) / height;
+    
+    // Triangulação em leque a partir do centro
+    for (int i = 0; i < pointCount; i++)
+    {
+        int next = (i + 1) % pointCount;
+        
+        // Centro
+        TexCoord2f(centerU, centerV);
+        Vertex2f(centerX, centerY);
+        
+        // Ponto atual
+        float u1 = (points[i].x - minX) / width;
+        float v1 = (points[i].y - minY) / height;
+        TexCoord2f(u1, v1);
+        Vertex2f(points[i].x, points[i].y);
+        
+        // Próximo ponto
+        float u2 = (points[next].x - minX) / width;
+        float v2 = (points[next].y - minY) / height;
+        TexCoord2f(u2, v2);
+        Vertex2f(points[next].x, points[next].y);
+    }
+}
+
  
+
+void RenderBatch::TexturedPolygonCustomUV(const TexVertex* vertices, int vertexCount, 
+                                          unsigned int textureId)
+{
+    if (vertexCount < 3) return;
+    
+    SetTexture(textureId);
+    SetMode(TRIANGLES);
+    
+    // Calcular centróide
+    float centerX = 0, centerY = 0;
+    float centerU = 0, centerV = 0;
+    
+    for (int i = 0; i < vertexCount; i++)
+    {
+        centerX += vertices[i].position.x;
+        centerY += vertices[i].position.y;
+        centerU += vertices[i].texCoord.x;
+        centerV += vertices[i].texCoord.y;
+    }
+    centerX /= vertexCount;
+    centerY /= vertexCount;
+    centerU /= vertexCount;
+    centerV /= vertexCount;
+    
+    // Triangulação em leque
+    for (int i = 0; i < vertexCount; i++)
+    {
+        int next = (i + 1) % vertexCount;
+        
+        // Centro
+        TexCoord2f(centerU, centerV);
+        Vertex2f(centerX, centerY);
+        
+        // Ponto atual
+        TexCoord2f(vertices[i].texCoord.x, vertices[i].texCoord.y);
+        Vertex2f(vertices[i].position.x, vertices[i].position.y);
+        
+        // Próximo ponto
+        TexCoord2f(vertices[next].texCoord.x, vertices[next].texCoord.y);
+        Vertex2f(vertices[next].position.x, vertices[next].position.y);
+    }
+}
+
+void RenderBatch::TexturedQuad(const Vec2& p1, const Vec2& p2, const Vec2& p3, const Vec2& p4,
+                               unsigned int textureId)
+{
+    SetTexture(textureId);
+    SetMode(TRIANGLES);
+    
+    // Triângulo 1
+    TexCoord2f(0.0f, 0.0f);
+    Vertex2f(p1.x, p1.y);
+    
+    TexCoord2f(1.0f, 0.0f);
+    Vertex2f(p2.x, p2.y);
+    
+    TexCoord2f(1.0f, 1.0f);
+    Vertex2f(p3.x, p3.y);
+    
+    // Triângulo 2
+    TexCoord2f(0.0f, 0.0f);
+    Vertex2f(p1.x, p1.y);
+    
+    TexCoord2f(1.0f, 1.0f);
+    Vertex2f(p3.x, p3.y);
+    
+    TexCoord2f(0.0f, 1.0f);
+    Vertex2f(p4.x, p4.y);
+}
+
+// Sobrecarga com UVs customizados
+void RenderBatch::TexturedQuad(const Vec2& p1, const Vec2& p2, const Vec2& p3, const Vec2& p4,
+                               const Vec2& uv1, const Vec2& uv2, const Vec2& uv3, const Vec2& uv4,
+                               unsigned int textureId)
+{
+    SetTexture(textureId);
+    SetMode(TRIANGLES);
+    
+    // Triângulo 1
+    TexCoord2f(uv1.x, uv1.y);
+    Vertex2f(p1.x, p1.y);
+    
+    TexCoord2f(uv2.x, uv2.y);
+    Vertex2f(p2.x, p2.y);
+    
+    TexCoord2f(uv3.x, uv3.y);
+    Vertex2f(p3.x, p3.y);
+    
+    // Triângulo 2
+    TexCoord2f(uv1.x, uv1.y);
+    Vertex2f(p1.x, p1.y);
+    
+    TexCoord2f(uv3.x, uv3.y);
+    Vertex2f(p3.x, p3.y);
+    
+    TexCoord2f(uv4.x, uv4.y);
+    Vertex2f(p4.x, p4.y);
+}
+
+void RenderBatch::TexturedTriangle(const Vec2& p1, const Vec2& p2, const Vec2& p3,
+                                   unsigned int textureId)
+{
+    SetTexture(textureId);
+    SetMode(TRIANGLES);
+    
+    TexCoord2f(0.0f, 0.0f);
+    Vertex2f(p1.x, p1.y);
+    
+    TexCoord2f(1.0f, 0.0f);
+    Vertex2f(p2.x, p2.y);
+    
+    TexCoord2f(0.5f, 1.0f);
+    Vertex2f(p3.x, p3.y);
+}
+
+// Com UVs customizados
+void RenderBatch::TexturedTriangle(const Vec2& p1, const Vec2& p2, const Vec2& p3,
+                                   const Vec2& uv1, const Vec2& uv2, const Vec2& uv3,
+                                   unsigned int textureId)
+{
+    SetTexture(textureId);
+    SetMode(TRIANGLES);
+    
+    TexCoord2f(uv1.x, uv1.y);
+    Vertex2f(p1.x, p1.y);
+    
+    TexCoord2f(uv2.x, uv2.y);
+    Vertex2f(p2.x, p2.y);
+    
+    TexCoord2f(uv3.x, uv3.y);
+    Vertex2f(p3.x, p3.y);
+}
+
+
+void RenderBatch::BezierQuadratic(const Vec2& p0, const Vec2& p1, const Vec2& p2, 
+                                  int segments)
+{
+    SetMode(LINES);
+    
+    for (int i = 0; i < segments; i++)
+    {
+        float t1 = (float)i / segments;
+        float t2 = (float)(i + 1) / segments;
+        
+        // Ponto atual
+        float x1 = (1-t1)*(1-t1)*p0.x + 2*(1-t1)*t1*p1.x + t1*t1*p2.x;
+        float y1 = (1-t1)*(1-t1)*p0.y + 2*(1-t1)*t1*p1.y + t1*t1*p2.y;
+        
+        // Próximo ponto
+        float x2 = (1-t2)*(1-t2)*p0.x + 2*(1-t2)*t2*p1.x + t2*t2*p2.x;
+        float y2 = (1-t2)*(1-t2)*p0.y + 2*(1-t2)*t2*p1.y + t2*t2*p2.y;
+        
+        Vertex2f(x1, y1);
+        Vertex2f(x2, y2);
+    }
+}
+
+void RenderBatch::BezierCubic(const Vec2& p0, const Vec2& p1, const Vec2& p2, 
+                              const Vec2& p3, int segments)
+{
+    SetMode(LINES);
+    
+    for (int i = 0; i < segments; i++)
+    {
+        float t1 = (float)i / segments;
+        float t2 = (float)(i + 1) / segments;
+        
+        // Ponto atual (t1)
+        float mt1 = 1 - t1;
+        float x1 = mt1*mt1*mt1*p0.x + 3*mt1*mt1*t1*p1.x + 3*mt1*t1*t1*p2.x + t1*t1*t1*p3.x;
+        float y1 = mt1*mt1*mt1*p0.y + 3*mt1*mt1*t1*p1.y + 3*mt1*t1*t1*p2.y + t1*t1*t1*p3.y;
+        
+        // Próximo ponto (t2)
+        float mt2 = 1 - t2;
+        float x2 = mt2*mt2*mt2*p0.x + 3*mt2*mt2*t2*p1.x + 3*mt2*t2*t2*p2.x + t2*t2*t2*p3.x;
+        float y2 = mt2*mt2*mt2*p0.y + 3*mt2*mt2*t2*p1.y + 3*mt2*t2*t2*p2.y + t2*t2*t2*p3.y;
+        
+        Vertex2f(x1, y1);
+        Vertex2f(x2, y2);
+    }
+}
+
+void RenderBatch::CatmullRomSpline(const Vec2* points, int pointCount, int segments)
+{
+    if (pointCount < 4) return;
+    
+    SetMode(LINES);
+    
+    // Para cada segmento entre pontos
+    for (int i = 0; i < pointCount - 3; i++)
+    {
+        Vec2 p0 = points[i];
+        Vec2 p1 = points[i + 1];
+        Vec2 p2 = points[i + 2];
+        Vec2 p3 = points[i + 3];
+        
+        for (int s = 0; s < segments; s++)
+        {
+            float t1 = (float)s / segments;
+            float t2 = (float)(s + 1) / segments;
+            
+            // Calcular ponto atual
+            float t1_2 = t1 * t1;
+            float t1_3 = t1_2 * t1;
+            
+            float x1 = 0.5f * ((2 * p1.x) +
+                              (-p0.x + p2.x) * t1 +
+                              (2*p0.x - 5*p1.x + 4*p2.x - p3.x) * t1_2 +
+                              (-p0.x + 3*p1.x - 3*p2.x + p3.x) * t1_3);
+            
+            float y1 = 0.5f * ((2 * p1.y) +
+                              (-p0.y + p2.y) * t1 +
+                              (2*p0.y - 5*p1.y + 4*p2.y - p3.y) * t1_2 +
+                              (-p0.y + 3*p1.y - 3*p2.y + p3.y) * t1_3);
+            
+            // Calcular próximo ponto
+            float t2_2 = t2 * t2;
+            float t2_3 = t2_2 * t2;
+            
+            float x2 = 0.5f * ((2 * p1.x) +
+                              (-p0.x + p2.x) * t2 +
+                              (2*p0.x - 5*p1.x + 4*p2.x - p3.x) * t2_2 +
+                              (-p0.x + 3*p1.x - 3*p2.x + p3.x) * t2_3);
+            
+            float y2 = 0.5f * ((2 * p1.y) +
+                              (-p0.y + p2.y) * t2 +
+                              (2*p0.y - 5*p1.y + 4*p2.y - p3.y) * t2_2 +
+                              (-p0.y + 3*p1.y - 3*p2.y + p3.y) * t2_3);
+            
+            Vertex2f(x1, y1);
+            Vertex2f(x2, y2);
+        }
+    }
+}
+
+void RenderBatch::BSpline(const Vec2* points, int pointCount, int segments, int degree)
+{
+    if (pointCount < degree + 1) return;
+    
+    SetMode(LINES);
+    
+    // B-Spline cúbica uniforme (grau 3)
+    for (int i = 0; i < pointCount - 3; i++)
+    {
+        Vec2 p0 = points[i];
+        Vec2 p1 = points[i + 1];
+        Vec2 p2 = points[i + 2];
+        Vec2 p3 = points[i + 3];
+        
+        for (int s = 0; s < segments; s++)
+        {
+            float t1 = (float)s / segments;
+            float t2 = (float)(s + 1) / segments;
+            
+            // Matriz de B-Spline cúbica uniforme
+            float t1_2 = t1 * t1;
+            float t1_3 = t1_2 * t1;
+            
+            float b0_1 = (1 - 3*t1 + 3*t1_2 - t1_3) / 6.0f;
+            float b1_1 = (4 - 6*t1_2 + 3*t1_3) / 6.0f;
+            float b2_1 = (1 + 3*t1 + 3*t1_2 - 3*t1_3) / 6.0f;
+            float b3_1 = t1_3 / 6.0f;
+            
+            float x1 = b0_1*p0.x + b1_1*p1.x + b2_1*p2.x + b3_1*p3.x;
+            float y1 = b0_1*p0.y + b1_1*p1.y + b2_1*p2.y + b3_1*p3.y;
+            
+            float t2_2 = t2 * t2;
+            float t2_3 = t2_2 * t2;
+            
+            float b0_2 = (1 - 3*t2 + 3*t2_2 - t2_3) / 6.0f;
+            float b1_2 = (4 - 6*t2_2 + 3*t2_3) / 6.0f;
+            float b2_2 = (1 + 3*t2 + 3*t2_2 - 3*t2_3) / 6.0f;
+            float b3_2 = t2_3 / 6.0f;
+            
+            float x2 = b0_2*p0.x + b1_2*p1.x + b2_2*p2.x + b3_2*p3.x;
+            float y2 = b0_2*p0.y + b1_2*p1.y + b2_2*p2.y + b3_2*p3.y;
+            
+            Vertex2f(x1, y1);
+            Vertex2f(x2, y2);
+        }
+    }
+}
+ 
+
+void RenderBatch::HermiteSpline(const HermitePoint* points, int pointCount, int segments)
+{
+    if (pointCount < 2) return;
+    
+    SetMode(LINES);
+    
+    for (int i = 0; i < pointCount - 1; i++)
+    {
+        Vec2 p0 = points[i].position;
+        Vec2 m0 = points[i].tangent;
+        Vec2 p1 = points[i + 1].position;
+        Vec2 m1 = points[i + 1].tangent;
+        
+        for (int s = 0; s < segments; s++)
+        {
+            float t1 = (float)s / segments;
+            float t2 = (float)(s + 1) / segments;
+            
+            // Funções base de Hermite
+            float t1_2 = t1 * t1;
+            float t1_3 = t1_2 * t1;
+            
+            float h00_1 = 2*t1_3 - 3*t1_2 + 1;
+            float h10_1 = t1_3 - 2*t1_2 + t1;
+            float h01_1 = -2*t1_3 + 3*t1_2;
+            float h11_1 = t1_3 - t1_2;
+            
+            float x1 = h00_1*p0.x + h10_1*m0.x + h01_1*p1.x + h11_1*m1.x;
+            float y1 = h00_1*p0.y + h10_1*m0.y + h01_1*p1.y + h11_1*m1.y;
+            
+            float t2_2 = t2 * t2;
+            float t2_3 = t2_2 * t2;
+            
+            float h00_2 = 2*t2_3 - 3*t2_2 + 1;
+            float h10_2 = t2_3 - 2*t2_2 + t2;
+            float h01_2 = -2*t2_3 + 3*t2_2;
+            float h11_2 = t2_3 - t2_2;
+            
+            float x2 = h00_2*p0.x + h10_2*m0.x + h01_2*p1.x + h11_2*m1.x;
+            float y2 = h00_2*p0.y + h10_2*m0.y + h01_2*p1.y + h11_2*m1.y;
+            
+            Vertex2f(x1, y1);
+            Vertex2f(x2, y2);
+        }
+    }
+}
+
+void RenderBatch::ThickSpline(const Vec2* points, int pointCount, float thickness, 
+                              int segments)
+{
+    if (pointCount < 2) return;
+    
+    SetMode(TRIANGLES);
+    
+    float halfThickness = thickness * 0.5f;
+    
+    for (int i = 0; i < pointCount - 1; i++)
+    {
+        Vec2 p0 = points[i];
+        Vec2 p1 = points[i + 1];
+        
+        // Calcular perpendicular
+        float dx = p1.x - p0.x;
+        float dy = p1.y - p0.y;
+        float len = sqrt(dx*dx + dy*dy);
+        
+        if (len > 0)
+        {
+            dx /= len;
+            dy /= len;
+            
+            // Perpendicular
+            float px = -dy * halfThickness;
+            float py = dx * halfThickness;
+            
+            // Vértices do quad
+            Vec2 v0 = {p0.x + px, p0.y + py};
+            Vec2 v1 = {p0.x - px, p0.y - py};
+            Vec2 v2 = {p1.x + px, p1.y + py};
+            Vec2 v3 = {p1.x - px, p1.y - py};
+            
+            // Triângulo 1
+            Vertex2f(v0.x, v0.y);
+            Vertex2f(v1.x, v1.y);
+            Vertex2f(v2.x, v2.y);
+            
+            // Triângulo 2
+            Vertex2f(v1.x, v1.y);
+            Vertex2f(v3.x, v3.y);
+            Vertex2f(v2.x, v2.y);
+        }
+    }
+}
