@@ -26,7 +26,7 @@ struct AttachmentConfig
     TextureFormat format = TextureFormat::RGBA8;
     FilterMode minFilter = FilterMode::LINEAR;
     FilterMode magFilter = FilterMode::LINEAR;
-    WrapMode wrap = WrapMode::CLAMP_TO_EDGE;
+    WrapMode wrap = WrapMode::REPEAT;
     u32 colorAttachmentIndex = 0;  // For MRT (0-3 guaranteed in GLES 3.0+)
     bool useRenderbuffer = false;  // If true, uses RBO instead of texture (cannot be sampled)
     u32 samples = 1;               // MSAA samples (1, 2, 4, 8... device dependent)
@@ -57,6 +57,10 @@ public:
     bool AddDepthAttachment(TextureFormat format = TextureFormat::DEPTH24);
     bool AddDepthAttachment(const AttachmentConfig& config);
     bool AddDepthStencilAttachment();
+
+    bool AddDepthTexture(TextureFormat format = TextureFormat::DEPTH24); 
+    bool AddDepth24Texture() { return AddDepthTexture(TextureFormat::DEPTH24); }
+    bool AddDepth32FTexture() { return AddDepthTexture(TextureFormat::DEPTH32F); }
     
     // === FINALIZATION (must be called after adding attachments) ===
     bool Finalize();

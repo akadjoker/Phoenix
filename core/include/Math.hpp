@@ -518,6 +518,10 @@ public:
     bool operator==(const Mat4 &other) const;
     bool operator!=(const Mat4 &other) const;
 
+     
+    Vec3 getTranslation() const;
+    Vec3 getScale() const;
+
     // Operações de matriz
     Mat4 transposed() const;
     void transpose();

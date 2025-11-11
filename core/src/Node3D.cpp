@@ -38,10 +38,37 @@ Node3D::Node3D(const Vec3 &position, const Quat &rotation, const Vec3 &scale)
 
 // ==================== Private Methods ====================
 
+// void Node3D::updateWorldTransform()
+// {
+//     if (!transformDirty) return;
+
+//     Mat4 localMatrix = Mat4::Translation(localPosition) * 
+//                        localRotation.toMat4() * 
+//                        Mat4::Scale(localScale);
+
+//     Node3D *parent3D = getParent3D();
+    
+//     if (parent3D)
+//     {
+//         parent3D->updateWorldTransform();
+//         worldMatrix = parent3D->worldMatrix * localMatrix;
+//     }
+//     else
+//     {
+//         worldMatrix = localMatrix;
+//     }
+
+//     // Extract world transform components from matrix if needed
+//     //worldPosition = worldMatrix.getTranslation();
+//    // worldRotation = Quat::FromMat4(worldMatrix);
+//    // worldScale = worldMatrix.getScale();
+
+//     transformDirty = false;
+// }
+
 void Node3D::updateWorldTransform()
 {
-    if (!transformDirty)
-        return;
+    if (!transformDirty) return;
 
     Node3D *parent3D = getParent3D();
 

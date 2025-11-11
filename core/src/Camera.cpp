@@ -147,9 +147,9 @@ Ray Camera3D::screenPointToRay(float screenX, float screenY, float screenWidth, 
 
 Vec3 Camera3D::getTarget()
 {
-   // Vec3 localForward = Vec3(0, 0, -1);
-   // return getLocalPosition() + getLocalRotation() * localForward;
-    return getPosition() + forward() * farPlane;
+    Vec3 localForward = Vec3(0, 0, -1);
+    return getLocalPosition() + getLocalRotation() * localForward;
+   // return getPosition() + forward() * farPlane;
 }
 
 void Camera3D::update(float deltaTime)

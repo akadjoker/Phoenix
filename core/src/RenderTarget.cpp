@@ -175,6 +175,37 @@ bool RenderTarget::Create(u32 width, u32 height)
     return true;
 }
 
+bool RenderTarget::AddDepthTexture(TextureFormat format)
+{
+    if (!m_isValid || m_hasDepth || m_isFinalized)
+    {
+        LogError("[RenderTarget:%s] Cannot add depth texture", m_name.c_str());
+        return false;
+    }
+    
+ 
+    AttachmentConfig config;
+    config.type = AttachmentType::DEPTH;
+    config.format = format;
+    config.useRenderbuffer = false;  
+    config.minFilter = FilterMode::NEAREST;
+    config.magFilter = FilterMode::NEAREST;
+    config.wrap = WrapMode::CLAMP_TO_BORDER;
+    
+    m_depthAttachment.config = config;
+    m_depthAttachment.hasStencil = false;
+    
+    CreateDepthAttachment(m_depthAttachment);
+    
+    m_hasDepth = true;
+    
+    LogInfo("[RenderTarget:%s] Added depth texture (%s)", 
+            m_name.c_str(), 
+            format == TextureFormat::DEPTH24 ? "DEPTH24" : "DEPTH32F");
+    
+    return true;
+}
+
 u32 RenderTarget::AddColorAttachment(TextureFormat format)
 {
     AttachmentConfig config;

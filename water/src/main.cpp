@@ -5,6 +5,9 @@
 int screenWidth = 1024;
 int screenHeight = 768;
 
+
+ 
+
 class MainScene : public Scene
 {
     Shader *sceneShader;
@@ -17,11 +20,7 @@ class MainScene : public Scene
     CameraFree *waterCamera;
     float mouseSensitivity{0.8f};
 
-    RenderTarget *mirrorRT;
-    RenderTarget *reflectionRT;
-    RenderTarget *refractionRT;
-    Texture *waterBump;
-
+    
     Mesh *meshMirror;
     Mesh *meshWater;
     Mesh *terrain;
@@ -29,8 +28,12 @@ class MainScene : public Scene
     float height = 1.0f;
     float yaw = 0.0f;
     Vec3 lightPos = Vec3(-2.0f, 8.0f, -4.0f);
-
-public:
+    
+    public:
+    RenderTarget *mirrorRT;
+    RenderTarget *reflectionRT;
+    RenderTarget *refractionRT;
+    Texture *waterBump;
     float mirrorFresnelPower = 0.24f;
     float mirrorFresnelMin = 0.05f;
     Vec3 mirrorTint = Vec3(0.9f, 0.95f, 1.0f);
@@ -161,6 +164,7 @@ public:
 
             refractionRT->Unbind();
             Texture *waterTexture = refractionRT->GetColorTexture(0);
+ 
             meshWater->SetTexture(1, waterTexture);
         }
         // ============================================
@@ -177,18 +181,27 @@ public:
 
             waterCamera->setFOV(camera->getFOV());
             waterCamera->setFarPlane(camera->getFarPlane());
-            waterCamera->setNearPlane(camera->getNearPlane());
+            waterCamera->setNearPlane(15.0f);
             waterCamera->setAspectRatio(camera->getAspectRatio());
 
-            // Get position and reflect Y
-            Vec3 position = camera->getPosition();
-            position.y = -position.y + 2 * waterPlaneY;
-            waterCamera->setPosition(position);
 
-            // Get target and reflect Y
-            Vec3 target = camera->getTarget();
-            target.y = -target.y + 2 * waterPlaneY;
-            waterCamera->lookAt(target);
+            //Vec3 pos = camera->getPosition();
+       
+           // waterCamera->setPosition(pos.x, 2.0f * waterPlaneY - pos.y, pos.z);
+ 
+
+            //  Quat originalRot = camera->getRotation();
+           //   Quat flip = Quat::FromAxisAngleDeg(Vec3(0, 0, 1), 180.0f); // 180° roll
+          //   waterCamera->setLocalRotation(originalRot * flip);
+   
+//             Vec3 euler = camera->getEulerAngles();
+// //            waterCamera->setRotation(-euler.x, euler.y, euler.z); // Pitch negativo, resto igual
+//             waterCamera->setRotation(euler.y, euler.x, 180.0f); // Pitch = 0, só yaw
+
+  
+ 
+
+ 
 
             waterCamera->update(1.0f);
             SetCamera(waterCamera);
@@ -227,7 +240,7 @@ public:
             reflectionRT->Unbind();
 
             Texture *waterTexture = reflectionRT->GetColorTexture(0);
-            meshWater->SetTexture(2, waterTexture);
+               meshWater->SetTexture(2, waterTexture);
         }
 
         {
@@ -277,17 +290,17 @@ public:
 
             renderPass(mirrorShader, RenderType::Mirror);
 
-            Mat4 worldViewProj = proj * view;
-            Mat4 worldReflectionViewProj = proj * waterCamera->getViewMatrix();
+            
+            Mat4 reflectionView =  waterCamera->getViewMatrix();
 
             waterShader->Bind();
+            waterShader->SetUniformMat4("projection", proj.m);
+            waterShader->SetUniformMat4("view", view.m);
+            waterShader->SetUniformMat4("reflectionView", reflectionView.m);
             waterShader->SetUniform("u_waterBump", 0);     // Slot 0
             waterShader->SetUniform("u_refractionMap", 1); // Slot 1
             waterShader->SetUniform("u_reflectionMap", 2); // Slot 2
-            waterShader->SetUniformMat4("projection", proj.m);
-            waterShader->SetUniformMat4("view", view.m);
-            waterShader->SetUniformMat4("worldViewProj", worldViewProj.m);
-            waterShader->SetUniformMat4("worldReflectionViewProj", worldReflectionViewProj.m);
+            
 
             waterShader->SetUniform("u_cameraPosition", cameraPos.x, cameraPos.y, cameraPos.z);
             waterShader->SetUniform("u_waveHeight", waveHeight);
@@ -314,16 +327,16 @@ public:
             renderPass(waterShader, RenderType::Water);
         }
 
-        // debugShader->Bind();
-        // debugShader->SetUniform("tex", 0);
-        // glActiveTexture(GL_TEXTURE0);
-        // glBindTexture(GL_TEXTURE_2D,reflectionRT->GetColorTextureID());
-        // Driver::Instance().DrawScreenQuad(210, 0, 200, 200);
+        debugShader->Bind();
+        debugShader->SetUniform("tex", 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D,reflectionRT->GetColorTextureID());
+        Driver::Instance().DrawScreenQuad(210, 0, 200, 200);
 
-        // debugShader->SetUniform("tex", 0);
-        // glActiveTexture(GL_TEXTURE0);
-        // glBindTexture(GL_TEXTURE_2D, refractionRT->GetColorTextureID());
-        // Driver::Instance().DrawScreenQuad(420, 0, 200, 200);
+        debugShader->SetUniform("tex", 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, refractionRT->GetColorTextureID());
+        Driver::Instance().DrawScreenQuad(420, 0, 200, 200);
     }
     bool OnCreate() override
     {
@@ -481,7 +494,7 @@ public:
         // Render target para REFLEXÃO
         reflectionRT = rtMgr.Create("WaterReflection", 1024, 1024);
         reflectionRT->AddColorAttachment(TextureFormat::RGBA8);
-        reflectionRT->AddDepthAttachment(TextureFormat::DEPTH24);
+        reflectionRT->AddDepthTexture(TextureFormat::DEPTH24); 
         if (!reflectionRT->Finalize())
         {
             LogError("Failed to finalize reflection RT!");
@@ -490,7 +503,7 @@ public:
 
         refractionRT = rtMgr.Create("WaterRefraction", 1024, 1024);
         refractionRT->AddColorAttachment(TextureFormat::RGBA8);
-        refractionRT->AddDepthAttachment(TextureFormat::DEPTH24);
+        refractionRT->AddDepthTexture(TextureFormat::DEPTH24); 
         if (!refractionRT->Finalize())
         {
             LogError("Failed to finalize refraction RT!");
@@ -632,6 +645,9 @@ int main()
         driver.SetDepthTest(false);
         driver.SetBlendEnable(true);
         driver.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
+
+
+       // batch.Quad(scene.reflectionRT->GetColorTexture(0),20,20,100,100);
 
         gui.BeginFrame();
 

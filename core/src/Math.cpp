@@ -1266,6 +1266,23 @@ bool Mat4::operator==(const Mat4 &other) const
     return true;
 }
 
+
+ 
+Vec3 Mat4::getTranslation() const
+{
+    return Vec3(m[12], m[13], m[14]);
+}
+
+Vec3 Mat4::getScale() const
+{
+    // Extract scale from the basis vectors
+    Vec3 scaleX(m[0], m[1], m[2]);
+    Vec3 scaleY(m[4], m[5], m[6]);
+    Vec3 scaleZ(m[8], m[9], m[10]);
+    
+    return Vec3(scaleX.length(), scaleY.length(), scaleZ.length());
+}
+
 bool Mat4::operator!=(const Mat4 &other) const
 {
     return !(*this == other);
