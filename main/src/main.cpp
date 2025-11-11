@@ -18,7 +18,7 @@ public:
     {
 
 
-
+        SetCamera(camera);
  
         const Mat4 view = getViewMatrix();
         const Mat4 proj = getProjectionMatrix();
@@ -105,15 +105,18 @@ public:
     {
         const float SPEED = 12.0f * dt;
 
-        if (Input::IsKeyDown(KEY_W))
-            camera->move(SPEED);
-        if (Input::IsKeyDown(KEY_S))
-            camera->move(-SPEED);
 
-        if (Input::IsKeyDown(KEY_A))
-            camera->strafe(-SPEED);
-        if (Input::IsKeyDown(KEY_D))
-            camera->strafe(SPEED);
+        
+
+        // if (Input::IsKeyDown(KEY_W))
+        //     camera->move(SPEED);
+        // if (Input::IsKeyDown(KEY_S))
+        //     camera->move(-SPEED);
+
+        // if (Input::IsKeyDown(KEY_A))
+        //     camera->strafe(-SPEED);
+        // if (Input::IsKeyDown(KEY_D))
+        //     camera->strafe(SPEED);
     }
     void OnResize(u32 w, u32 h) override
     {
@@ -226,7 +229,9 @@ int main()
         if (Input::IsMouseDown(MouseButton::LEFT) && !gui.IsFocused())
         {
             Vec2 mouseDelta = Input::GetMouseDelta();
-            scene.getCamera()->rotate(mouseDelta.y * mouseSensitivity, mouseDelta.x * mouseSensitivity);
+
+          scene.getCamera()->processMouseMovement(mouseDelta.x * mouseSensitivity, mouseDelta.y * mouseSensitivity);
+           // scene.getCamera()->rotate(mouseDelta.y * mouseSensitivity, mouseDelta.x * mouseSensitivity);
         }
 
         batch.Render();

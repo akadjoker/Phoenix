@@ -9,33 +9,19 @@
 #include "Shader.hpp"
 #include "Batch.hpp"
 
-CameraFPS *Scene::createCameraFPS(const std::string &name)
-{
-    CameraFPS *camera = new CameraFPS(name);
-    m_cameras.push_back(camera);
-    ActiveCamera = camera;
-    return camera;
-}
-
-CameraMaya *Scene::createCameraMaya(const std::string &name)
-{
-    CameraMaya *camera = new CameraMaya(name);
-    m_cameras.push_back(camera);
-    ActiveCamera = camera;
-    return camera;
-}
-
-CameraFree *Scene::createCameraFree(const std::string &name)
-{
-    CameraFree *camera = new CameraFree(name);
-    m_cameras.push_back(camera);
-    ActiveCamera = camera;
-    return camera;
-}
+ 
 
 Camera3D *Scene::createCamera(const std::string &name)
 {
     Camera3D *camera = new Camera3D(name);
+    m_cameras.push_back(camera);
+    ActiveCamera = camera;
+    return camera;
+}
+
+CameraFree *Scene::createCameraFree(const std::string &name) 
+{
+     CameraFree *camera = new CameraFree(name);
     m_cameras.push_back(camera);
     ActiveCamera = camera;
     return camera;
@@ -206,7 +192,7 @@ void Scene::SetCamera(Camera3D *camera)
     m_view = ActiveCamera->getViewMatrix();
     m_proj = ActiveCamera->getProjectionMatrix();
     m_frustum->extractFromCamera(m_view, m_proj);
-    camWorldPos = ActiveCamera->getLocalPosition();
+    camWorldPos = ActiveCamera->getPosition();
      m_needRebuildLists = true;
 
 }

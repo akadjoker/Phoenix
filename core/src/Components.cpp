@@ -41,9 +41,9 @@ void Rotator::update(float deltaTime)
     GameObject *owner = getOwner();
     if (owner)
     {
-        owner->rotateLocalX(rotationSpeed.x * deltaTime);
-        owner->rotateLocalY(rotationSpeed.y * deltaTime);
-        owner->rotateLocalZ(rotationSpeed.z * deltaTime);
+       // owner->rotateLocalX(rotationSpeed.x * deltaTime);
+      //  owner->rotateLocalY(rotationSpeed.y * deltaTime);
+      //  owner->rotateLocalZ(rotationSpeed.z * deltaTime);
     }
 }
 
@@ -54,7 +54,7 @@ void Oscillator::start()
     GameObject *owner = getOwner();
     if (owner)
     {
-        startPosition = owner->getLocalPosition();
+        startPosition = owner->getPosition();
     }
 }
 void Oscillator::update(float deltaTime)
@@ -70,7 +70,7 @@ void Oscillator::update(float deltaTime)
         // Sine wave oscillation
         float wave = std::sin(time * frequency * 2.0f * 3.14159f);
         Vec3 offset = amplitude * wave;
-        owner->setLocalPosition(startPosition + offset);
+        owner->setPosition(startPosition + offset);
     }
 }
 
@@ -83,6 +83,6 @@ void LookAtCamera::lateUpdate(float deltaTime)
     if (owner)
     {
         Vec3 cameraPos = targetCamera->getPosition();
-        owner->lookAt(cameraPos);
+       // owner->lookAt(cameraPos);
     }
 }

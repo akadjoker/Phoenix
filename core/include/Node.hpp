@@ -28,7 +28,6 @@ enum class RenderType : u8
 class Node : public Object
 {
 protected:
-    Node *parent;
     std::vector<Node *> children;
 
     bool insideTree;
@@ -43,10 +42,6 @@ public:
     void setRenderType(RenderType renderType);
 
     // ==================== Hierarchy ====================
-
-    virtual void setParent(Node *newParent);
-    Node *getParent() const;
-    void removeParent();
 
     void addChild(Node *child);
     void removeChild(Node *child);
@@ -73,7 +68,6 @@ public:
 
     // ==================== Active State ====================
 
- 
     bool isInsideTree() const;
 
     void show();

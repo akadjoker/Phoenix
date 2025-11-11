@@ -363,6 +363,59 @@ bool Vec3::operator!=(const Vec3 &other) const
     return !(*this == other);
 }
 
+Vec3 Vec3::getHorizontalAngle() const
+{
+    Vec3 angle;
+
+    const double tmp = (atan2((double)x, (double)z) * RADTODEG64);
+    angle.y = (float)tmp;
+
+    if (angle.y < 0)
+        angle.y += 360;
+    if (angle.y >= 360)
+        angle.y -= 360;
+
+    const double z1 = sqrt(x * x + z * z);
+
+    angle.x = (float)(atan2((double)z1, (double)y) * RADTODEG64 - 90.0);
+
+    if (angle.x < 0)
+        angle.x += 360;
+    if (angle.x >= 360)
+        angle.x -= 360;
+
+    return angle;
+}
+
+Vec3 Vec3::rotationToDirection(const Vec3 &forwards) const
+{
+    const double cr = cos(DEGTORAD64 * x);
+    const double sr = sin(DEGTORAD64 * x);
+    const double cp = cos(DEGTORAD64 * y);
+    const double sp = sin(DEGTORAD64 * y);
+    const double cy = cos(DEGTORAD64 * z);
+    const double sy = sin(DEGTORAD64 * z);
+
+    const double srsp = sr * sp;
+    const double crsp = cr * sp;
+
+    const double pseudoMatrix[] = {
+        (cp * cy), (cp * sy), (-sp),
+        (srsp * cy - cr * sy), (srsp * sy + cr * cy), (sr * cp),
+        (crsp * cy + sr * sy), (crsp * sy - sr * cy), (cr * cp)};
+
+    return Vec3(
+        (float)(forwards.x * pseudoMatrix[0] +
+                forwards.y * pseudoMatrix[3] +
+                forwards.z * pseudoMatrix[6]),
+        (float)(forwards.x * pseudoMatrix[1] +
+                forwards.y * pseudoMatrix[4] +
+                forwards.z * pseudoMatrix[7]),
+        (float)(forwards.x * pseudoMatrix[2] +
+                forwards.y * pseudoMatrix[5] +
+                forwards.z * pseudoMatrix[8]));
+}
+
 float Vec3::lengthSquared() const
 {
     return x * x + y * y + z * z;
@@ -1266,21 +1319,9 @@ bool Mat4::operator==(const Mat4 &other) const
     return true;
 }
 
-
- 
 Vec3 Mat4::getTranslation() const
 {
     return Vec3(m[12], m[13], m[14]);
-}
-
-Vec3 Mat4::getScale() const
-{
-    // Extract scale from the basis vectors
-    Vec3 scaleX(m[0], m[1], m[2]);
-    Vec3 scaleY(m[4], m[5], m[6]);
-    Vec3 scaleZ(m[8], m[9], m[10]);
-    
-    return Vec3(scaleX.length(), scaleY.length(), scaleZ.length());
 }
 
 bool Mat4::operator!=(const Mat4 &other) const
@@ -1443,6 +1484,170 @@ Mat4 Mat4::inverse() const
     }
 
     return inv;
+}
+
+Mat4 &Mat4::setRotationAxisRadians(float angle, const Vec3 &axis)
+{
+    const float c = cosf(angle);
+    const float s = sinf(angle);
+    const float t = 1.0f - c;
+
+    const float tx = t * axis.x, ty = t * axis.y, tz = t * axis.z;
+    const float sx = s * axis.x, sy = s * axis.y, sz = s * axis.z;
+
+    // 3x3 (column-major, M·v)
+    m[0] = tx * axis.x + c;
+    m[1] = tx * axis.y + sz;
+    m[2] = tx * axis.z - sy;
+
+    m[4] = ty * axis.x - sz;
+    m[5] = ty * axis.y + c;
+    m[6] = ty * axis.z + sx;
+
+    m[8] = tz * axis.x + sy;
+    m[9] = tz * axis.y - sx;
+    m[10] = tz * axis.z + c;
+
+    // restante da 4x4
+    m[3] = m[7] = m[11] = 0.0f;
+    m[12] = m[13] = m[14] = 0.0f;
+    m[15] = 1.0f;
+
+    return *this;
+}
+
+Mat4 &Mat4::setRotationRadians(const Vec3 &rotation)
+{
+    const double cr = cos(rotation.x);
+    const double sr = sin(rotation.x);
+    const double cp = cos(rotation.y);
+    const double sp = sin(rotation.y);
+    const double cy = cos(rotation.z);
+    const double sy = sin(rotation.z);
+
+    m[0] = (float)(cp * cy);
+    m[1] = (float)(cp * sy);
+    m[2] = (float)(-sp);
+
+    const double srsp = sr * sp;
+    const double crsp = cr * sp;
+
+    m[4] = (float)(srsp * cy - cr * sy);
+    m[5] = (float)(srsp * sy + cr * cy);
+    m[6] = (float)(sr * cp);
+
+    m[8] = (float)(crsp * cy + sr * sy);
+    m[9] = (float)(crsp * sy - sr * cy);
+    m[10] = (float)(cr * cp);
+
+    return *this;
+}
+
+Mat4 &Mat4::setRotationDegrees(const Vec3 &rotation)
+{
+    return setRotationRadians(rotation * DEG_TO_RAD);
+}
+
+Vec3 Mat4::getRotationDegrees() const
+{
+    Vec3 scale = getScale();
+
+    if (scale.y < 0 && scale.z < 0)
+    {
+        scale.y = -scale.y;
+        scale.z = -scale.z;
+    }
+    else if (scale.x < 0 && scale.z < 0)
+    {
+        scale.x = -scale.x;
+        scale.z = -scale.z;
+    }
+    else if (scale.x < 0 && scale.y < 0)
+    {
+        scale.x = -scale.x;
+        scale.y = -scale.y;
+    }
+
+    const Vec3 invScale(Reciprocal(scale.x), Reciprocal(scale.y), Reciprocal(scale.z));
+
+    float Y = -std::asin(Clamp(m[2] * invScale.x, -1.0f, 1.0f));
+    const float C = std::cos(Y);
+    Y *= RADTODEG;
+
+    float X, Z;
+    if (!isZero(C))
+    {
+        const float invC = Reciprocal(C);
+        float rotx = m[10] * invC * invScale.z;
+        float roty = m[6] * invC * invScale.y;
+        X = std::atan2(roty, rotx) * RADTODEG;
+
+        rotx = m[0] * invC * invScale.x;
+        roty = m[1] * invC * invScale.x;
+        Z = std::atan2(roty, rotx) * RADTODEG;
+    }
+    else
+    {
+        X = 0.0f;
+        float rotx = m[5] * invScale.y;
+        float roty = -m[4] * invScale.y;
+        Z = std::atan2(roty, rotx) * RADTODEG;
+    }
+
+    // normaliza para [0,360)
+    if (X < 0.0f)
+        X += 360.0f;
+    if (Y < 0.0f)
+        Y += 360.0f;
+    if (Z < 0.0f)
+        Z += 360.0f;
+
+    return Vec3(X, Y, Z);
+}
+
+Mat4 &Mat4::setTranslation(const Vec3 &translation)
+{
+    m[12] = translation.x;
+    m[13] = translation.y;
+    m[14] = translation.z;
+    return *this;
+}
+
+Mat4 &Mat4::setScale(const Vec3 &scale)
+{
+
+    m[0] = scale.x;
+    m[5] = scale.y;
+    m[10] = scale.z;
+    return *this;
+}
+
+// Vec3 Mat4::getScale() const
+// {
+//     // Extract scale from the basis vectors
+//     Vec3 scaleX(m[0], m[1], m[2]);
+//     Vec3 scaleY(m[4], m[5], m[6]);
+//     Vec3 scaleZ(m[8], m[9], m[10]);
+
+//     return Vec3(scaleX.length(), scaleY.length(), scaleZ.length());
+// }
+
+Vec3 Mat4::getScale() const
+{
+
+    // Deal with the 0 rotation case first
+    if (isZero(m[1]) && isZero(m[2]) &&
+        isZero(m[4]) && isZero(m[6]) &&
+        isZero(m[8]) && isZero(m[9]))
+    {
+        return Vec3(m[0], m[5], m[10]);
+    }
+
+    // Full calculation
+    return Vec3(
+        std::sqrt(m[0] * m[0] + m[1] * m[1] + m[2] * m[2]),
+        std::sqrt(m[4] * m[4] + m[5] * m[5] + m[6] * m[6]),
+        std::sqrt(m[8] * m[8] + m[9] * m[9] + m[10] * m[10]));
 }
 
 // Funções estáticas
@@ -1715,6 +1920,9 @@ Mat4 Mat4::LookAt(const Vec3 &eye, const Vec3 &center, const Vec3 &up)
     return result;
 }
 
+
+ 
+
 Mat4 Mat4::Perspective(float fovYRad, float aspect, float near, float far)
 {
     float tanHalfFovy = std::tan(fovYRad / 2.0f);
@@ -1963,7 +2171,6 @@ void BoundingBox::transform(const Mat4 &m)
     // Efficient algorithm for transforming an AABB, taken from Graphics
     // Gems
 
-   
     float minA[3] = {min.x, min.y, min.z};
     float maxA[3] = {max.x, max.y, max.z};
     float minB[3], maxB[3];
@@ -1978,8 +2185,16 @@ void BoundingBox::transform(const Mat4 &m)
         {
             float a = minA[j] * m(i, j);
             float b = maxA[j] * m(i, j);
-            if (a < b) { minB[i] += a; maxB[i] += b; }
-            else       { minB[i] += b; maxB[i] += a; }
+            if (a < b)
+            {
+                minB[i] += a;
+                maxB[i] += b;
+            }
+            else
+            {
+                minB[i] += b;
+                maxB[i] += a;
+            }
         }
     }
 

@@ -11,10 +11,18 @@ const float MinPosFloat = 1.175494351e-38F;
 const float Pi = 3.141592654f;
 const float TwoPi = 6.283185307f;
 const float PiHalf = 1.570796327f;
-
 const float Epsilon = 0.000001f;
 const float ZeroEpsilon = 32.0f * MinPosFloat; // Very small epsilon for checking against 0.0f
+const float RECIPROCAL_PI = 1.0f / Pi;
 
+const double PI64 = 3.1415926535897932384626433832795028841971693993751;
+const double RECIPROCAL_PI64 = 1.0 / PI64;
+const float DEGTORAD = Pi / 180.0f;
+const float RADTODEG = 180.0f / Pi;
+const double DEGTORAD64 = PI64 / 180.0;
+const double RADTODEG64 = 180.0 / PI64;
+const float ROUNDING_ERROR_f32 = 0.000001f;
+const double ROUNDING_ERROR_f64 = 0.00000001;
 const float M_INFINITY = 1.0e30f;
 
 #define powi(base, exp) (int)powf((float)(base), (float)(exp))
@@ -106,6 +114,20 @@ inline int Clamp(int a, int min, int max)
     else if (a > max)
         a = max;
     return a;
+}
+
+inline float isZero(float v, float eps = 1e-6)
+{
+    return std::fabs(v) <= eps;
+};
+
+inline float Reciprocal(float v, float eps = 1e-12f)
+{
+    return (std::fabs(v) <= eps) ? 0.0f : 1.0f / v;
+}
+inline bool Equals(const float a, const float b, const float tolerance = ROUNDING_ERROR_f32)
+{
+    return (a + tolerance >= b) && (a - tolerance <= b);
 }
 
 template <typename T>
@@ -323,6 +345,13 @@ public:
     bool operator==(const Vec3 &other) const;
     bool operator!=(const Vec3 &other) const;
 
+    void set(float _x, float _y, float _z)
+    {
+        x = _x;
+        y = _y;
+        z = _z;
+    }
+
     // Métodos úteis
     float lengthSquared() const;
     float length() const;
@@ -331,6 +360,8 @@ public:
     float dot(const Vec3 &other) const;
     Vec3 cross(const Vec3 &other) const;
 
+    Vec3 rotationToDirection(const Vec3 &orwards = Vec3(0, 0, 1)) const;
+    Vec3 getHorizontalAngle() const;
     // Funções de ângulo
     static float AngleBetween(const Vec3 &a, const Vec3 &b);    // Ângulo entre vetores (radianos)
     static float AngleBetweenDeg(const Vec3 &a, const Vec3 &b); // Ângulo entre vetores (graus)
@@ -518,15 +549,203 @@ public:
     bool operator==(const Mat4 &other) const;
     bool operator!=(const Mat4 &other) const;
 
-     
     Vec3 getTranslation() const;
     Vec3 getScale() const;
+    Vec3 getRotationDegrees() const;
+
+    inline Mat4 &buildProjectionMatrixPerspectiveLH(float widthOfViewVolume, float heightOfViewVolume, float zNear, float zFar)
+    {
+
+        m[0] = (float)(2 * zNear / widthOfViewVolume);
+        m[1] = 0;
+        m[2] = 0;
+        m[3] = 0;
+
+        m[4] = 0;
+        m[5] = (float)(2 * zNear / heightOfViewVolume);
+        m[6] = 0;
+        m[7] = 0;
+
+        m[8] = 0;
+        m[9] = 0;
+        m[10] = (float)(zFar / (zFar - zNear));
+        m[11] = 1;
+
+        m[12] = 0;
+        m[13] = 0;
+        m[14] = (float)(zNear * zFar / (zNear - zFar));
+        m[15] = 0;
+
+        return *this;
+    }
+
+    inline Mat4 &buildCameraLookAtMatrixLH(
+        const Vec3 &position,
+        const Vec3 &target,
+        const Vec3 &upVector)
+    {
+        Vec3 zaxis = target - position;
+        zaxis.normalize();
+
+        Vec3 xaxis = upVector.cross(zaxis);
+        xaxis.normalize();
+
+        Vec3 yaxis = zaxis.cross(xaxis);
+
+        m[0] = (float)xaxis.x;
+        m[1] = (float)yaxis.x;
+        m[2] = (float)zaxis.x;
+        m[3] = 0;
+
+        m[4] = (float)xaxis.y;
+        m[5] = (float)yaxis.y;
+        m[6] = (float)zaxis.y;
+        m[7] = 0;
+
+        m[8] = (float)xaxis.z;
+        m[9] = (float)yaxis.z;
+        m[10] = (float)zaxis.z;
+        m[11] = 0;
+
+        m[12] = (float)-xaxis.dot(position);
+        m[13] = (float)-yaxis.dot(position);
+        m[14] = (float)-zaxis.dot(position);
+        m[15] = 1;
+
+        return *this;
+    }
+
+    inline Mat4 &buildProjectionMatrixPerspectiveFovLH(float fieldOfViewRadians, float aspectRatio, float zNear, float zFar)
+    {
+        const float h = Reciprocal(tanf(fieldOfViewRadians * 0.5));
+
+        const float w = (h / aspectRatio);
+
+        m[0] = w;
+        m[1] = 0;
+        m[2] = 0;
+        m[3] = 0;
+
+        m[4] = 0;
+        m[5] = (float)h;
+        m[6] = 0;
+        m[7] = 0;
+
+        m[8] = 0;
+        m[9] = 0;
+        m[10] = (float)(zFar / (zFar - zNear));
+        m[11] = 1;
+
+        m[12] = 0;
+        m[13] = 0;
+        m[14] = (float)(-zNear * zFar / (zFar - zNear));
+        m[15] = 0;
+
+        return *this;
+    }
+
+    // LookAt RH - Para OpenGL
+    inline Mat4 &buildCameraLookAtMatrixRH(
+        const Vec3 &position,
+        const Vec3 &target,
+        const Vec3 &upVector)
+    {
+        Vec3 zaxis = position - target; // INVERTIDO! (eye - target)
+        zaxis.normalize();
+
+        Vec3 xaxis = upVector.cross(zaxis);
+        xaxis.normalize();
+
+        Vec3 yaxis = zaxis.cross(xaxis);
+
+        m[0] = (float)xaxis.x;
+        m[1] = (float)yaxis.x;
+        m[2] = (float)zaxis.x;
+        m[3] = 0;
+
+        m[4] = (float)xaxis.y;
+        m[5] = (float)yaxis.y;
+        m[6] = (float)zaxis.y;
+        m[7] = 0;
+
+        m[8] = (float)xaxis.z;
+        m[9] = (float)yaxis.z;
+        m[10] = (float)zaxis.z;
+        m[11] = 0;
+
+        m[12] = (float)-xaxis.dot(position);
+        m[13] = (float)-yaxis.dot(position);
+        m[14] = (float)-zaxis.dot(position);
+        m[15] = 1;
+
+        return *this;
+    }
+
+    // Perspective RH - Para OpenGL
+    inline Mat4 &buildProjectionMatrixPerspectiveFovRH(
+        float fieldOfViewRadians,
+        float aspectRatio,
+        float zNear,
+        float zFar)
+    {
+        const float h = Reciprocal(tanf(fieldOfViewRadians * 0.5f));
+        const float w = h / aspectRatio;
+
+        m[0] = w;
+        m[1] = 0;
+        m[2] = 0;
+        m[3] = 0;
+
+        m[4] = 0;
+        m[5] = (float)h;
+        m[6] = 0;
+        m[7] = 0;
+
+        m[8] = 0;
+        m[9] = 0;
+        m[10] = -(zFar + zNear) / (zFar - zNear); // NEGATIVO! E usa (zFar + zNear)
+        m[11] = -1;                               // NEGATIVO!
+
+        m[12] = 0;
+        m[13] = 0;
+        m[14] = -(2.0f * zNear * zFar) / (zFar - zNear); // NEGATIVO! E usa 2*zNear*zFar
+        m[15] = 0;
+
+        return *this;
+    }
+
+    inline void transformVect(Vec3 &vect) const
+    {
+        float vector[3];
+
+        vector[0] = vect.x * m[0] + vect.y * m[4] + vect.z * m[8] + m[12];
+        vector[1] = vect.x * m[1] + vect.y * m[5] + vect.z * m[9] + m[13];
+        vector[2] = vect.x * m[2] + vect.y * m[6] + vect.z * m[10] + m[14];
+
+        vect.x = vector[0];
+        vect.y = vector[1];
+        vect.z = vector[2];
+    }
+
+    inline void transformVect(Vec3 &out, const Vec3 &in) const
+    {
+
+        out.x = in.x * m[0] + in.y * m[4] + in.z * m[8] + m[12];
+        out.y = in.x * m[1] + in.y * m[5] + in.z * m[9] + m[13];
+        out.z = in.x * m[2] + in.y * m[6] + in.z * m[10] + m[14];
+    }
 
     // Operações de matriz
     Mat4 transposed() const;
     void transpose();
     float determinant() const;
     Mat4 inverse() const;
+
+    Mat4 &setRotationAxisRadians(float angle, const Vec3 &axis);
+    Mat4 &setRotationRadians(const Vec3 &rotation);
+    Mat4 &setRotationDegrees(const Vec3 &rotation);
+    Mat4 &setTranslation(const Vec3 &translation);
+    Mat4 &setScale(const Vec3 &scale);
 
     Vec3 TransformPoint(const Vec3 &point) const;
     Vec3 TransformVector(const Vec3 &vec) const;

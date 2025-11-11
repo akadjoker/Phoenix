@@ -185,9 +185,18 @@ public:
             waterCamera->setAspectRatio(camera->getAspectRatio());
 
 
-            //Vec3 pos = camera->getPosition();
+            Vec3 pos = camera->getPosition();
        
-           // waterCamera->setPosition(pos.x, 2.0f * waterPlaneY - pos.y, pos.z);
+            waterCamera->setPosition(pos.x, 2.0f * waterPlaneY - pos.y, pos.z);
+
+              Vec3 target = camera->getTarget();
+             target.y = -target.y + 2.0f * waterPlaneY;
+              waterCamera->setTarget(target);
+
+
+                Vec3 up = camera->getUpVector();
+    up.y = -up.y;
+    waterCamera->setUpVector(up);
  
 
             //  Quat originalRot = camera->getRotation();
@@ -359,7 +368,7 @@ public:
         mirrorCamera->setNearPlane(0.1f);
         mirrorCamera->setFarPlane(1000.0f);
         mirrorCamera->setPosition(-5.0f, 0.5f, 0.0f);
-        mirrorCamera->setLocalRotation(-90.0f, 0, 0);
+        mirrorCamera->setRotation(Vec3(-90.0f, 0, 0));
         mirrorCamera->update(1);
 
         camera = createCameraFree("CameraFree");
@@ -428,12 +437,12 @@ public:
 
         GameObject *mirror = createGameObject("mirror");
         mirror->addComponent<MeshRenderer>(meshMirror);
-        mirror->setLocalPosition(-8.0f, 2.5f, 0.0f);
+        mirror->setPosition(-8.0f, 2.5f, 0.0f);
         mirror->setRenderType(RenderType::Mirror);
 
         GameObject *water = createGameObject("water");
         water->addComponent<MeshRenderer>(meshWater);
-        water->setLocalPosition(0.0f, 0.0f, 0.0f);
+        water->setPosition(0.0f, 0.0f, 0.0f);
         water->setRenderType(RenderType::Water);
 
         Mesh *mesh = MeshManager::Instance().CreateCube("Cube", 1);
@@ -527,7 +536,7 @@ public:
     {
         const float SPEED = 12.0f * dt;
 
-        time += dt * 0.5f;
+        time += dt * 0.1f;
 
         // ANIMAR DIREÇÃO DO VENTO
         windDirection.x = cosf(time * 0.02f);
@@ -536,34 +545,7 @@ public:
         //  ANIMAR FORÇA DO VENTO (pulsação)
         windForce = 1.0f + sinf(time) * 0.005f;
 
-        if (Input::IsKeyDown(KEY_W))
-            camera->move(SPEED);
-        if (Input::IsKeyDown(KEY_S))
-            camera->move(-SPEED);
-
-        if (Input::IsKeyDown(KEY_A))
-            camera->strafe(-SPEED);
-        if (Input::IsKeyDown(KEY_D))
-            camera->strafe(SPEED);
-
-        if (Input::IsKeyDown(KEY_LEFT))
-        {
-
-            yaw += 1;
-            mirrorCamera->setLocalRotation(yaw, 0, 0);
-            mirrorCamera->update(1);
-
-            Vec3 rotation = mirrorCamera->getLocalEulerAngles();
-            LogInfo("Rotation: %f %f %f Yaw: %f", rotation.x, rotation.y, rotation.z, yaw);
-        }
-        if (Input::IsKeyDown(KEY_RIGHT))
-        {
-            yaw -= 1;
-            mirrorCamera->setLocalRotation(yaw, 0, 0);
-            mirrorCamera->update(1);
-            Vec3 rotation = mirrorCamera->getLocalEulerAngles();
-            LogInfo("Rotation: %f %f %f Yaw: %f", rotation.x, rotation.y, rotation.z, yaw);
-        }
+       
     }
     void OnResize(u32 w, u32 h) override
     {
@@ -690,7 +672,7 @@ int main()
         if (Input::IsMouseDown(MouseButton::LEFT) && !gui.IsFocused())
         {
             Vec2 mouseDelta = Input::GetMouseDelta();
-            scene.getCamera()->rotate(mouseDelta.y * mouseSensitivity, mouseDelta.x * mouseSensitivity);
+                    scene.getCamera()->processMouseMovement(mouseDelta.x * mouseSensitivity, mouseDelta.y * mouseSensitivity);
         }
 
         batch.Render();

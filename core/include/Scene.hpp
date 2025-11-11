@@ -73,8 +73,6 @@ public:
     void Debug(RenderBatch *batch);
 
     Camera3D *createCamera(const std::string &name = "Camera");
-    CameraFPS *createCameraFPS(const std::string &name = "CameraFPS");
-    CameraMaya *createCameraMaya(const std::string &name = "CameraMaya");
     CameraFree *createCameraFree(const std::string &name = "CameraFree");
 
     u32 getTotalObjects() const { return m_total; }

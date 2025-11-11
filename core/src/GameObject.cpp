@@ -65,7 +65,7 @@ void GameObject::start()
 
 void GameObject::update(float deltaTime)
 {
-    updateWorldTransform();
+    updateAbsolutePosition();
     
     
     Node3D::update(deltaTime);
