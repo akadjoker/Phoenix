@@ -3,3 +3,8 @@
 /tmp
 /bin
 /bin/
+.cache/
+/.cache/
+.cache/clangd/
+.clangd/
+.cache/
