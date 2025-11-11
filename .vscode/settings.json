@@ -66,6 +66,7 @@
         "variant": "cpp",
         "format": "cpp",
         "text_encoding": "cpp",
-        "__nullptr": "cpp"
+        "__nullptr": "cpp",
+        "__node_handle": "cpp"
     }
 }

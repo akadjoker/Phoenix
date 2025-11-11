@@ -185,10 +185,6 @@ void Scene::SetCamera(Camera3D *camera)
    
 
     ActiveCamera = camera;
-    ActiveCamera->update(1.0f);
-    
-    
-
     m_view = ActiveCamera->getViewMatrix();
     m_proj = ActiveCamera->getProjectionMatrix();
     m_frustum->extractFromCamera(m_view, m_proj);
@@ -409,9 +405,14 @@ void Scene::Update(float dt)
 
     OnUpdate(dt);
 
-    if (ActiveCamera)
+    // if (ActiveCamera)
+    // {
+    //     ActiveCamera->update(dt);
+    // }
+
+    for (u32 i =0;i<m_cameras.size();i++)
     {
-        ActiveCamera->update(dt);
+        m_cameras[i]->update(dt);
     }
 
     // TODO  sort trasnsparent and lights by distance from camera, solid sort by texture index

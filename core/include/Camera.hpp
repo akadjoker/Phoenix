@@ -25,7 +25,7 @@ protected:
     bool viewDirty;
     bool InputReceiverEnabled;
     bool TargetAndRotationAreBound;
-
+    bool ignortTargetUpdate;
     Mat4 projectionMatrix;
     Mat4 viewMatrix;
 
@@ -51,6 +51,8 @@ public:
     float getAspectRatio() const;
     float getNearPlane() const;
     float getFarPlane() const;
+
+    void setIgnoreTarget(bool state ) { ignortTargetUpdate = state;}
 
     // ==================== Matrices ====================
 

@@ -10,7 +10,7 @@ Camera3D::Camera3D(const std::string &name)
       nearPlane(0.1f),
       farPlane(100.0f),
       viewDirty(true),
-      projectionDirty(true)
+      projectionDirty(true),ignortTargetUpdate(false)
 {
 
     Target = Vec3(0, 0, 100);
@@ -27,7 +27,8 @@ Camera3D::Camera3D(float fov, float aspect, float near, float far, const std::st
       nearPlane(near),
       farPlane(far),
       viewDirty(true),
-      projectionDirty(true)
+      projectionDirty(true),
+      ignortTargetUpdate(false)
 {
     UpVector = Vec3(0, 1, 0);
     Target = Vec3(0, 0, 100);
@@ -197,6 +198,7 @@ Mat4 Camera3D::getViewProjectionMatrix()
 
 void Camera3D::update(float deltaTime)
 {
+    updateViewMatrix();
     updateProjectionMatrix();
     if (transformDirty)
     {
@@ -328,8 +330,11 @@ void CameraFree::processInput(float deltaTime)
         setPosition(pos);
     }
     
+    if (!ignortTargetUpdate)
+    {
     // Atualiza target
-    Target = pos + forward;
+        Target = pos + forward;
+    }
     
     // Atualiza UpVector para manter orientação correta
     UpVector = up;

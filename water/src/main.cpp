@@ -125,6 +125,8 @@ public:
             driver.Clear(CLEAR_COLOR | CLEAR_DEPTH);
             driver.SetViewPort(0, 0, 1024, 1024);
 
+            camera->update(1.0f);
+
             //  câmera NORMAL (não refletida)
             SetCamera(camera);
             const Mat4 view = getViewMatrix();
@@ -181,36 +183,20 @@ public:
 
             waterCamera->setFOV(camera->getFOV());
             waterCamera->setFarPlane(camera->getFarPlane());
-            waterCamera->setNearPlane(15.0f);
+            waterCamera->setNearPlane(1.0f);
             waterCamera->setAspectRatio(camera->getAspectRatio());
+            waterCamera->setIgnoreTarget(true);
 
 
-            Vec3 pos = camera->getPosition();
+            Vec3 position = camera->getPosition();
+
+            position.y = -position.y + 2 * waterPlaneY;
        
-            waterCamera->setPosition(pos.x, 2.0f * waterPlaneY - pos.y, pos.z);
+            waterCamera->setPosition( position);
 
-              Vec3 target = camera->getTarget();
+             Vec3 target = camera->getTarget();
              target.y = -target.y + 2.0f * waterPlaneY;
-              waterCamera->setTarget(target);
-
-
-                Vec3 up = camera->getUpVector();
-    up.y = -up.y;
-    waterCamera->setUpVector(up);
- 
-
-            //  Quat originalRot = camera->getRotation();
-           //   Quat flip = Quat::FromAxisAngleDeg(Vec3(0, 0, 1), 180.0f); // 180° roll
-          //   waterCamera->setLocalRotation(originalRot * flip);
-   
-//             Vec3 euler = camera->getEulerAngles();
-// //            waterCamera->setRotation(-euler.x, euler.y, euler.z); // Pitch negativo, resto igual
-//             waterCamera->setRotation(euler.y, euler.x, 180.0f); // Pitch = 0, só yaw
-
-  
- 
-
- 
+             waterCamera->setTarget(target);
 
             waterCamera->update(1.0f);
             SetCamera(waterCamera);
