@@ -9,177 +9,94 @@
  * Node3D extends Node with 3D position, rotation, and scale.
  * All 3D objects (cameras, meshes, lights) inherit from Node3D.
  */
+
+enum class TransformSpace
+{
+    Local,
+    Parent,
+    World
+};
+
 class Node3D : public Node
 {
 protected:
-    // Local transform (relative to parent)
-    Vec3 localPosition;
-    Quat localRotation;
-    Vec3 localScale;
+    Vec3 m_localPosition;
+    Quat m_localRotation;
+    Vec3 m_localScale;
 
-    // Cached world transform
-    Vec3 worldPosition;
-    Quat worldRotation;
-    Vec3 worldScale;
-    Mat4 worldMatrix;
+    mutable Mat4 m_localTransform;
+    mutable Mat4 m_worldTransform;
+    mutable bool m_transformDirty;
+    mutable bool m_worldTransformDirty;
 
-    bool transformDirty;
+    Node3D *m_parent;
+    std::vector<Node3D *> m_children;
 
-    BoundingBox m_boundingBox;
-
-    void updateWorldTransform();
-    void markTransformDirty();
+    void updateLocalTransform() const;
+    void updateWorldTransform() const;
+    void markDirty();
+    void markWorldDirty();
 
 public:
     Node3D(const std::string &name = "Node3D");
-    Node3D(const Vec3 &position);
-    Node3D(const Vec3 &position, const Quat &rotation);
-    Node3D(const Vec3 &position, const Quat &rotation, const Vec3 &scale);
-    virtual ~Node3D() {}
+    virtual ~Node3D();
 
-    virtual ObjectType getType() override { return ObjectType::Node3D; }
-
-    // ==================== Local Transform ====================
-
-    // Position
-    void setLocalPosition(const Vec3 &position);
-    void setLocalPosition(float x, float y, float z);
-    Vec3 getLocalPosition() const;
-
-    // Rotation
-    void setLocalRotation(const Quat &rotation);
-    void setLocalRotation(const Vec3 &eulerDegrees);
-    void setLocalRotation(float pitch, float yaw, float roll);
-    Quat getLocalRotation() const;
-    Vec3 getLocalEulerAngles() const;
-
-    // Scale
-    void setLocalScale(const Vec3 &scale);
-    void setLocalScale(float uniformScale);
-    void setLocalScale(float x, float y, float z);
-    Vec3 getLocalScale() const;
-
-    // ==================== World Transform ====================
-
-    // Position
-    void setPosition(const Vec3 &position);
-    void setPosition(float x, float y, float z);
-    Vec3 getPosition();
-
-    // Rotation
-    void setRotation(const Quat &rotation);
-    void setRotation(const Vec3 &eulerDegrees);
-    void setRotation(float pitch, float yaw, float roll);
-    Quat getRotation();
-    Vec3 getEulerAngles();
-
-    // Scale
+    // Transform
+    virtual void setPosition(const Vec3 &pos, TransformSpace space = TransformSpace::Local);
+    virtual void setPosition(float x, float y, float z, TransformSpace space = TransformSpace::Local);
+    virtual void setRotation(const Quat &rot, TransformSpace space = TransformSpace::Local);
     void setScale(const Vec3 &scale);
-    void setScale(float uniformScale);
-    Vec3 getScale();
+    void setEulerAngles(const Vec3 &euler);
+    void setEulerAnglesDeg(const Vec3 &eulerDeg);
 
-    // ==================== Matrices ====================
+    Vec3 getPosition(TransformSpace space = TransformSpace::Local) const;
+    Quat getRotation(TransformSpace space = TransformSpace::Local) const;
+    Vec3 getScale(TransformSpace space = TransformSpace::Local) const;
+    Vec3 getEulerAngles() const;
+    Vec3 getEulerAnglesDeg() const;
 
-    Mat4 getLocalMatrix();
-    Mat4 getWorldMatrix();
+    // Euler individual
+    void setPitch(float pitch);
+    void setYaw(float yaw);
+    void setRoll(float roll);
+    void setPitchDeg(float pitchDeg);
+    void setYawDeg(float yawDeg);
+    void setRollDeg(float rollDeg);
 
-    // ==================== Directions (World Space) ====================
+    float getPitch() const;
+    float getYaw() const;
+    float getRoll() const;
+    float getPitchDeg() const;
+    float getYawDeg() const;
+    float getRollDeg() const;
 
-    Vec3 forward();
-    Vec3 back();
-    Vec3 right();
-    Vec3 left();
-    Vec3 up();
-    Vec3 down();
+    // Transformações incrementais
+    virtual void translate(const Vec3 &offset, TransformSpace space = TransformSpace::Local);
+    virtual void rotate(const Quat &rot, TransformSpace space = TransformSpace::Local);
+    virtual void rotate(const Vec3 &axis, float angleRad, TransformSpace space = TransformSpace::Local);
+    virtual void rotateDeg(const Vec3 &axis, float angleDeg, TransformSpace space = TransformSpace::Local);
+    void scale(const Vec3 &scale);
 
-    // ==================== Movement ====================
+    // Matrizes
+    const Mat4 &getLocalTransform() const;
+    const Mat4 &getWorldTransform() const;
 
-    // Movement in world space
-    void translate(const Vec3 &translation);
-    void translate(float x, float y, float z);
+    virtual void update(float deltaTime) override {};
+    virtual void render() override {}
 
-    // Movement in local space
-    void translateLocal(const Vec3 &translation);
-    void translateLocal(float x, float y, float z);
+    // Hierarquia
+    void setParent(Node3D *parent);
+    Node3D *getParent() const { return m_parent; }
+    const std::vector<Node3D *> &getChildren() const { return m_children; }
+    void addChild(Node3D *child);
+    void removeChild(Node3D *child);
+    void removeFromParent();
 
-    // Shortcuts (local space)
-    void moveForward(float distance);
-    void moveBack(float distance);
-    void moveRight(float distance);
-    void moveLeft(float distance);
-    void moveUp(float distance);
-    void moveDown(float distance);
+    // Direções
+    Vec3 getForward(TransformSpace space = TransformSpace::Local) const;
+    Vec3 getRight(TransformSpace space = TransformSpace::Local) const;
+    Vec3 getUp(TransformSpace space = TransformSpace::Local) const;
 
-    // Strafe (lateral movement without rotation)
-    void strafe(float right, float up);
-    void strafe(float right, float forward, float up);
-
-    // ==================== Rotation ====================
-
-
-    // Rotation in world space
-
-    void rotate(const Quat &rotation);
-    void rotate(const Vec3 &axis, float degrees);
-    void rotateX(float degrees);
-    void rotateY(float degrees);
-    void rotateZ(float degrees);
-
-    // Rotation in local space
-    void rotateLocal(const Quat &rotation);
-    void rotateLocal(const Vec3 &axis, float degrees);
-    void rotateLocalX(float degrees);
-    void rotateLocalY(float degrees);
-    void rotateLocalZ(float degrees);
-
-
-    float getLocalPitch() const;
-    float getLocalYaw() const;
-    float getLocalRoll() const;
-
-    // FPS-style rotation (limited pitch/yaw)
-    void rotateFPS(float pitch, float yaw);
-
-    // ==================== Look At ====================
-
-    void lookAt(const Vec3 &target);
-    void lookAt(const Vec3 &target, const Vec3 &up);
-    void lookAt(const Node3D &target);
-
-    void lookDirection(const Vec3 &direction);
-    void lookDirection(const Vec3 &direction, const Vec3 &up);
-
-    // ==================== Utilities ====================
-
-    Vec3 transformPoint(const Vec3 &localPoint);
-    Vec3 transformDirection(const Vec3 &localDirection);
-    Vec3 inverseTransformPoint(const Vec3 &worldPoint);
-    Vec3 inverseTransformDirection(const Vec3 &worldDirection);
-
-    float getPitch();
-    float getYaw();
-    float getRoll();
-
-
-     // Direct angle manipulation (add to current angles)
-    void addPitch(float degrees);
-    void addYaw(float degrees);
-    void addRoll(float degrees);
-    
-    // Direct angle setting (absolute)
-    void setPitch(float degrees);
-    void setYaw(float degrees);
-    void setRoll(float degrees);
-
-    BoundingBox& getBoundingBox();
-    const BoundingBox getBoundingBox() const;
-    const BoundingBox getTransformedBoundingBox() const;
-
-    void reset();
-
-    // Override setParent to invalidate transforms
-    void setParent(Node *newParent) override;
-
-    // Get typed parent
-    Node3D *getParent3D() const;
+    // Utilitários
+    virtual void lookAt(const Vec3 &target, TransformSpace targetSpace = TransformSpace::World, const Vec3 &up = Vec3(0, 1, 0));
 };

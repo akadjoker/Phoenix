@@ -5,9 +5,9 @@ project(Phoenix)
 
 add_subdirectory(core)
 add_subdirectory(main)
-add_subdirectory(water)
+#add_subdirectory(water)
  
-add_subdirectory(rtrender)
+#add_subdirectory(rtrender)
 
 add_subdirectory(exporter)
  

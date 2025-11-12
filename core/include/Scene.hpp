@@ -12,10 +12,7 @@ class GameObject;
 class RenderBatch;
 class Frustum;
 class Shader;
-class Camera3D;
-class CameraFree;
-class CameraFPS;
-class CameraMaya;
+class Camera;
 
 class Scene
 {
@@ -23,7 +20,7 @@ private:
     std::vector<Node3D *> m_objects;
     std::vector<Node3D *> m_objects_to_remove;
 
-    std::vector<Camera3D *> m_cameras;
+    std::vector<Camera *> m_cameras;
 
     std::vector<Node3D *> m_render_solids;
     std::vector<Node3D *> m_render_trasparent;
@@ -34,7 +31,7 @@ private:
     std::vector<Node3D *> m_render_skyes;
     std::vector<Node3D *> m_render_terrains;
 
-    Camera3D *ActiveCamera;
+    Camera *ActiveCamera;
     Mat4 m_view;
     Mat4 m_proj;
     Vec3 camWorldPos;
@@ -72,10 +69,8 @@ public:
 
     void Debug(RenderBatch *batch);
 
-    Camera3D *createCamera(const std::string &name = "Camera");
-    CameraFPS *createCameraFPS(const std::string &name = "CameraFPS");
-    CameraMaya *createCameraMaya(const std::string &name = "CameraMaya");
-    CameraFree *createCameraFree(const std::string &name = "CameraFree");
+    Camera *createCamera(const std::string &name = "Camera");
+ 
 
     u32 getTotalObjects() const { return m_total; }
     u32 getVisibleObjects() const { return m_visible; }
@@ -84,11 +79,11 @@ public:
     GameObject *createGameObject(const std::string &name = "GameObject", Node3D *parent = nullptr);
     const std::vector<Node3D *> &getObjects() const { return m_objects; }
 
-    Camera3D *getActiveCamera() const { return ActiveCamera; }
+    Camera *getActiveCamera() const { return ActiveCamera; }
 
-    void setActiveCamera(Camera3D *camera) ;
+    void setActiveCamera(Camera *camera) ;
 
-    void SetCamera(Camera3D *camera);
+    void SetCamera(Camera *camera);
 
     const Mat4 &getViewMatrix() const;
     const Mat4 &getProjectionMatrix() const;

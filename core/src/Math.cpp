@@ -2262,35 +2262,6 @@ Mat3 Quat::toMat3() const
     return result;
 }
 
-Vec3 Quat::toEulerAngles() const
-{
-    // Retorna (pitch, yaw, roll) em radianos
-    Quat q = normalized();
-
-    // Pitch (X-axis rotation)
-    float sinp = 2.0f * (q.w * q.x + q.y * q.z);
-    float cosp = 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
-    float pitch = std::atan2(sinp, cosp);
-
-    // Yaw (Y-axis rotation)
-    float siny = 2.0f * (q.w * q.y - q.z * q.x);
-    float yaw;
-    if (std::fabs(siny) >= 1.0f)
-    {
-        yaw = std::copysign(PI / 2.0f, siny); // Gimbal lock
-    }
-    else
-    {
-        yaw = std::asin(siny);
-    }
-
-    // Roll (Z-axis rotation)
-    float sinr = 2.0f * (q.w * q.z + q.x * q.y);
-    float cosr = 1.0f - 2.0f * (q.y * q.y + q.z * q.z);
-    float roll = std::atan2(sinr, cosr);
-
-    return Vec3(pitch, yaw, roll);
-}
 
 Vec3 Quat::toEulerAnglesDeg() const
 {
@@ -2314,24 +2285,75 @@ Quat Quat::FromAxisAngleDeg(const Vec3 &axis, float angleDeg)
     return Quat(axis, angleDeg * DEG_TO_RAD);
 }
 
+Vec3 Quat::toEulerAngles() const
+{
+    // Inverter a ordem YXZ da tua FromEulerAngles
+    Quat q = normalized();
+    
+    // Extrair pitch (rotação em X)
+    float sinPitch = 2.0f * (q.w * q.x - q.y * q.z);
+    float pitch;
+    
+    if (std::fabs(sinPitch) >= 1.0f)
+    {
+        pitch = std::copysign(PI / 2.0f, sinPitch); // Gimbal lock
+    }
+    else
+    {
+        pitch = std::asin(sinPitch);
+    }
+    
+    // Extrair yaw (rotação em Y)
+    float sinYaw = 2.0f * (q.w * q.y + q.x * q.z);
+    float cosYaw = 1.0f - 2.0f * (q.y * q.y + q.x * q.x);
+    float yaw = std::atan2(sinYaw, cosYaw);
+    
+    // Extrair roll (rotação em Z)
+    float sinRoll = 2.0f * (q.w * q.z + q.x * q.y);
+    float cosRoll = 1.0f - 2.0f * (q.x * q.x + q.z * q.z);
+    float roll = std::atan2(sinRoll, cosRoll);
+    
+    return Vec3(pitch, yaw, roll);
+}
+ 
+
 Quat Quat::FromEulerAngles(float pitch, float yaw, float roll)
 {
-    // Ordem: YXZ (yaw, pitch, roll)
+    // Ordem de aplicação: Y (yaw) → X (pitch) → Z (roll)
     float cy = std::cos(yaw * 0.5f);
     float sy = std::sin(yaw * 0.5f);
     float cp = std::cos(pitch * 0.5f);
     float sp = std::sin(pitch * 0.5f);
     float cr = std::cos(roll * 0.5f);
     float sr = std::sin(roll * 0.5f);
-
+    
     Quat q;
     q.w = cr * cp * cy + sr * sp * sy;
-    q.x = sr * cp * cy - cr * sp * sy;
-    q.y = cr * sp * cy + sr * cp * sy;
-    q.z = cr * cp * sy - sr * sp * cy;
-
+    q.x = cr * sp * cy + sr * cp * sy;
+    q.y = cr * cp * sy - sr * sp * cy;
+    q.z = sr * cp * cy - cr * sp * sy;
+    
     return q;
 }
+
+// Quat Quat::FromEulerAngles(float pitch, float yaw, float roll)
+// {
+//     // Ordem: YXZ (yaw, pitch, roll)
+//     float cy = std::cos(yaw * 0.5f);
+//     float sy = std::sin(yaw * 0.5f);
+//     float cp = std::cos(pitch * 0.5f);
+//     float sp = std::sin(pitch * 0.5f);
+//     float cr = std::cos(roll * 0.5f);
+//     float sr = std::sin(roll * 0.5f);
+
+//     Quat q;
+//     q.w = cr * cp * cy + sr * sp * sy;
+//     q.x = sr * cp * cy - cr * sp * sy;
+//     q.y = cr * sp * cy + sr * cp * sy;
+//     q.z = cr * cp * sy - sr * sp * cy;
+
+//     return q;
+// }
 
 Quat Quat::FromEulerAnglesDeg(float pitch, float yaw, float roll)
 {

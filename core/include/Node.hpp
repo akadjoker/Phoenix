@@ -28,10 +28,6 @@ enum class RenderType : u8
 class Node : public Object
 {
 protected:
-    Node *parent;
-    std::vector<Node *> children;
-
-    bool insideTree;
     RenderType m_renderType;
 
 public:
@@ -42,57 +38,12 @@ public:
     RenderType getRenderType() const { return m_renderType; };
     void setRenderType(RenderType renderType);
 
-    // ==================== Hierarchy ====================
-
-    virtual void setParent(Node *newParent);
-    Node *getParent() const;
-    void removeParent();
-
-    void addChild(Node *child);
-    void removeChild(Node *child);
-    void removeAllChildren();
-
-    const std::vector<Node *> &getChildren() const;
-    int getChildCount() const;
-    Node *getChild(int index) const;
-
-    Node *findChild(const std::string &name) const;
-    Node *findChildRecursive(const std::string &name) const;
-
-    bool isAncestorOf(const Node *node) const;
-    bool isDescendantOf(const Node *node) const;
-
-    // ==================== Lifecycle ====================
-
     virtual void ready() {}
     virtual void update(float deltaTime) {}
     virtual void render() {}
 
-    void propagateUpdate(float deltaTime);
-    void propagateRender();
-
-    // ==================== Active State ====================
-
- 
-    bool isInsideTree() const;
-
     void show();
     void hide();
 
-    // ==================== Name ====================
-
-    std::string getPath() const;
-
-    // ==================== Utilities ====================
-
-    void queueFree();
-    Node *getRoot();
-    int getDepth() const;
-
 protected:
-    virtual void _enterTree();
-    virtual void _exitTree();
-
-    void _propagateEnterTree();
-    void _propagateExitTree();
 };

@@ -9,33 +9,11 @@
 #include "Shader.hpp"
 #include "Batch.hpp"
 
-CameraFPS *Scene::createCameraFPS(const std::string &name)
-{
-    CameraFPS *camera = new CameraFPS(name);
-    m_cameras.push_back(camera);
-    ActiveCamera = camera;
-    return camera;
-}
 
-CameraMaya *Scene::createCameraMaya(const std::string &name)
-{
-    CameraMaya *camera = new CameraMaya(name);
-    m_cameras.push_back(camera);
-    ActiveCamera = camera;
-    return camera;
-}
 
-CameraFree *Scene::createCameraFree(const std::string &name)
+Camera* Scene::createCamera(const std::string &name)
 {
-    CameraFree *camera = new CameraFree(name);
-    m_cameras.push_back(camera);
-    ActiveCamera = camera;
-    return camera;
-}
-
-Camera3D *Scene::createCamera(const std::string &name)
-{
-    Camera3D *camera = new Camera3D(name);
+    Camera *camera = new Camera(name);
     m_cameras.push_back(camera);
     ActiveCamera = camera;
     return camera;
@@ -108,7 +86,7 @@ void Scene::Debug(RenderBatch *batch)
 
     for (u32 i = 0; i < m_objects.size(); i++)
     {
-        batch->Box(m_objects[i]->getTransformedBoundingBox());
+       // batch->Box(m_objects[i]->getTransformedBoundingBox());
     }
 }
 
@@ -135,7 +113,7 @@ GameObject *Scene::createGameObject(const std::string &name, Node3D *parent)
     return node;
 }
 
-void Scene::setActiveCamera(Camera3D *camera)
+void Scene::setActiveCamera(Camera *camera)
 {
     ActiveCamera = camera;
 }
@@ -165,7 +143,7 @@ bool Scene::Init()
 
 bool Scene::isVisible(Node3D *node)
 {
-    return (m_frustum->intersectsAABB(node->getTransformedBoundingBox()) && node->isActive());
+   return true;// return (m_frustum->intersectsAABB(node->getTransformedBoundingBox()) && node->isActive());
 }
 
 void Scene::renderAll(Shader *shader)
@@ -188,26 +166,19 @@ void Scene::renderAll(Shader *shader)
     renderPass(shader, RenderType::Water);
 }
 
-void Scene::SetCamera(Camera3D *camera)
+void Scene::SetCamera(Camera *camera)
 {
     if (!m_ready || !camera)
     {
         LogWarning("[Scene] Scene is not ready");
         return;
     }
-    
-   
-
     ActiveCamera = camera;
-    ActiveCamera->update(1.0f);
-    
-    
-
     m_view = ActiveCamera->getViewMatrix();
     m_proj = ActiveCamera->getProjectionMatrix();
     m_frustum->extractFromCamera(m_view, m_proj);
-    camWorldPos = ActiveCamera->getLocalPosition();
-     m_needRebuildLists = true;
+    camWorldPos = ActiveCamera->getPosition();
+    m_needRebuildLists = true;
 
 }
 
@@ -306,9 +277,9 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
         {
             if (!object->isActive())
                 continue;
-            const Mat4 model = object->getWorldMatrix();
+            const Mat4 model = object->getWorldTransform();
             shader->SetUniformMat4("model", model.m);
-            object->propagateRender();
+           
         }
     }
 
@@ -318,9 +289,9 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
         {
             if (!object->isActive())
                 continue;
-            const Mat4 model = object->getWorldMatrix();
+            const Mat4 model = object->getWorldTransform();
             shader->SetUniformMat4("model", model.m);
-            object->propagateRender();
+            object->render();
         }
     }
 
@@ -330,9 +301,9 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
         {
             if (!object->isActive())
                 continue;
-            const Mat4 model = object->getWorldMatrix();
+            const Mat4 model = object->getWorldTransform();
             shader->SetUniformMat4("model", model.m);
-            object->propagateRender();
+            object->render();
         }
     }
 
@@ -342,9 +313,9 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
         {
             if (!object->isActive())
                 continue;
-            const Mat4 model = object->getWorldMatrix();
+            const Mat4 model = object->getWorldTransform();
             shader->SetUniformMat4("model", model.m);
-            object->propagateRender();
+            object->render();
         }
     }
 
@@ -354,9 +325,9 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
         {
             if (!object->isActive())
                 continue;
-            const Mat4 model = object->getWorldMatrix();
+            const Mat4 model = object->getWorldTransform();
             shader->SetUniformMat4("model", model.m);
-            object->propagateRender();
+            object->render();
         }
     }
 
@@ -366,9 +337,9 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
         {
             if (!object->isActive())
                 continue;
-            const Mat4 model = object->getWorldMatrix();
+            const Mat4 model = object->getWorldTransform();
             shader->SetUniformMat4("model", model.m);
-            object->propagateRender();
+            object->render();
         }
     }
 
@@ -378,9 +349,9 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
         {
             if (!object->isActive())
                 continue;
-            const Mat4 model = object->getWorldMatrix();
+            const Mat4 model = object->getWorldTransform();
             shader->SetUniformMat4("model", model.m);
-            object->propagateRender();
+            object->render();
         }
     }
 
@@ -390,9 +361,9 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
         {
             if (!object->isActive())
                 continue;
-            const Mat4 model = object->getWorldMatrix();
+            const Mat4 model = object->getWorldTransform();
             shader->SetUniformMat4("model", model.m);
-            object->propagateRender();
+            object->render();
         }
     }
 }
@@ -434,43 +405,43 @@ void Scene::Update(float dt)
 
     for (Node3D *object : m_render_terrains)
     {
-        object->propagateUpdate(dt);
+        object->update(dt);
     }
 
     for (Node3D *object : m_render_lights)
     {
 
-        object->propagateUpdate(dt);
+        object->update(dt);
     }
 
     for (Node3D *object : m_render_skyes)
     {
-        object->propagateUpdate(dt);
+        object->update(dt);
     }
 
     for (Node3D *object : m_render_solids)
     {
-        object->propagateUpdate(dt);
+        object->update(dt);
     }
 
     for (Node3D *object : m_render_trasparent)
     {
-        object->propagateUpdate(dt);
+        object->update(dt);
     }
 
     for (Node3D *object : m_render_special)
     {
-        object->propagateUpdate(dt);
+        object->update(dt);
     }
 
     for (Node3D *object : m_render_waters)
     {
-        object->propagateUpdate(dt);
+        object->update(dt);
     }
 
     for (Node3D *object : m_render_mirrors)
     {
-        object->propagateUpdate(dt);
+        object->update(dt);
     }
 }
 

@@ -7,7 +7,8 @@ const int MinInt32 = 0x80000000;
 const int MaxInt32 = 0x7FFFFFFF;
 const float MaxFloat = 3.402823466e+38F;
 const float MinPosFloat = 1.175494351e-38F;
-
+const float DEG2RAD = M_PI / 180.0f;
+const float RAD2DEG = 180.0f / M_PI;
 const float Pi = 3.141592654f;
 const float TwoPi = 6.283185307f;
 const float PiHalf = 1.570796327f;

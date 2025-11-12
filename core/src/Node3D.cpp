@@ -1,621 +1,571 @@
 #include "pch.h"
 #include "Node3D.hpp"
+ 
 
-Node3D::Node3D(const std::string &name)
-    : Node(name),
-      localPosition(0, 0, 0),
-      localRotation(Quat::Identity()),
-      localScale(1, 1, 1),
-      worldPosition(0, 0, 0),
-      worldRotation(Quat::Identity()),
-      worldScale(1, 1, 1),
-      transformDirty(true)
+Node3D::Node3D(const std::string &name ):
+    Node(name)
+    , m_localPosition(0, 0, 0)
+    , m_localRotation(Quat::Identity())
+    , m_localScale(1, 1, 1)
+    , m_transformDirty(true)
+    , m_worldTransformDirty(true)
+    , m_parent(nullptr)
 {
-    m_boundingBox.min = Vec3(-0.5f, -0.5f, -0.5f);
-    m_boundingBox.max = Vec3(0.5f, 0.5f, 0.5f);
 }
 
-Node3D::Node3D(const Vec3 &position)
-    : Node3D()
+Node3D::~Node3D()
 {
-    setLocalPosition(position);
-}
-
-Node3D::Node3D(const Vec3 &position, const Quat &rotation)
-    : Node3D()
-{
-    setLocalPosition(position);
-    setLocalRotation(rotation);
-}
-
-Node3D::Node3D(const Vec3 &position, const Quat &rotation, const Vec3 &scale)
-    : Node3D()
-{
-    setLocalPosition(position);
-    setLocalRotation(rotation);
-    setLocalScale(scale);
-}
-
-// ==================== Private Methods ====================
-
-void Node3D::updateWorldTransform()
-{
-    if (!transformDirty)
-        return;
-
-    Node3D *parent3D = getParent3D();
-
-    if (parent3D)
+    // Remove de todos os children
+    for (Node3D* child : m_children)
     {
-        parent3D->updateWorldTransform();
-
-        worldPosition = parent3D->transformPoint(localPosition);
-        worldRotation = parent3D->getRotation() * localRotation;
-        worldScale = parent3D->getScale() * localScale;
+        child->m_parent = nullptr;
     }
+    
+    // Remove do parent
+    if (m_parent)
+    {
+        m_parent->removeChild(this);
+    }
+}
+
+void Node3D::updateLocalTransform() const
+{
+    Mat4 translation = Mat4::Translation(m_localPosition);
+    Mat4 rotation = m_localRotation.toMat4();
+    Mat4 scale = Mat4::Scale(m_localScale);
+    
+    m_localTransform = translation * rotation * scale;
+    m_transformDirty = false;
+}
+
+void Node3D::updateWorldTransform() const
+{
+    if (m_transformDirty)
+        updateLocalTransform();
+    
+    if (m_parent)
+        m_worldTransform = m_parent->getWorldTransform() * m_localTransform;
     else
-    {
-        worldPosition = localPosition;
-        worldRotation = localRotation;
-        worldScale = localScale;
-    }
-
-    Mat4 T = Mat4::Translation(worldPosition);
-    Mat4 R = worldRotation.toMat4();
-    Mat4 S = Mat4::Scale(worldScale);
-    worldMatrix = T * R * S;
-
-    transformDirty = false;
+        m_worldTransform = m_localTransform;
+    
+    m_worldTransformDirty = false;
 }
 
-void Node3D::markTransformDirty()
+void Node3D::markDirty()
 {
-    transformDirty = true;
+    m_transformDirty = true;
+    markWorldDirty();
+}
 
-    for (Node *child : children)
+void Node3D::markWorldDirty()
+{
+    m_worldTransformDirty = true;
+    
+    // Propagar para todos os filhos
+    for (Node3D* child : m_children)
     {
-        Node3D *child3D = dynamic_cast<Node3D *>(child);
-        if (child3D)
+        child->markWorldDirty();
+    }
+}
+
+// Transform getters/setters
+void Node3D::setPosition(const Vec3& pos, TransformSpace space)
+{
+    switch (space)
+    {
+        case TransformSpace::Local:
+            m_localPosition = pos;
+            break;
+            
+        case TransformSpace::Parent:
+            m_localPosition = pos;
+            break;
+            
+        case TransformSpace::World:
+            if (m_parent)
+            {
+                Mat4 parentInverse = m_parent->getWorldTransform().inverse();
+                m_localPosition = parentInverse.TransformPoint(pos);
+            }
+            else
+            {
+                m_localPosition = pos;
+            }
+            break;
+    }
+    
+    markDirty();
+}
+
+void Node3D::setPosition(float x, float y, float z, TransformSpace space) 
+{
+
+    switch (space)
+    {
+        case TransformSpace::Local:
         {
-            child3D->markTransformDirty();
+            m_localPosition.x=x;
+            m_localPosition.y=y;
+            m_localPosition.z=x;
+            break;
+        }   
+        case TransformSpace::Parent:
+        {
+            m_localPosition.x=x;
+            m_localPosition.y=y;
+            m_localPosition.z=x;
+            break;
+        }
+            
+        case TransformSpace::World:
+        {
+            if (m_parent)
+            {
+                Vec3 pos(x,y,z);
+                Mat4 parentInverse = m_parent->getWorldTransform().inverse();
+                m_localPosition = parentInverse.TransformPoint(pos);
+            }
+            else
+            {
+            m_localPosition.x=x;
+            m_localPosition.y=y;
+            m_localPosition.z=x;
+
+            }
+            break;
         }
     }
+    
+    markDirty();
 }
 
-// ==================== Local Transform ====================
-
-void Node3D::setLocalPosition(const Vec3 &position)
+Vec3 Node3D::getPosition(TransformSpace space) const
 {
-    localPosition = position;
-    markTransformDirty();
-}
-
-void Node3D::setLocalPosition(float x, float y, float z)
-{
-    setLocalPosition(Vec3(x, y, z));
-}
-
-Vec3 Node3D::getLocalPosition() const
-{
-    return localPosition;
-}
-
-void Node3D::setLocalRotation(const Quat &rotation)
-{
-    localRotation = rotation.normalized();
-    markTransformDirty();
-}
-
-void Node3D::setLocalRotation(const Vec3 &eulerDegrees)
-{
-    localRotation = Quat::FromEulerAnglesDeg(eulerDegrees);
-    markTransformDirty();
-}
-
-void Node3D::setLocalRotation(float pitch, float yaw, float roll)
-{
-    setLocalRotation(Vec3(pitch, yaw, roll));
-}
-
-Quat Node3D::getLocalRotation() const
-{
-    return localRotation;
-}
-
-Vec3 Node3D::getLocalEulerAngles() const
-{
-    return localRotation.toEulerAnglesDeg();
-}
-
-void Node3D::setLocalScale(const Vec3 &scale)
-{
-    localScale = scale;
-    markTransformDirty();
-}
-
-void Node3D::setLocalScale(float uniformScale)
-{
-    setLocalScale(Vec3(uniformScale, uniformScale, uniformScale));
-}
-
-void Node3D::setLocalScale(float x, float y, float z)
-{
-    setLocalScale(Vec3(x, y, z));
-}
-
-Vec3 Node3D::getLocalScale() const
-{
-    return localScale;
-}
-
-// ==================== World Transform ====================
-
-void Node3D::setPosition(const Vec3 &position)
-{
-    Node3D *parent3D = getParent3D();
-
-    if (parent3D)
+    switch (space)
     {
-        localPosition = parent3D->inverseTransformPoint(position);
+        case TransformSpace::Local:
+        case TransformSpace::Parent:
+            return m_localPosition;
+            
+        case TransformSpace::World:
+        {
+            const Mat4& world = getWorldTransform();
+            return Vec3(world[12], world[13], world[14]);
+        }
     }
-    else
+    
+    return m_localPosition;
+}
+
+void Node3D::setRotation(const Quat& rot, TransformSpace space)
+{
+    switch (space)
     {
-        localPosition = position;
+        case TransformSpace::Local:
+        case TransformSpace::Parent:
+            m_localRotation = rot;
+            break;
+            
+        case TransformSpace::World:
+            if (m_parent)
+            {
+                Quat parentWorldRot = m_parent->getRotation(TransformSpace::World);
+                m_localRotation = parentWorldRot.inverse() * rot;
+            }
+            else
+            {
+                m_localRotation = rot;
+            }
+            break;
     }
-    markTransformDirty();
+    
+    markDirty();
 }
 
-void Node3D::setPosition(float x, float y, float z)
+Quat Node3D::getRotation(TransformSpace space) const
 {
-    setPosition(Vec3(x, y, z));
-}
-
-Vec3 Node3D::getPosition()
-{
-    updateWorldTransform();
-    return worldPosition;
-}
-
-void Node3D::setRotation(const Quat &rotation)
-{
-    Node3D *parent3D = getParent3D();
-
-    if (parent3D)
+    switch (space)
     {
-        Quat parentRot = parent3D->getRotation();
-        localRotation = parentRot.inverse() * rotation;
+        case TransformSpace::Local:
+        case TransformSpace::Parent:
+            return m_localRotation;
+            
+        case TransformSpace::World:
+            if (m_parent)
+            {
+                Quat parentWorldRot = m_parent->getRotation(TransformSpace::World);
+                return parentWorldRot * m_localRotation;
+            }
+            return m_localRotation;
     }
-    else
+    
+    return m_localRotation;
+}
+
+void Node3D::setScale(const Vec3& scale)
+{
+    m_localScale = scale;
+    markDirty();
+}
+
+Vec3 Node3D::getScale(TransformSpace space) const
+{
+    switch (space)
     {
-        localRotation = rotation;
+        case TransformSpace::Local:
+        case TransformSpace::Parent:
+            return m_localScale;
+            
+        case TransformSpace::World:
+            // Extrair scale da world matrix é complexo com rotação
+            // Simplificado: assume uniform scale ou retorna local
+            if (m_parent)
+            {
+                Vec3 parentScale = m_parent->getScale(TransformSpace::World);
+                return Vec3(m_localScale.x * parentScale.x,
+                           m_localScale.y * parentScale.y,
+                           m_localScale.z * parentScale.z);
+            }
+            return m_localScale;
     }
-    markTransformDirty();
+    
+    return m_localScale;
 }
 
-void Node3D::setRotation(const Vec3 &eulerDegrees)
+// Euler angles
+void Node3D::setEulerAngles(const Vec3& euler)
 {
-    setRotation(Quat::FromEulerAnglesDeg(eulerDegrees));
+    m_localRotation = Quat::FromEulerAngles(euler);
+    markDirty();
 }
 
-void Node3D::setRotation(float pitch, float yaw, float roll)
+void Node3D::setEulerAnglesDeg(const Vec3& eulerDeg)
 {
-    setRotation(Vec3(pitch, yaw, roll));
+    setEulerAngles(eulerDeg * DEG2RAD);
 }
 
-Quat Node3D::getRotation()
+Vec3 Node3D::getEulerAngles() const
 {
-    updateWorldTransform();
-    return worldRotation;
+    return m_localRotation.toEulerAngles();
 }
 
-Vec3 Node3D::getEulerAngles()
+Vec3 Node3D::getEulerAnglesDeg() const
 {
-    return getRotation().toEulerAnglesDeg();
+    return getEulerAngles() * RAD2DEG;
 }
 
-void Node3D::setScale(const Vec3 &scale)
+void Node3D::setPitch(float pitch)
 {
-    Node3D *parent3D = getParent3D();
+    Vec3 euler = getEulerAngles();
+    euler.x = pitch;
+    setEulerAngles(euler);
+}
 
-    if (parent3D)
+void Node3D::setYaw(float yaw)
+{
+    Vec3 euler = getEulerAngles();
+    euler.y = yaw;
+    setEulerAngles(euler);
+}
+
+void Node3D::setRoll(float roll)
+{
+    Vec3 euler = getEulerAngles();
+    euler.z = roll;
+    setEulerAngles(euler);
+}
+
+void Node3D::setPitchDeg(float pitchDeg)
+{
+    setPitch(pitchDeg * DEG2RAD);
+}
+
+void Node3D::setYawDeg(float yawDeg)
+{
+    setYaw(yawDeg * DEG2RAD);
+}
+
+void Node3D::setRollDeg(float rollDeg)
+{
+    setRoll(rollDeg * DEG2RAD);
+}
+
+float Node3D::getPitch() const
+{
+    return getEulerAngles().x;
+}
+
+float Node3D::getYaw() const
+{
+    return getEulerAngles().y;
+}
+
+float Node3D::getRoll() const
+{
+    return getEulerAngles().z;
+}
+
+float Node3D::getPitchDeg() const
+{
+    return getPitch() * RAD2DEG;
+}
+
+float Node3D::getYawDeg() const
+{
+    return getYaw() * RAD2DEG;
+}
+
+float Node3D::getRollDeg() const
+{
+    return getRoll() * RAD2DEG;
+}
+
+// Transformações incrementais
+void Node3D::translate(const Vec3& offset, TransformSpace space)
+{
+    switch (space)
     {
-        Vec3 parentScale = parent3D->getScale();
-        localScale = Vec3(
-            scale.x / parentScale.x,
-            scale.y / parentScale.y,
-            scale.z / parentScale.z);
+        case TransformSpace::Local:
+            m_localPosition += m_localRotation * offset;
+            break;
+            
+        case TransformSpace::Parent:
+            m_localPosition += offset;
+            break;
+            
+        case TransformSpace::World:
+            if (m_parent)
+            {
+                Quat parentWorldRot = m_parent->getRotation(TransformSpace::World);
+                m_localPosition += parentWorldRot.inverse() * offset;
+            }
+            else
+            {
+                m_localPosition += offset;
+            }
+            break;
     }
-    else
+    
+    markDirty();
+}
+
+void Node3D::rotate(const Quat& rot, TransformSpace space)
+{
+    switch (space)
     {
-        localScale = scale;
+        case TransformSpace::Local:
+            m_localRotation = m_localRotation * rot;
+            break;
+            
+        case TransformSpace::Parent:
+            m_localRotation = rot * m_localRotation;
+            break;
+            
+        case TransformSpace::World:
+            if (m_parent)
+            {
+                Quat parentWorldRot = m_parent->getRotation(TransformSpace::World);
+                m_localRotation = parentWorldRot.inverse() * rot * parentWorldRot * m_localRotation;
+            }
+            else
+            {
+                m_localRotation = rot * m_localRotation;
+            }
+            break;
     }
-    markTransformDirty();
+    
+    m_localRotation.normalize();
+    markDirty();
 }
 
-void Node3D::setScale(float uniformScale)
+void Node3D::rotate(const Vec3& axis, float angleRad, TransformSpace space)
 {
-    setScale(Vec3(uniformScale, uniformScale, uniformScale));
+    Quat rot = Quat::FromAxisAngle(axis, angleRad);
+    rotate(rot, space);
 }
 
-Vec3 Node3D::getScale()
+void Node3D::rotateDeg(const Vec3& axis, float angleDeg, TransformSpace space)
 {
-    updateWorldTransform();
-    return worldScale;
+    rotate(axis, angleDeg * DEG2RAD, space);
 }
 
-// ==================== Matrices ====================
-
-Mat4 Node3D::getLocalMatrix()
+void Node3D::scale(const Vec3& scale)
 {
-    Mat4 T = Mat4::Translation(localPosition);
-    Mat4 R = localRotation.toMat4();
-    Mat4 S = Mat4::Scale(localScale);
-    return T * R * S;
+    m_localScale = Vec3(m_localScale.x * scale.x,
+                        m_localScale.y * scale.y,
+                        m_localScale.z * scale.z);
+    markDirty();
 }
 
-Mat4 Node3D::getWorldMatrix()
+// Matrizes
+const Mat4& Node3D::getLocalTransform() const
 {
-    updateWorldTransform();
-    return worldMatrix;
+    if (m_transformDirty)
+        updateLocalTransform();
+    
+    return m_localTransform;
 }
 
-// ==================== Directions ====================
-
-Vec3 Node3D::forward()
+const Mat4& Node3D::getWorldTransform() const
 {
-    return getRotation() * Vec3(0, 0, -1);
+    if (m_worldTransformDirty)
+        updateWorldTransform();
+    
+    return m_worldTransform;
 }
 
-Vec3 Node3D::back()
+// Hierarquia
+void Node3D::setParent(Node3D* parent)
 {
-    return getRotation() * Vec3(0, 0, 1);
+    // Check circular dependency
+    Node3D* p = parent;
+    while (p)
+    {
+        if (p == this)
+            return; // Circular dependency detected
+        p = p->m_parent;
+    }
+    
+    // Remove from old parent
+    if (m_parent)
+        m_parent->removeChild(this);
+    
+    m_parent = parent;
+    
+    if (m_parent)
+        m_parent->addChild(this);
+    
+    markWorldDirty();
 }
 
-Vec3 Node3D::right()
+void Node3D::addChild(Node3D* child)
 {
-    return getRotation() * Vec3(1, 0, 0);
-}
-
-Vec3 Node3D::left()
-{
-    return getRotation() * Vec3(-1, 0, 0);
-}
-
-Vec3 Node3D::up()
-{
-    return getRotation() * Vec3(0, 1, 0);
-}
-
-Vec3 Node3D::down()
-{
-    return getRotation() * Vec3(0, -1, 0);
-}
-
-// ==================== Movement ====================
-
-void Node3D::translate(const Vec3 &translation)
-{
-    setPosition(getPosition() + translation);
-}
-
-void Node3D::translate(float x, float y, float z)
-{
-    translate(Vec3(x, y, z));
-}
-
-void Node3D::translateLocal(const Vec3 &translation)
-{
-    setLocalPosition(localPosition + translation);
-}
-
-void Node3D::translateLocal(float x, float y, float z)
-{
-    translateLocal(Vec3(x, y, z));
-}
-
-void Node3D::moveForward(float distance)
-{
-    translate(forward() * distance);
-}
-
-void Node3D::moveBack(float distance)
-{
-    translate(back() * distance);
-}
-
-void Node3D::moveRight(float distance)
-{
-    translate(right() * distance);
-}
-
-void Node3D::moveLeft(float distance)
-{
-    translate(left() * distance);
-}
-
-void Node3D::moveUp(float distance)
-{
-    translate(up() * distance);
-}
-
-void Node3D::moveDown(float distance)
-{
-    translate(down() * distance);
-}
-
-void Node3D::strafe(float rightDist, float upDist)
-{
-    translate(right() * rightDist + up() * upDist);
-}
-
-void Node3D::strafe(float rightDist, float forwardDist, float upDist)
-{
-    translate(right() * rightDist + forward() * forwardDist + up() * upDist);
-}
-
-// ==================== Rotation ====================
-
-void Node3D::rotate(const Quat &rotation)
-{
-    setRotation(rotation * getRotation());
-}
-
-void Node3D::rotate(const Vec3 &axis, float degrees)
-{
-    rotate(Quat::FromAxisAngleDeg(axis, degrees));
-}
-
-void Node3D::rotateX(float degrees)
-{
-    rotate(Vec3(1, 0, 0), degrees);
-}
-
-void Node3D::rotateY(float degrees)
-{
-    rotate(Vec3(0, 1, 0), degrees);
-}
-
-void Node3D::rotateZ(float degrees)
-{
-    rotate(Vec3(0, 0, 1), degrees);
-}
-
-void Node3D::rotateLocal(const Quat &rotation)
-{
-    setLocalRotation(localRotation * rotation);
-}
-
-void Node3D::rotateLocal(const Vec3 &axis, float degrees)
-{
-    rotateLocal(Quat::FromAxisAngleDeg(axis, degrees));
-}
-
-void Node3D::rotateLocalX(float degrees)
-{
-    rotateLocal(Vec3(1, 0, 0), degrees);
-}
-
-void Node3D::rotateLocalY(float degrees)
-{
-    rotateLocal(Vec3(0, 1, 0), degrees);
-}
-
-void Node3D::rotateLocalZ(float degrees)
-{
-    rotateLocal(Vec3(0, 0, 1), degrees);
-}
-
-void Node3D::rotateFPS(float pitch, float yaw)
-{
-    Quat yawRot = Quat::RotationYDeg(yaw);
-    Quat pitchRot = Quat::RotationXDeg(pitch);
-    setRotation(yawRot * getRotation() * pitchRot);
-}
-
-
-float Node3D::getLocalPitch() const
-{
-    return localRotation.toEulerAnglesDeg().x;
-}
-
-float Node3D::getLocalYaw() const
-{
-    return localRotation.toEulerAnglesDeg().y;
-}
-
-float Node3D::getLocalRoll() const
-{
-    return localRotation.toEulerAnglesDeg().z;
-}
-
-
-// ==================== Direct Angle Manipulation ====================
-
-float Node3D::getPitch()
-{
-    return getRotation().toEulerAnglesDeg().x;
-}
-
-float Node3D::getYaw()
-{
-    return getRotation().toEulerAnglesDeg().y;
-}
-
-float Node3D::getRoll()
-{
-    return getRotation().toEulerAnglesDeg().z;
-}
-
-void Node3D::addPitch(float degrees)
-{
-    Vec3 euler = getLocalEulerAngles();
-    euler.x += degrees;
-    setLocalRotation(euler);
-}
-
-void Node3D::addYaw(float degrees)
-{
-    Vec3 euler = getLocalEulerAngles();
-    euler.y += degrees;
-    setLocalRotation(euler);
-}
-
-void Node3D::addRoll(float degrees)
-{
-    Vec3 euler = getLocalEulerAngles();
-    euler.z += degrees;
-    setLocalRotation(euler);
-}
-
-void Node3D::setPitch(float degrees)
-{
-    Vec3 euler = getLocalEulerAngles();
-    euler.x = degrees;
-    setLocalRotation(euler);
-}
-
-void Node3D::setYaw(float degrees)
-{
-    Vec3 euler = getLocalEulerAngles();
-    euler.y = degrees;
-    setLocalRotation(euler);
-}
-
-void Node3D::setRoll(float degrees)
-{
-    Vec3 euler = getLocalEulerAngles();
-    euler.z = degrees;
-    setLocalRotation(euler);
-}
-
-
-// ==================== Look At ====================
-
-void Node3D::lookAt(const Vec3 &target)
-{
-    lookAt(target, Vec3(0, 1, 0));
-}
-
-void Node3D::lookAt(const Vec3 &target, const Vec3 &up)
-{
-    Vec3 direction = (target - getPosition()).normalized();
-    lookDirection(direction, up);
-}
-
-void Node3D::lookAt(const Node3D &target)
-{
-    lookAt(target.worldPosition);
-}
-
-void Node3D::lookDirection(const Vec3 &direction)
-{
-    lookDirection(direction, Vec3(0, 1, 0));
-}
-
-void Node3D::lookDirection(const Vec3 &direction, const Vec3 &up)
-{
-    if (direction.lengthSquared() < 1e-6f)
+    if (!child || child == this)
         return;
+    
+    auto it = std::find(m_children.begin(), m_children.end(), child);
+    if (it == m_children.end())
+    {
+        m_children.push_back(child);
+        child->m_parent = this;
+        child->markWorldDirty();
+    }
+}
 
-    Vec3 forward = direction.normalized();
+void Node3D::removeChild(Node3D* child)
+{
+    auto it = std::find(m_children.begin(), m_children.end(), child);
+    if (it != m_children.end())
+    {
+        (*it)->m_parent = nullptr;
+        m_children.erase(it);
+    }
+}
+
+void Node3D::removeFromParent()
+{
+    if (m_parent)
+        m_parent->removeChild(this);
+}
+
+// Direções
+Vec3 Node3D::getForward(TransformSpace space) const
+{
+    Vec3 forward(0, 0, -1);
+    
+    switch (space)
+    {
+        case TransformSpace::Local:
+            return forward;
+            
+        case TransformSpace::Parent:
+            return m_localRotation * forward;
+            
+        case TransformSpace::World:
+        {
+            Quat worldRot = getRotation(TransformSpace::World);
+            return worldRot * forward;
+        }
+    }
+    
+    return forward;
+}
+
+Vec3 Node3D::getRight(TransformSpace space) const
+{
+    Vec3 right(1, 0, 0);
+    
+    switch (space)
+    {
+        case TransformSpace::Local:
+            return right;
+            
+        case TransformSpace::Parent:
+            return m_localRotation * right;
+            
+        case TransformSpace::World:
+        {
+            Quat worldRot = getRotation(TransformSpace::World);
+            return worldRot * right;
+        }
+    }
+    
+    return right;
+}
+
+Vec3 Node3D::getUp(TransformSpace space) const
+{
+    Vec3 up(0, 1, 0);
+    
+    switch (space)
+    {
+        case TransformSpace::Local:
+            return up;
+            
+        case TransformSpace::Parent:
+            return m_localRotation * up;
+            
+        case TransformSpace::World:
+        {
+            Quat worldRot = getRotation(TransformSpace::World);
+            return worldRot * up;
+        }
+    }
+    
+    return up;
+}
+
+// LookAt
+void Node3D::lookAt(const Vec3& target, TransformSpace targetSpace, const Vec3& up)
+{
+    Vec3 worldTarget = target;
+    
+    // Converter target para world space se necessário
+    if (targetSpace == TransformSpace::Local && m_parent)
+    {
+        worldTarget = m_parent->getWorldTransform().TransformPoint(target);
+    }
+    else if (targetSpace == TransformSpace::Parent && m_parent)
+    {
+        worldTarget = m_parent->getWorldTransform().TransformPoint(target);
+    }
+    
+    Vec3 worldPos = getPosition(TransformSpace::World);
+    Vec3 forward = (worldTarget - worldPos).normalized();
+    
+    // Evitar lookAt quando target == position
+    if (forward.lengthSquared() < 0.0001f)
+        return;
+    
     Vec3 right = Vec3::Cross(up, forward).normalized();
     Vec3 newUp = Vec3::Cross(forward, right);
-
-    Mat3 rotMatrix;
-    rotMatrix.m[0] = right.x;
-    rotMatrix.m[3] = newUp.x;
-    rotMatrix.m[6] = -forward.x;
-    rotMatrix.m[1] = right.y;
-    rotMatrix.m[4] = newUp.y;
-    rotMatrix.m[7] = -forward.y;
-    rotMatrix.m[2] = right.z;
-    rotMatrix.m[5] = newUp.z;
-    rotMatrix.m[8] = -forward.z;
-
-    setRotation(Quat::FromMat3(rotMatrix));
-}
-
-// ==================== Utilities ====================
-
-Vec3 Node3D::transformPoint(const Vec3 &localPoint)
-{
-    updateWorldTransform();
-    return worldMatrix * localPoint;
-}
-
-Vec3 Node3D::transformDirection(const Vec3 &localDirection)
-{
-    return getRotation() * localDirection;
-}
-
-Vec3 Node3D::inverseTransformPoint(const Vec3 &worldPoint)
-{
-    updateWorldTransform();
-    Mat4 invMatrix = worldMatrix.inverse();
-    return invMatrix * worldPoint;
-}
-
-Vec3 Node3D::inverseTransformDirection(const Vec3 &worldDirection)
-{
-    return getRotation().inverse() * worldDirection;
-}
-
-void Node3D::reset()
-{
-    setLocalPosition(Vec3(0, 0, 0));
-    setLocalRotation(Quat::Identity());
-    setLocalScale(Vec3(1, 1, 1));
-}
-
-void Node3D::setParent(Node *newParent)
-{
-    if (parent == newParent)
-        return;
-
-    Vec3 worldPos = getPosition();
-    Quat worldRot = getRotation();
-    Vec3 worldScl = getScale();
-
-    Node::setParent(newParent);
-
-    Node3D *parent3D = getParent3D();
-    if (parent3D)
-    {
-        localPosition = parent3D->inverseTransformPoint(worldPos);
-        localRotation = parent3D->getRotation().inverse() * worldRot;
-        Vec3 parentScale = parent3D->getScale();
-        localScale = Vec3(
-            worldScl.x / parentScale.x,
-            worldScl.y / parentScale.y,
-            worldScl.z / parentScale.z);
-    }
-    else
-    {
-        localPosition = worldPos;
-        localRotation = worldRot;
-        localScale = worldScl;
-    }
-
-    markTransformDirty();
-}
-
-Node3D *Node3D::getParent3D() const
-{
-    return dynamic_cast<Node3D *>(parent);
-}
-
-
-BoundingBox& Node3D::getBoundingBox()
-{
-    return m_boundingBox;
-}
-
-const BoundingBox Node3D::getBoundingBox() const
-{
-    return m_boundingBox;
-}
-
-const BoundingBox Node3D::getTransformedBoundingBox() const
-{
-    return BoundingBox::Transform(getBoundingBox(),worldMatrix);
+    
+    // Criar matriz de rotação
+    Mat4 lookAtMat = Mat4::Identity();
+    lookAtMat[0] = right.x;    lookAtMat[4] = right.y;    lookAtMat[8] = right.z;
+    lookAtMat[1] = newUp.x;    lookAtMat[5] = newUp.y;    lookAtMat[9] = newUp.z;
+    lookAtMat[2] = -forward.x; lookAtMat[6] = -forward.y; lookAtMat[10] = -forward.z;
+    
+    Quat worldRot = Quat::FromMat4(lookAtMat);
+    setRotation(worldRot, TransformSpace::World);
 }
