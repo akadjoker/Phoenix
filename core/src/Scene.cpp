@@ -110,6 +110,7 @@ GameObject *Scene::createGameObject(const std::string &name, Node3D *parent)
         node->setParent(parent);
     }
     m_objects.push_back(node);
+    node->awake();
     return node;
 }
 
@@ -212,6 +213,7 @@ void Scene::rebuildRenderLists()
             m_visible++;
         } else if (object->isActive() && object->getRenderType() == RenderType::Terrain)
         {
+            
             m_render_terrains.push_back(object);
             m_visible++;
         }
@@ -279,6 +281,7 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
                 continue;
             const Mat4 model = object->getWorldTransform();
             shader->SetUniformMat4("model", model.m);
+
            
         }
     }
@@ -405,6 +408,7 @@ void Scene::Update(float dt)
 
     for (Node3D *object : m_render_terrains)
     {
+                
         object->update(dt);
     }
 

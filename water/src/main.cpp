@@ -12,9 +12,10 @@ class MainScene : public Scene
     Shader *debugShader;
     Shader *waterShader;
     Shader *terrainShader;
-    CameraFree *camera;
-    CameraFree *mirrorCamera;
-    CameraFree *waterCamera;
+    Camera *camera;
+    Camera *mirrorCamera;
+    Camera *waterCamera;
+    FreeCameraComponent *cameraMove;
     float mouseSensitivity{0.8f};
 
     RenderTarget *mirrorRT;
@@ -106,6 +107,7 @@ public:
             sceneShader->SetUniform("viewPos", cameraPos.x, cameraPos.y, cameraPos.z);
 
             renderPass(sceneShader, RenderType::Solid);
+            
 
             mirrorRT->Unbind();
 
@@ -175,20 +177,24 @@ public:
 
             float waterPlaneY = 0.0f;
 
-            waterCamera->setFOV(camera->getFOV());
-            waterCamera->setFarPlane(camera->getFarPlane());
-            waterCamera->setNearPlane(camera->getNearPlane());
-            waterCamera->setAspectRatio(camera->getAspectRatio());
+            waterCamera->setFOV(camera->getFov());
+            waterCamera->setFarPlane(camera->getFar());
+            waterCamera->setNearPlane(camera->getNear());
+            waterCamera->setAspectRatio(camera->getAspect());
 
             // Get position and reflect Y
             Vec3 position = camera->getPosition();
-            position.y = -position.y + 2 * waterPlaneY;
+            //  position.y = -position.y + 2 * waterPlaneY;
             waterCamera->setPosition(position);
 
+
+
+                Vec3 euler = camera->getEulerAngles();
+                euler.z = Pi;  
+                waterCamera->setEulerAngles(euler);
+
+
             // Get target and reflect Y
-            Vec3 target = camera->getTarget();
-            target.y = -target.y + 2 * waterPlaneY;
-            waterCamera->lookAt(target);
 
             waterCamera->update(1.0f);
             SetCamera(waterCamera);
@@ -314,16 +320,16 @@ public:
             renderPass(waterShader, RenderType::Water);
         }
 
-        // debugShader->Bind();
-        // debugShader->SetUniform("tex", 0);
-        // glActiveTexture(GL_TEXTURE0);
-        // glBindTexture(GL_TEXTURE_2D,reflectionRT->GetColorTextureID());
-        // Driver::Instance().DrawScreenQuad(210, 0, 200, 200);
+        debugShader->Bind();
+        debugShader->SetUniform("tex", 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D,reflectionRT->GetColorTextureID());
+        Driver::Instance().DrawScreenQuad(210, 0, 200, 200);
 
-        // debugShader->SetUniform("tex", 0);
-        // glActiveTexture(GL_TEXTURE0);
-        // glBindTexture(GL_TEXTURE_2D, refractionRT->GetColorTextureID());
-        // Driver::Instance().DrawScreenQuad(420, 0, 200, 200);
+        debugShader->SetUniform("tex", 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, refractionRT->GetColorTextureID());
+        Driver::Instance().DrawScreenQuad(420, 0, 200, 200);
     }
     bool OnCreate() override
     {
@@ -340,29 +346,36 @@ public:
         if (!sceneShader || !mirrorShader || !debugShader || !waterShader || !terrainShader)
             return false;
 
-        mirrorCamera = createCameraFree("MirrorCamera");
+        mirrorCamera = createCamera("MirrorCamera");
         mirrorCamera->setAspectRatio((float)1024 / (float)1024);
         mirrorCamera->setFOV(45.0f);
         mirrorCamera->setNearPlane(0.1f);
         mirrorCamera->setFarPlane(1000.0f);
         mirrorCamera->setPosition(-5.0f, 0.5f, 0.0f);
-        mirrorCamera->setLocalRotation(-90.0f, 0, 0);
+        mirrorCamera->setRotation(-90.0f, 0, 0);
         mirrorCamera->update(1);
 
-        camera = createCameraFree("CameraFree");
+        camera = createCamera("CameraFree");
+        cameraMove = camera->addComponent<FreeCameraComponent>();
+        cameraMove->setMoveSpeed(15.0f);
+        cameraMove->setMouseSensitivity(0.15f);
+        cameraMove->setSprintMultiplier(3.0f);
         camera->setAspectRatio((float)screenWidth / (float)screenHeight);
         camera->setFOV(45.0f);
         camera->setNearPlane(0.1f);
         camera->setFarPlane(1000.0f);
         camera->setPosition(0.0f, 0.5f, 10.0f);
 
-        waterCamera = createCameraFree("WaterCamera");
+        waterCamera = createCamera("WaterCamera");
         waterCamera->setAspectRatio((float)screenWidth / (float)screenHeight);
         waterCamera->setFOV(45.0f);
         waterCamera->setNearPlane(0.1f);
         waterCamera->setFarPlane(1000.0f);
         waterCamera->setPosition(0.0f, 0.5f, 10.0f);
         waterCamera->update(1);
+
+        mirrorCamera->copyFrom(camera);
+        waterCamera->copyFrom(camera);
 
         terrain = MeshManager::Instance().CreateTerrainFromHeightmap(
             "terrain",
@@ -415,12 +428,12 @@ public:
 
         GameObject *mirror = createGameObject("mirror");
         mirror->addComponent<MeshRenderer>(meshMirror);
-        mirror->setLocalPosition(-8.0f, 2.5f, 0.0f);
+        mirror->setPosition(-8.0f, 2.5f, 0.0f);
         mirror->setRenderType(RenderType::Mirror);
 
         GameObject *water = createGameObject("water");
         water->addComponent<MeshRenderer>(meshWater);
-        water->setLocalPosition(0.0f, 0.0f, 0.0f);
+        water->setPosition(0.0f, 0.0f, 0.0f);
         water->setRenderType(RenderType::Water);
 
         Mesh *mesh = MeshManager::Instance().CreateCube("Cube", 1);
@@ -439,7 +452,7 @@ public:
         {
             GameObject *terrainObj = createGameObject("terrain");
             terrainObj->addComponent<MeshRenderer>(terrain);
-            terrainObj->setPosition(0, -5, 0); // Abaixo da água
+            terrainObj->setPosition(0, -1, 0); // Abaixo da água
             terrainObj->setRenderType(RenderType::Terrain);
         }
 
@@ -512,7 +525,6 @@ public:
     }
     void OnUpdate(float dt) override
     {
-        const float SPEED = 12.0f * dt;
 
         time += dt * 0.5f;
 
@@ -523,41 +535,32 @@ public:
         //  ANIMAR FORÇA DO VENTO (pulsação)
         windForce = 1.0f + sinf(time) * 0.005f;
 
+        const float SPEED = 1.0f;
+
+        Vec3 moveInput(0, 0, 0);
+
         if (Input::IsKeyDown(KEY_W))
-            camera->move(SPEED);
+            moveInput.z += SPEED; // Forward
         if (Input::IsKeyDown(KEY_S))
-            camera->move(-SPEED);
-
+            moveInput.z -= SPEED; // Backward
         if (Input::IsKeyDown(KEY_A))
-            camera->strafe(-SPEED);
+            moveInput.x -= SPEED; // Left
         if (Input::IsKeyDown(KEY_D))
-            camera->strafe(SPEED);
+            moveInput.x += SPEED; // Right
+        if (Input::IsKeyDown(KEY_Q))
+            moveInput.y -= SPEED; // Down
+        if (Input::IsKeyDown(KEY_E))
+            moveInput.y += SPEED; // Up
 
-        if (Input::IsKeyDown(KEY_LEFT))
-        {
-
-            yaw += 1;
-            mirrorCamera->setLocalRotation(yaw, 0, 0);
-            mirrorCamera->update(1);
-
-            Vec3 rotation = mirrorCamera->getLocalEulerAngles();
-            LogInfo("Rotation: %f %f %f Yaw: %f", rotation.x, rotation.y, rotation.z, yaw);
-        }
-        if (Input::IsKeyDown(KEY_RIGHT))
-        {
-            yaw -= 1;
-            mirrorCamera->setLocalRotation(yaw, 0, 0);
-            mirrorCamera->update(1);
-            Vec3 rotation = mirrorCamera->getLocalEulerAngles();
-            LogInfo("Rotation: %f %f %f Yaw: %f", rotation.x, rotation.y, rotation.z, yaw);
-        }
+          cameraMove->setMoveInput(moveInput);
     }
     void OnResize(u32 w, u32 h) override
     {
         width = w;
         height = h;
     }
-    CameraFree *getCamera() { return camera; }
+     Camera *getCamera() { return camera; }
+    FreeCameraComponent *getCameraControl(){return cameraMove;};
 };
 
 int main()
@@ -673,15 +676,15 @@ int main()
 
         if (Input::IsMouseDown(MouseButton::LEFT) && !gui.IsFocused())
         {
-            Vec2 mouseDelta = Input::GetMouseDelta();
-            scene.getCamera()->rotate(mouseDelta.y * mouseSensitivity, mouseDelta.x * mouseSensitivity);
-        }
+           Vec2 mouseDelta = Input::GetMouseDelta();
+            scene.getCameraControl()->setRotationInput(mouseDelta);
+           }
 
         batch.Render();
 
         if (Input::IsKeyPressed(KEY_F12))
         {
-           
+
             char filename[256];
             time_t now = time(nullptr);
             tm *timeinfo = localtime(&now);

@@ -30,9 +30,9 @@ public:
 
         float waterY=0.0f;
 
-        // Vec3 target = camera->getTarget(TransformSpace::World);
-      //  target.y = -target.y + 2.0f * waterY;
-        //mirror->setTarget(target, TransformSpace::World);
+         Vec3 position = camera->getPosition(TransformSpace::World);
+      //  position.y = -position.y + 2.0f * waterY;
+        mirror->setPosition(position, TransformSpace::World);
 
         Vec3 euler = camera->getEulerAngles();
         euler.z = Pi;  

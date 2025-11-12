@@ -175,6 +175,14 @@ void Camera::setPosition(float x, float y, float z, TransformSpace space)
     m_viewDirty = true;
 }
 
+void Camera::setRotation(float x, float y, float z, TransformSpace space)
+{
+
+    Quat rot = Quat::FromEulerAnglesDeg(Vec3(x,y,z));
+    Node3D::setRotation(rot, space);
+    m_viewDirty = true;
+}
+
 void Camera::setRotation(const Quat &rot, TransformSpace space)
 {
     Node3D::setRotation(rot, space);

@@ -84,6 +84,7 @@ public:
     void setPosition(const Vec3 &pos, TransformSpace space = TransformSpace::Local) override;
     void setPosition(float x, float y, float z, TransformSpace space = TransformSpace::Local) override;
     void setRotation(const Quat &rot, TransformSpace space = TransformSpace::Local) override;
+    void setRotation(float x, float y, float z,  TransformSpace space = TransformSpace::Local);
     void translate(const Vec3 &offset, TransformSpace space = TransformSpace::Local) override;
     void rotate(const Quat &rot, TransformSpace space = TransformSpace::Local) override;
     void lookAt(const Vec3 &target, TransformSpace targetSpace = TransformSpace::World,
