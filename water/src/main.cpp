@@ -182,13 +182,22 @@ public:
 
             // Get position and reflect Y
             Vec3 position = camera->getPosition();
-            position.y = -position.y + 2 * waterPlaneY;
+            //position.y = -position.y + 2 * waterPlaneY;
             waterCamera->setPosition(position);
 
+            Quat rotation = camera->getLocalRotation();
+
             // Get target and reflect Y
-            Vec3 target = camera->getTarget();
-            target.y = -target.y + 2 * waterPlaneY;
-            waterCamera->lookAt(target);
+           // Vec3 target = camera->getTarget();
+           // target.y = -target.y + 2 * waterPlaneY;
+            //waterCamera->lookAt(target);
+
+            Quat ivert = Quat::FromAxisAngle(Vec3(1,0,0), 180);
+
+            waterCamera->setLocalRotation(rotation * ivert);
+
+
+
 
             waterCamera->update(1.0f);
             SetCamera(waterCamera);
@@ -314,16 +323,16 @@ public:
             renderPass(waterShader, RenderType::Water);
         }
 
-        // debugShader->Bind();
-        // debugShader->SetUniform("tex", 0);
-        // glActiveTexture(GL_TEXTURE0);
-        // glBindTexture(GL_TEXTURE_2D,reflectionRT->GetColorTextureID());
-        // Driver::Instance().DrawScreenQuad(210, 0, 200, 200);
+        debugShader->Bind();
+        debugShader->SetUniform("tex", 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D,reflectionRT->GetColorTextureID());
+        Driver::Instance().DrawScreenQuad(210, 0, 200, 200);
 
-        // debugShader->SetUniform("tex", 0);
-        // glActiveTexture(GL_TEXTURE0);
-        // glBindTexture(GL_TEXTURE_2D, refractionRT->GetColorTextureID());
-        // Driver::Instance().DrawScreenQuad(420, 0, 200, 200);
+        debugShader->SetUniform("tex", 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, refractionRT->GetColorTextureID());
+        Driver::Instance().DrawScreenQuad(420, 0, 200, 200);
     }
     bool OnCreate() override
     {

@@ -96,7 +96,7 @@ void main()
     //finalColor = mix(finalColor, waterTintColor, 0.3); // 30% de tint
 
 
-     FragColor = finalColor;
+     FragColor = reflectiveColor;
 	
  
 }
