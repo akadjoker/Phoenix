@@ -50,6 +50,14 @@ public:
     float terrainDetailScale = 10.0f;   // Detail repete muito
     float terrainDetailStrength = 0.5f; // 50% de intensidade
 
+    float off=0.0f;
+
+Quat reflectQuaternionXZ(const Quat& q)
+{
+    // Reflete em torno do plano XZ (inverte X e Z)
+    return Quat(q.w, -q.x, q.y, -q.z);
+}
+               
 public:
     void OnRender() override
     {
@@ -71,7 +79,7 @@ public:
 
             driver.SetClearColor(0.2f, 0.3f, 0.4f, 1.0f);
             driver.Clear(CLEAR_COLOR | CLEAR_DEPTH);
-            driver.SetViewPort(0, 0, 1024, 1024);
+         //   driver.SetViewPort(0, 0, 1024, 1024);
 
             mirrorCamera->setFOV(mirrorFov);
             SetCamera(mirrorCamera);
@@ -122,7 +130,7 @@ public:
             refractionRT->Bind();
             driver.SetClearColor(0.2f, 0.3f, 0.4f, 1.0f);
             driver.Clear(CLEAR_COLOR | CLEAR_DEPTH);
-            driver.SetViewPort(0, 0, 1024, 1024);
+//            driver.SetViewPort(0, 0, 1024, 1024);
 
             //  câmera NORMAL (não refletida)
             SetCamera(camera);
@@ -149,7 +157,11 @@ public:
             terrainShader->SetUniform("u_rockTexture", 2);
             terrainShader->SetUniform("u_snowTexture", 3);
             terrainShader->SetUniform("u_detailMap", 4);
+
+            terrainShader->SetUniform("useClipPlane", 1);
+            terrainShader->SetUniform("clipPlane", 0.0f, -0.5f, 0.0f, 0);
             renderPass(terrainShader, RenderType::Terrain);
+            
 
             sceneShader->Bind();
             sceneShader->SetUniformMat4("projection", proj.m);
@@ -170,10 +182,12 @@ public:
         // ============================================
         {
 
+      
+
             reflectionRT->Bind();
             driver.SetClearColor(0.2f, 0.3f, 0.4f, 1.0f);
             driver.Clear(CLEAR_COLOR | CLEAR_DEPTH);
-            driver.SetViewPort(0, 0, 1024, 1024);
+          //  driver.SetViewPort(0, 0, 1024, 1024);
 
             float waterPlaneY = 0.0f;
 
@@ -184,13 +198,14 @@ public:
 
             // Get position and reflect Y
             Vec3 position = camera->getPosition();
-            //  position.y = -position.y + 2 * waterPlaneY;
+            position.y =2.0f * waterPlaneY - position.y;
             waterCamera->setPosition(position);
 
 
 
                 Vec3 euler = camera->getEulerAngles();
-                euler.z = Pi;  
+               euler.z = Pi;  
+ 
                 waterCamera->setEulerAngles(euler);
 
 
@@ -220,6 +235,11 @@ public:
             terrainShader->SetUniform("u_rockTexture", 2);
             terrainShader->SetUniform("u_snowTexture", 3);
             terrainShader->SetUniform("u_detailMap", 4);
+
+
+            terrainShader->SetUniform("useClipPlane", 1);
+            terrainShader->SetUniform("clipPlane", 0.0f, 0.1f, 0.0f, 0);
+
             renderPass(terrainShader, RenderType::Terrain);
 
             sceneShader->Bind();
@@ -262,6 +282,10 @@ public:
             terrainShader->SetUniform("u_rockTexture", 2);
             terrainShader->SetUniform("u_snowTexture", 3);
             terrainShader->SetUniform("u_detailMap", 4);
+            terrainShader->SetUniform("useClipPlane", 0);
+
+            terrainShader->SetUniform("useClipPlane", 0);
+            
             renderPass(terrainShader, RenderType::Terrain);
 
             sceneShader->Bind();
@@ -451,26 +475,26 @@ public:
 
         {
             GameObject *terrainObj = createGameObject("terrain");
-            terrainObj->addComponent<MeshRenderer>(terrain);
-            terrainObj->setPosition(0, -1, 0); // Abaixo da água
             terrainObj->setRenderType(RenderType::Terrain);
+            terrainObj->addComponent<MeshRenderer>(terrain);
+            terrainObj->setPosition(0, -5, 0); // Abaixo da água
         }
 
         for (int i = 0; i < 7; i++)
         {
-            GameObject *cube = createGameObject("Cube");
+            GameObject *cube = createGameObject("Cube1");
             cube->addComponent<MeshRenderer>(mesh);
             cube->setPosition(cubePositions[i]);
         }
 
         {
-            GameObject *cube = createGameObject("Cube");
+            GameObject *cube = createGameObject("Cube2");
             cube->addComponent<MeshRenderer>(mesh);
             cube->setPosition(5, 0, 5);
         }
 
         {
-            GameObject *cube = createGameObject("Cube");
+            GameObject *cube = createGameObject("Cube3");
             cube->addComponent<MeshRenderer>(mesh);
             cube->setPosition(5, 0, -5);
         }
@@ -526,14 +550,14 @@ public:
     void OnUpdate(float dt) override
     {
 
-        time += dt * 0.5f;
+       // time += dt * 0.5f;
 
         // ANIMAR DIREÇÃO DO VENTO
-        windDirection.x = cosf(time * 0.02f);
-        windDirection.y = sinf(time * 0.02f);
+      //  windDirection.x = cosf(time * 0.02f);
+     //   windDirection.y = sinf(time * 0.02f);
 
         //  ANIMAR FORÇA DO VENTO (pulsação)
-        windForce = 1.0f + sinf(time) * 0.005f;
+      //  windForce = 1.0f + sinf(time) * 0.005f;
 
         const float SPEED = 1.0f;
 
@@ -551,6 +575,13 @@ public:
             moveInput.y -= SPEED; // Down
         if (Input::IsKeyDown(KEY_E))
             moveInput.y += SPEED; // Up
+
+        if (Input::IsKeyDown(KEY_P))
+            off-=0.1f;
+        if (Input::IsKeyDown(KEY_L))
+            off+=0.1f;
+
+            
 
           cameraMove->setMoveInput(moveInput);
     }

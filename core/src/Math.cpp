@@ -2287,7 +2287,7 @@ Quat Quat::FromAxisAngleDeg(const Vec3 &axis, float angleDeg)
 
 Vec3 Quat::toEulerAngles() const
 {
-    // Inverter a ordem YXZ da tua FromEulerAngles
+    // Inverter a ordem YXZ  FromEulerAngles
     Quat q = normalized();
     
     // Extrair pitch (rotação em X)
@@ -2336,25 +2336,7 @@ Quat Quat::FromEulerAngles(float pitch, float yaw, float roll)
     return q;
 }
 
-// Quat Quat::FromEulerAngles(float pitch, float yaw, float roll)
-// {
-//     // Ordem: YXZ (yaw, pitch, roll)
-//     float cy = std::cos(yaw * 0.5f);
-//     float sy = std::sin(yaw * 0.5f);
-//     float cp = std::cos(pitch * 0.5f);
-//     float sp = std::sin(pitch * 0.5f);
-//     float cr = std::cos(roll * 0.5f);
-//     float sr = std::sin(roll * 0.5f);
-
-//     Quat q;
-//     q.w = cr * cp * cy + sr * sp * sy;
-//     q.x = sr * cp * cy - cr * sp * sy;
-//     q.y = cr * sp * cy + sr * cp * sy;
-//     q.z = cr * cp * sy - sr * sp * cy;
-
-//     return q;
-// }
-
+ 
 Quat Quat::FromEulerAnglesDeg(float pitch, float yaw, float roll)
 {
     return FromEulerAngles(pitch * DEG_TO_RAD, yaw * DEG_TO_RAD, roll * DEG_TO_RAD);

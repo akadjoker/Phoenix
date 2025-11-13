@@ -143,7 +143,7 @@ void Camera::setFarPlane(float value)
 
 const Mat4 &Camera::getViewMatrix() const
 {
-   // if (m_viewDirty)
+   if (m_viewDirty)
         updateViewMatrix();
 
     return m_viewMatrix;
@@ -151,7 +151,7 @@ const Mat4 &Camera::getViewMatrix() const
 
 const Mat4 &Camera::getProjectionMatrix() const
 {
-  //  if (m_projectionDirty)
+    if (m_projectionDirty)
         updateProjectionMatrix();
 
     return m_projectionMatrix;

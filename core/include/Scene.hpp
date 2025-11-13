@@ -77,6 +77,7 @@ public:
 
     Node3D *createNode3D(const std::string &name = "Node3D", Node3D *parent = nullptr);
     GameObject *createGameObject(const std::string &name = "GameObject", Node3D *parent = nullptr);
+ 
     const std::vector<Node3D *> &getObjects() const { return m_objects; }
 
     Camera *getActiveCamera() const { return ActiveCamera; }

@@ -11,6 +11,13 @@ class MainScene : public Scene
     Camera *camera;
     Camera *mirror;
     FreeCameraComponent *cameraMove;
+    Shader *terrainShader;
+        float terrainMaxHeight = 20.0f;
+    float terrainMinHeight = 0.0f;
+    float terrainTextureScale = 0.1f;   // Base textures
+    float terrainDetailScale = 10.0f;   // Detail repete muito
+    float terrainDetailStrength = 0.5f; // 50% de intensidade
+        Mesh *terrain;
 
     float mouseSensitivity{0.8f};
     float roll=3.0;
@@ -65,13 +72,39 @@ public:
         const Mat4 proj = getProjectionMatrix();
         const Vec3 cameraPos = camera->getPosition();
 
+
+
+            terrainShader->Bind();
+            terrainShader->SetUniformMat4("view", view.m);
+            terrainShader->SetUniformMat4("projection", proj.m);
+            // Lighting
+            terrainShader->SetUniform("u_lightPos", lightPos.x, lightPos.y, lightPos.z);
+            terrainShader->SetUniform("u_viewPos", cameraPos.x, cameraPos.y, cameraPos.z);
+            terrainShader->SetUniform("u_lightColor", 1.0f, 1.0f, 1.0f);
+            // Terrain properties
+            terrainShader->SetUniform("u_maxHeight", terrainMaxHeight);
+            terrainShader->SetUniform("u_minHeight", terrainMinHeight);
+            terrainShader->SetUniform("u_textureScale", terrainTextureScale);
+            terrainShader->SetUniform("u_detailScale", terrainDetailScale);
+            terrainShader->SetUniform("u_detailStrength", terrainDetailStrength);
+
+            terrainShader->SetUniform("u_grassTexture", 0);
+            terrainShader->SetUniform("u_dirtTexture", 1);
+            terrainShader->SetUniform("u_rockTexture", 2);
+            terrainShader->SetUniform("u_snowTexture", 3);
+            terrainShader->SetUniform("u_detailMap", 4);
+         //   renderPass(terrainShader, RenderType::Terrain);
+
+
         sceneShader->Bind();
         sceneShader->SetUniformMat4("projection", proj.m);
         sceneShader->SetUniformMat4("view", view.m);
         sceneShader->SetUniform("lightPos", lightPos.x, lightPos.y, lightPos.z);
         sceneShader->SetUniform("viewPos", cameraPos.x, cameraPos.y, cameraPos.z);
+        renderPass(sceneShader, RenderType::Terrain);
+        renderPass(sceneShader, RenderType::Solid);
 
-        renderAll(sceneShader);
+       // renderAll(sceneShader);
         }
 
 
@@ -86,6 +119,10 @@ public:
 
         Utils::ChangeDirectory("../");
         sceneShader = ShaderManager::Instance().Load("scene", "assets/shaders/basicLight.ps", "assets/shaders/basicLight.fs");
+             terrainShader = ShaderManager::Instance().Load("terrain",
+                                                       "assets/shaders/terrain.ps",
+                                                       "assets/shaders/terrain.fs");
+
 
         if (!sceneShader)
             return false;
@@ -107,6 +144,31 @@ public:
         mirror->copyFrom(camera);
 
 
+        terrain = MeshManager::Instance().CreateTerrainFromHeightmap(
+            "terrain",
+            "assets/terrain-heightmap.png",
+            500.0f, // width
+            500.0f, // height
+            terrainMaxHeight,
+            256,   // detailX
+            256,   // detailY
+            20.0f, // tilesU
+            20.0f  // tilesV
+        );
+        if (!terrain)
+        {
+            LogError("[Main] Failed to create terrain");
+            return false;
+        }
+
+        TextureManager::Instance().SetLoadPath("assets/");
+        terrain->AddMaterial("terrain");
+        terrain->SetTexture(0, TextureManager::Instance().Add("terr_dirt-grass.jpg", true)); // grass
+        terrain->SetTexture(1, TextureManager::Instance().Add("terr_rock-dirt.jpg", true));  // dirt
+        terrain->SetTexture(2, TextureManager::Instance().Add("terr_rock6.jpg", true));      // rock
+        terrain->SetTexture(3, TextureManager::Instance().Add("snow_1024.jpg", true));       // snow
+        terrain->SetTexture(4, TextureManager::Instance().Add("detailmap3.jpg", true));      // detail 4 all
+
         TextureManager::Instance().SetLoadPath("assets/");
         TextureManager::Instance().Add("wall.jpg", true);
         TextureManager::Instance().Add("marm.jpg", true);
@@ -114,8 +176,8 @@ public:
         Mesh *mesh = MeshManager::Instance().CreatePlane("Plane", 10, 10);
         mesh->AddMaterial("wall")->SetTexture(0, TextureManager::Instance().Get("marm"));
 
-        GameObject *plane = createGameObject("Plane");
-        plane->addComponent<MeshRenderer>(mesh);
+     //   GameObject *plane = createGameObject("Plane");
+      //  plane->addComponent<MeshRenderer>(mesh);
 
         mesh = MeshManager::Instance().CreateCube("Cube", 1);
         mesh->AddMaterial("wall")->SetTexture(0, TextureManager::Instance().Get("wall"));
@@ -134,9 +196,16 @@ public:
             GameObject *cube = createGameObject("Cube");
             cube->addComponent<MeshRenderer>(mesh);
             cube->setPosition(cubePositions[i]);
-
+           
             //   Rotator* rotator = cube->addComponent<Rotator>();
             //    rotator->setRotationSpeed(Vec3(0, 90, 20));  // 90°/s on Y axis
+        }
+
+          {
+            GameObject *terrainObj = createGameObject("terrain");
+            terrainObj->addComponent<MeshRenderer>(terrain);
+            terrainObj->setPosition(0, -5, 0); // Abaixo da água
+            terrainObj->setRenderType(RenderType::Terrain);
         }
 
        
@@ -160,10 +229,7 @@ public:
     if (Input::IsKeyDown(KEY_Q)) moveInput.y -= SPEED;  // Down
     if (Input::IsKeyDown(KEY_E)) moveInput.y += SPEED;  // Up
 
-    if (Input::IsKeyDown(KEY_P)) roll+=0.1f;
-    if (Input::IsKeyDown(KEY_L)) roll-=0.05f;
-
-    LogInfo(" roll %f",roll);
+ 
 
     
     

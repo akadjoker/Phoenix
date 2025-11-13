@@ -6,6 +6,7 @@ in vec3 Normal;
 in vec2 TexCoord;
 in float Height;
 in vec3 WorldPos;
+ 
 
 out vec4 FragColor;
 
@@ -31,6 +32,9 @@ uniform float u_textureScale;
 uniform float u_detailScale;
 uniform float u_detailStrength;
 
+uniform vec4 clipPlane;
+uniform bool useClipPlane;
+
 // ============================================
 // SMOOTH BLEND
 // ============================================
@@ -55,6 +59,15 @@ float SmoothBlend(float value, float min, float max, float blendRange)
 
 void main()
 {
+ 
+ if(useClipPlane)
+    {
+     if (dot(vec4(FragPos, 1.0), clipPlane) < 0.0)
+     {
+       discard;
+     }
+    }
+   
     vec3 normal = normalize(Normal);
     
     // ============================================
@@ -137,6 +150,8 @@ void main()
     fogAmount = clamp(fogAmount, 0.0, 0.7);
     vec3 fogColor = vec3(0.5, 0.6, 0.7);
     finalColor = mix(finalColor, fogColor, fogAmount);
+
+    
     
     FragColor = vec4(finalColor, 1.0);
 }

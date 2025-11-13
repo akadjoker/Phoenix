@@ -98,6 +98,7 @@ Node3D *Scene::createNode3D(const std::string &name, Node3D *parent)
         node->setParent(parent);
     }
     m_objects.push_back(node);
+    m_needRebuildLists = true;
     return node;
 }
 
@@ -109,10 +110,14 @@ GameObject *Scene::createGameObject(const std::string &name, Node3D *parent)
     {
         node->setParent(parent);
     }
+    node->setActive(true);
     m_objects.push_back(node);
     node->awake();
+    m_needRebuildLists = true;
     return node;
 }
+
+ 
 
 void Scene::setActiveCamera(Camera *camera)
 {
@@ -281,6 +286,7 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
                 continue;
             const Mat4 model = object->getWorldTransform();
             shader->SetUniformMat4("model", model.m);
+            object->render();
 
            
         }
@@ -373,16 +379,16 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
 
 void Scene::Render()
 {
-    m_total = m_objects.size();
-    m_visible = 0;
-    m_render_solids.clear();
-    m_render_trasparent.clear();
-    m_render_special.clear();
-    m_render_skyes.clear();
-    m_render_lights.clear();
-    m_render_mirrors.clear();
-    m_render_waters.clear();
-    m_render_terrains.clear();
+    // m_total = m_objects.size();
+    // m_visible = 0;
+    // m_render_solids.clear();
+    // m_render_trasparent.clear();
+    // m_render_special.clear();
+    // m_render_skyes.clear();
+    // m_render_lights.clear();
+    // m_render_mirrors.clear();
+    // m_render_waters.clear();
+    // m_render_terrains.clear();
 
     OnRender();
 }

@@ -91,7 +91,7 @@ void main()
     // APLICAR ONDAS PROCEDURAIS
     // ============================================
     
-    // VERSÃO 1: Ondas simples (rápido)
+    // VERSÃO 1: Ondas simples
     // pos += SimpleWave(aPos.xz, u_time);
     
     // VERSÃO 2: Gerstner Waves (realista)
@@ -115,8 +115,8 @@ void main()
     waveNormal += GerstnerWaveNormal(pos.xz, u_wave4.xy, u_wave4.z, u_wave4.w, u_time);
     
     // Aplicar offset
-    pos += waveOffset * u_waveHeight;
-    normal = normalize(waveNormal);
+   // pos += waveOffset * u_waveHeight;
+   // normal = normalize(waveNormal);
     
     // ============================================
     // TRANSFORM

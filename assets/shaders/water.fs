@@ -58,11 +58,9 @@ void main()
 	vec3 upVector = vec3(0.0, 1.0, 0.0);
 	
 	//fresnel can not be lower than 0
-///	float fresnelTerm = max( dot(eyeVector, upVector), 0.0 );
-
+	float fresnelTerm = max( dot(eyeVector, upVector), 0.0 );
   //  float fresnelTerm = pow(max(dot(eyeVector, upVector), 0.0), 2.0);
- 
-    float fresnelTerm = pow(1.0 - max(dot(eyeVector, upVector), 0.0), 3.0);
+//    float fresnelTerm = pow(1.0 - max(dot(eyeVector, upVector), 0.0), 3.0);
 
 
     vec4 combinedColor = refractiveColor * fresnelTerm + reflectiveColor * (1.0 - fresnelTerm);
@@ -74,14 +72,14 @@ void main()
         vec3 lightDir = normalize(vec3(1.0, 1.0, 0.5)); // Direção da luz (sol)
         vec3 halfVector = normalize(lightDir + eyeVector);
         float specular = pow(max(dot(upVector, halfVector), 0.0), 128.0);
-        finalColor.rgb += vec3(specular * 0.5); //  intensidade
+      //  finalColor.rgb += vec3(specular * 0.5); //  intensidade
 
 
         float distance = length(v_position3D - u_cameraPosition);
         float fogAmount = clamp((distance - 200.0) / 50.0, 0.0, 1.0);
         vec3 fogColor = vec3(0.5, 0.6, 0.7); // Cor do fog (azul claro)
 
-         // finalColor.rgb = mix(finalColor.rgb, fogColor, fogAmount);
+       // finalColor.rgb = mix(finalColor.rgb, fogColor, fogAmount);
 
 
 
