@@ -64,7 +64,7 @@ void main()
     {
      if (dot(vec4(FragPos, 1.0), clipPlane) < 0.0)
      {
-       discard;
+     //  discard;
      }
     }
    

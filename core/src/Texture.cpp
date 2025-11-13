@@ -118,6 +118,8 @@ u32 GetDataType(TextureFormat format)
         return GL_UNSIGNED_INT;
     case TextureFormat::DEPTH24_STENCIL8:
         return GL_UNSIGNED_INT_24_8;
+ 
+        
     default:
         return GL_UNSIGNED_BYTE;
     }

@@ -32,7 +32,8 @@ out vec3 v_refractionTexCoord;
 out vec3 v_reflectionTexCoord;
 out vec3 v_position3D;
 out vec3 v_normal;
- 
+out vec4 clipSpace;
+out vec3 toCameraPosition;
  
 
 
@@ -127,16 +128,14 @@ void main()
     // ============================================
     // TRANSFORM
     // ============================================
-      vec4 worldPos = model * vec4(pos, 1.0);
+    vec4 worldPos = model * vec4(pos, 1.0);
     v_position3D = worldPos.xyz;
     v_normal = normal;
     
     // Clip space (normal camera)
     vec4 clipPos = worldViewProj * vec4(pos, 1.0);
+    gl_Position = clipPos;
     
-    gl_Position =  worldViewProj * worldPos;
-
-
     // Bump map UV (animado)
     v_bumpMapTexCoord = aTexCoord / u_waveLength + u_time * u_windForce * u_windDirection;
     
@@ -150,11 +149,16 @@ void main()
     v_reflectionTexCoord.x = 0.5 * (reflectionClipPos.w + reflectionClipPos.x);
     v_reflectionTexCoord.y = 0.5 * (reflectionClipPos.w + reflectionClipPos.y);
     v_reflectionTexCoord.z = reflectionClipPos.w;
+
  
 
     v_mapTexCoord =aTexCoord;
 
- 
+    vec4 worldPosition =  model * vec4(pos , 1.0);
+
+    clipSpace = worldViewProj * worldPosition;
+
+    toCameraPosition = u_cameraPosition- worldPosition.xyz;
 
  
 }

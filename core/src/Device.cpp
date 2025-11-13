@@ -141,6 +141,8 @@ bool Device::Create(int width, int height, const char *title, bool vzync, u16 mo
     // VSync
     SDL_GL_SetSwapInterval(vzync ? 1 : 0);
 
+    LogInfo("Load opengl extensions.");
+
     // glad (GLES)
     if (!gladLoadGLES2Loader((GLADloadproc)SDL_GL_GetProcAddress))
     {

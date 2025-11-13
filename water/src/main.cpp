@@ -22,6 +22,7 @@ class MainScene : public Scene
     RenderTarget *reflectionRT;
     RenderTarget *refractionRT;
     Texture *waterBump;
+    Texture *waterFoam;
 
     Mesh *meshMirror;
     Mesh *meshWater;
@@ -44,11 +45,13 @@ public:
     float waveLength = 0.1f;
     float time = 0.0f;
 
-    float terrainMaxHeight = 20.0f;
+    float terrainMaxHeight = 30.0f;
     float terrainMinHeight = 0.0f;
     float terrainTextureScale = 0.1f;   // Base textures
     float terrainDetailScale = 10.0f;   // Detail repete muito
     float terrainDetailStrength = 0.5f; // 50% de intensidade
+    float terrainWidth =100.0f;
+    float terrainHeight=100.0f;
 
     float off=0.0f;
 
@@ -159,7 +162,7 @@ public:
             terrainShader->SetUniform("u_detailMap", 4);
 
             terrainShader->SetUniform("useClipPlane", 1);
-            terrainShader->SetUniform("clipPlane", 0.0f, -0.5f, 0.0f, 0);
+            terrainShader->SetUniform("clipPlane", 0.0f, -1.0f, 0.0f, 0);
             renderPass(terrainShader, RenderType::Terrain);
             
 
@@ -175,7 +178,9 @@ public:
 
             refractionRT->Unbind();
             Texture *waterTexture = refractionRT->GetColorTexture(0);
-            meshWater->SetTexture(1, waterTexture);
+            meshWater->SetTexture(2, waterTexture);
+            Texture *waterDepthTexture = refractionRT->GetDepthTexture();
+            meshWater->SetTexture(4, waterDepthTexture);
         }
         // ============================================
         // PASS 2: RENDER REFLECTION (Reflexão da água)
@@ -198,13 +203,15 @@ public:
 
             // Get position and reflect Y
             Vec3 position = camera->getPosition();
-            position.y =2.0f * waterPlaneY - position.y;
+            float distance  = 2.0f * ( position.y - waterPlaneY);
+            position.y -=distance;
             waterCamera->setPosition(position);
 
 
 
                 Vec3 euler = camera->getEulerAngles();
-               euler.z = Pi;  
+             euler.z = Pi;  
+                   euler.x = -euler.x;  // Pitch
  
                 waterCamera->setEulerAngles(euler);
 
@@ -238,7 +245,7 @@ public:
 
 
             terrainShader->SetUniform("useClipPlane", 1);
-            terrainShader->SetUniform("clipPlane", 0.0f, 0.1f, 0.0f, 0);
+            terrainShader->SetUniform("clipPlane", 0.0f, 1.0f, 0.0f, 0);
 
             renderPass(terrainShader, RenderType::Terrain);
 
@@ -253,7 +260,9 @@ public:
             reflectionRT->Unbind();
 
             Texture *waterTexture = reflectionRT->GetColorTexture(0);
-            meshWater->SetTexture(2, waterTexture);
+            meshWater->SetTexture(3, waterTexture);
+            
+
         }
 
         {
@@ -312,8 +321,10 @@ public:
 
             waterShader->Bind();
             waterShader->SetUniform("u_waterBump", 0);     // Slot 0
-            waterShader->SetUniform("u_refractionMap", 1); // Slot 1
-            waterShader->SetUniform("u_reflectionMap", 2); // Slot 2
+            waterShader->SetUniform("u_foamTexture", 1);     // Slot 0
+            waterShader->SetUniform("u_refractionMap", 2); // Slot 1
+            waterShader->SetUniform("u_reflectionMap", 3); // Slot 2
+            waterShader->SetUniform("u_depthMap", 4); // Slot 2
             waterShader->SetUniformMat4("projection", proj.m);
             waterShader->SetUniformMat4("view", view.m);
             waterShader->SetUniformMat4("worldViewProj", worldViewProj.m);
@@ -341,19 +352,42 @@ public:
             // Onda 4: Detalhe
             waterShader->SetUniform("u_wave4", -0.5f, 0.5f, 0.15f, 2.0f);
 
+
+
+
+
+
+            // glActiveTexture(GL_TEXTURE0);
+            // glBindTexture(GL_TEXTURE_2D, waterBump->GetHandle());
+
+            // glActiveTexture(GL_TEXTURE1);
+            // glBindTexture(GL_TEXTURE_2D, waterFoam->GetHandle());
+
+            // glActiveTexture(GL_TEXTURE2);
+            // glBindTexture(GL_TEXTURE_2D, refractionRT->GetColorTextureID(0));
+
+            // glActiveTexture(GL_TEXTURE3);
+            // glBindTexture(GL_TEXTURE_2D, reflectionRT->GetColorTextureID(0));
+
+            // glActiveTexture(GL_TEXTURE4);
+            // glBindTexture(GL_TEXTURE_2D, refractionRT->GetDepthTextureID()); // 
+
             renderPass(waterShader, RenderType::Water);
         }
+
+         Texture *waterDepthTexture = refractionRT->GetDepthTexture();
+   
 
         debugShader->Bind();
         debugShader->SetUniform("tex", 0);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D,reflectionRT->GetColorTextureID());
+        glBindTexture(GL_TEXTURE_2D,waterDepthTexture->GetHandle());
         Driver::Instance().DrawScreenQuad(210, 0, 200, 200);
 
-        debugShader->SetUniform("tex", 0);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, refractionRT->GetColorTextureID());
-        Driver::Instance().DrawScreenQuad(420, 0, 200, 200);
+        // debugShader->SetUniform("tex", 0);
+        // glActiveTexture(GL_TEXTURE0);
+        // glBindTexture(GL_TEXTURE_2D, refractionRT->GetColorTextureID());
+        // Driver::Instance().DrawScreenQuad(420, 0, 200, 200);
     }
     bool OnCreate() override
     {
@@ -388,7 +422,7 @@ public:
         camera->setFOV(45.0f);
         camera->setNearPlane(0.1f);
         camera->setFarPlane(1000.0f);
-        camera->setPosition(0.0f, 0.5f, 10.0f);
+        camera->setPosition(0.0f, 10.5f, 40.0f);
 
         waterCamera = createCamera("WaterCamera");
         waterCamera->setAspectRatio((float)screenWidth / (float)screenHeight);
@@ -403,12 +437,12 @@ public:
 
         terrain = MeshManager::Instance().CreateTerrainFromHeightmap(
             "terrain",
-            "assets/terrain-heightmap.png",
-            500.0f, // width
-            500.0f, // height
+            "assets/hole.png",
+            terrainWidth, // width
+            terrainHeight, // height
             terrainMaxHeight,
-            256,   // detailX
-            256,   // detailY
+            26,   // detailX
+            26,   // detailY
             20.0f, // tilesU
             20.0f  // tilesV
         );
@@ -429,6 +463,7 @@ public:
         TextureManager::Instance().Add("wall.jpg", true);
         TextureManager::Instance().Add("marm.jpg", true);
         waterBump = TextureManager::Instance().Add("waterbump.png", true);
+        waterFoam= TextureManager::Instance().Add("foam_shore.png", true);
 
         meshMirror = MeshManager::Instance().CreateQuad("mirror", Vec3(1, 0, 0), 5.0f);
         meshMirror->AddMaterial("reflection");
@@ -437,18 +472,20 @@ public:
 
         meshWater = MeshManager::Instance().CreateHillPlane(
             "water",
-            1000.0f,
-            1000.0f,
+            terrainWidth,
+            terrainHeight,
             128,
             128,
             0.0f,
             8.0f, // Muitas ondas em X
             8.0f, // Muitas ondas em Y
-            4.0f,
-            4.0f);
+            2.0f,
+            2.0f);
 
         meshWater->AddMaterial("reflection");
         meshWater->SetTexture(0, waterBump);
+        meshWater->SetTexture(1, waterFoam);
+        
 
         GameObject *mirror = createGameObject("mirror");
         mirror->addComponent<MeshRenderer>(meshMirror);
@@ -519,6 +556,7 @@ public:
         reflectionRT = rtMgr.Create("WaterReflection", 1024, 1024);
         reflectionRT->AddColorAttachment(TextureFormat::RGBA8);
         reflectionRT->AddDepthAttachment(TextureFormat::DEPTH24);
+        
         if (!reflectionRT->Finalize())
         {
             LogError("Failed to finalize reflection RT!");
@@ -527,12 +565,18 @@ public:
 
         refractionRT = rtMgr.Create("WaterRefraction", 1024, 1024);
         refractionRT->AddColorAttachment(TextureFormat::RGBA8);
-        refractionRT->AddDepthAttachment(TextureFormat::DEPTH24);
+        refractionRT->AddDepthTexture(TextureFormat::DEPTH24);
+
+  
+
         if (!refractionRT->Finalize())
         {
             LogError("Failed to finalize refraction RT!");
             return false;
         }
+
+      
+ 
 
         if (!mirrorRT || !reflectionRT || !refractionRT)
         {
@@ -550,14 +594,14 @@ public:
     void OnUpdate(float dt) override
     {
 
-       // time += dt * 0.5f;
+       time += dt * 0.5f;
 
-        // ANIMAR DIREÇÃO DO VENTO
-      //  windDirection.x = cosf(time * 0.02f);
-     //   windDirection.y = sinf(time * 0.02f);
+       // ANIMAR DIREÇÃO DO VENTO
+       windDirection.x = cosf(time * 0.02f);
+       windDirection.y = sinf(time * 0.02f);
 
-        //  ANIMAR FORÇA DO VENTO (pulsação)
-      //  windForce = 1.0f + sinf(time) * 0.005f;
+     //    ANIMAR FORÇA DO VENTO (pulsação)
+       windForce = 1.0f + sinf(time) * 0.005f;
 
         const float SPEED = 1.0f;
 

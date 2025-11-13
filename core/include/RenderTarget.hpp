@@ -57,6 +57,11 @@ public:
     bool AddDepthAttachment(TextureFormat format = TextureFormat::DEPTH24);
     bool AddDepthAttachment(const AttachmentConfig& config);
     bool AddDepthStencilAttachment();
+
+
+    bool AddDepthTexture(TextureFormat format = TextureFormat::DEPTH24); 
+    bool AddDepth24Texture() { return AddDepthTexture(TextureFormat::DEPTH24); }
+    bool AddDepth32FTexture() { return AddDepthTexture(TextureFormat::DEPTH32F); }
     
     // === FINALIZATION (must be called after adding attachments) ===
     bool Finalize();
