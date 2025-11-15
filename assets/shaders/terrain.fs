@@ -9,10 +9,7 @@ in vec3 WorldPos;
  
 
 out vec4 FragColor;
-
-// ============================================
-// TEXTURAS (só 5 texturas!)
-// ============================================
+ 
 uniform sampler2D u_grassTexture;      // Baixo
 uniform sampler2D u_dirtTexture;       // Médio baixo
 uniform sampler2D u_rockTexture;       // Médio alto
@@ -31,6 +28,11 @@ uniform float u_minHeight;
 uniform float u_textureScale;
 uniform float u_detailScale;
 uniform float u_detailStrength;
+
+uniform float u_time;
+uniform float u_waterLevel;          
+uniform vec3 u_underwaterFogColor;   
+uniform float u_underwaterFogDensity;
 
 uniform vec4 clipPlane;
 uniform bool useClipPlane;
@@ -60,11 +62,11 @@ float SmoothBlend(float value, float min, float max, float blendRange)
 void main()
 {
  
- if(useClipPlane)
+    if(useClipPlane)
     {
      if (dot(vec4(FragPos, 1.0), clipPlane) < 0.0)
      {
-     //  discard;
+      // discard;
      }
     }
    
@@ -147,10 +149,41 @@ void main()
     // ============================================
     float distance = length(u_viewPos - FragPos);
     float fogAmount = 1.0 - exp(-distance * 0.005);
-    fogAmount = clamp(fogAmount, 0.0, 0.7);
+    fogAmount = clamp(fogAmount, 0.0, 0.5);
     vec3 fogColor = vec3(0.5, 0.6, 0.7);
     finalColor = mix(finalColor, fogColor, fogAmount);
 
+
+    bool isUnderwater = u_viewPos.y < u_waterLevel;
+    
+    if (isUnderwater)
+    {
+         
+
+    vec2 causticUV = FragPos.xz * 0.1 + u_time * 0.02;
+    
+    float caustic1 = texture(u_detailMap, causticUV).r;
+    float caustic2 = texture(u_detailMap, causticUV * 1.3 + vec2(0.5)).r;
+    float caustics = (caustic1 + caustic2) * 0.5;
+    
+    // Intensity varia com profundidade (menos na superfície)
+    float causticIntensity = smoothstep(0.0, 5.0, u_waterLevel - FragPos.y);
+    causticIntensity *= 0.3;  // Ajusta intensidade
+    
+    // Aplica caustics antes do fog
+    finalColor += vec3(caustics) * causticIntensity;
+
+        float underwaterDepth = distance;
+        float underwaterFog = 1.0 - exp(-underwaterDepth * u_underwaterFogDensity);
+        underwaterFog = clamp(underwaterFog, 0.0, 0.95);
+  
+        finalColor = mix(finalColor, u_underwaterFogColor, underwaterFog);
+    }
+    else
+    {
+     
+        finalColor = mix(finalColor, fogColor, fogAmount);
+    }
     
     
     FragColor = vec4(finalColor, 1.0);

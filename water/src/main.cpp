@@ -12,6 +12,7 @@ class MainScene : public Scene
     Shader *debugShader;
     Shader *waterShader;
     Shader *terrainShader;
+    Shader *skyShader;
     Camera *camera;
     Camera *mirrorCamera;
     Camera *waterCamera;
@@ -21,8 +22,7 @@ class MainScene : public Scene
     RenderTarget *mirrorRT;
     RenderTarget *reflectionRT;
     RenderTarget *refractionRT;
-    Texture *waterBump;
-    Texture *waterFoam;
+    Texture *waterBump, *foamTexture;
 
     Mesh *meshMirror;
     Mesh *meshWater;
@@ -48,37 +48,24 @@ public:
     float terrainMaxHeight = 30.0f;
     float terrainMinHeight = 0.0f;
     float terrainTextureScale = 0.1f;   // Base textures
-    float terrainDetailScale = 10.0f;   // Detail repete muito
+    float terrainDetailScale = 2.0f;   // Detail repete muito
     float terrainDetailStrength = 0.5f; // 50% de intensidade
     float terrainWidth =100.0f;
     float terrainHeight=100.0f;
 
-    float off=0.0f;
+    float foamRange = 0.8f;
+    float foamScale = 0.9f;
+    float foamSpeed = 0.2f;
+    float foamIntensity = 0.6f;
 
-Quat reflectQuaternionXZ(const Quat& q)
-{
-    // Reflete em torno do plano XZ (inverte X e Z)
-    return Quat(q.w, -q.x, q.y, -q.z);
-}
-               
+    float depth=0.5f;
+
 public:
-    void OnRender() override
+
+    void DrawMirror()
     {
-        Driver &driver = Driver::Instance();
-        camera->setAspectRatio((float)width / (float)height);
-        const Vec3 cameraPos = camera->getPosition();
-        driver.SetViewPort(0, 0, width, height);
-
-        driver.SetCulling(CullMode::Back);
-        driver.SetDepthTest(true);
-        driver.SetBlendEnable(false);
-
-        {
-
-            // ============================================
-            // RENDER MIRROR REFLECTION
-            // ============================================
-            mirrorRT->Bind();
+          Driver &driver = Driver::Instance();
+         mirrorRT->Bind();
 
             driver.SetClearColor(0.2f, 0.3f, 0.4f, 1.0f);
             driver.Clear(CLEAR_COLOR | CLEAR_DEPTH);
@@ -123,9 +110,24 @@ public:
             mirrorRT->Unbind();
 
             Texture *mirrorTexture = mirrorRT->GetColorTexture(0);
-            meshMirror->SetTexture(0, mirrorTexture);
-        }
+            meshMirror->SetTexture(0, mirrorTexture);   
+    }
 
+    void OnRender() override
+    {
+        Driver &driver = Driver::Instance();
+        camera->setAspectRatio((float)width / (float)height);
+        const Vec3 cameraPos = camera->getPosition();
+        driver.SetViewPort(0, 0, width, height);
+
+        driver.SetCulling(CullMode::Back);
+        driver.SetDepthTest(true);
+        driver.SetBlendEnable(false);
+
+        
+
+            // RENDER MIRROR REFLECTION
+        
         // ============================================
         // PASS 1: RENDER REFRACTION (Através da água)
         // ============================================
@@ -133,8 +135,7 @@ public:
             refractionRT->Bind();
             driver.SetClearColor(0.2f, 0.3f, 0.4f, 1.0f);
             driver.Clear(CLEAR_COLOR | CLEAR_DEPTH);
-//            driver.SetViewPort(0, 0, 1024, 1024);
-
+ 
             //  câmera NORMAL (não refletida)
             SetCamera(camera);
             const Mat4 view = getViewMatrix();
@@ -176,11 +177,14 @@ public:
 
             renderPass(sceneShader, RenderType::Solid);
 
+
+            
+
             refractionRT->Unbind();
             Texture *waterTexture = refractionRT->GetColorTexture(0);
             meshWater->SetTexture(2, waterTexture);
             Texture *waterDepthTexture = refractionRT->GetDepthTexture();
-            meshWater->SetTexture(4, waterDepthTexture);
+            meshWater->SetTexture(3, waterDepthTexture);
         }
         // ============================================
         // PASS 2: RENDER REFLECTION (Reflexão da água)
@@ -209,11 +213,9 @@ public:
 
 
 
-                Vec3 euler = camera->getEulerAngles();
-             euler.z = Pi;  
-                   euler.x = -euler.x;  // Pitch
- 
-                waterCamera->setEulerAngles(euler);
+            Vec3 euler = camera->getEulerAngles();
+            euler.x = -euler.x;  // Pitch
+            waterCamera->setEulerAngles(euler);
 
 
             // Get target and reflect Y
@@ -257,10 +259,18 @@ public:
 
             renderPass(sceneShader, RenderType::Solid);
 
+            skyShader->Bind();
+            skyShader->SetUniformMat4("projection", proj.m);
+            skyShader->SetUniformMat4("view", view.m);
+            skyShader->SetUniform("skybox", 0);
+            glDepthFunc(GL_LEQUAL);  
+            renderPass(skyShader, RenderType::Sky);
+            glDepthFunc(GL_LESS);
+
             reflectionRT->Unbind();
 
             Texture *waterTexture = reflectionRT->GetColorTexture(0);
-            meshWater->SetTexture(3, waterTexture);
+            meshWater->SetTexture(1, waterTexture);
             
 
         }
@@ -284,7 +294,12 @@ public:
             terrainShader->SetUniform("u_minHeight", terrainMinHeight);
             terrainShader->SetUniform("u_textureScale", terrainTextureScale);
             terrainShader->SetUniform("u_detailScale", terrainDetailScale);
-            terrainShader->SetUniform("u_detailStrength", terrainDetailStrength);
+            terrainShader->SetUniform("u_waterLevel", 0.0f);  
+            terrainShader->SetUniform("u_time", time);
+
+            terrainShader->SetUniform("u_waterLevel", 0.0f);  
+            terrainShader->SetUniform("u_underwaterFogColor", 0.0f, 0.3f, 0.5f); 
+            terrainShader->SetUniform("u_underwaterFogDensity", 0.1f);   
 
             terrainShader->SetUniform("u_grassTexture", 0);
             terrainShader->SetUniform("u_dirtTexture", 1);
@@ -316,20 +331,34 @@ public:
 
             renderPass(mirrorShader, RenderType::Mirror);
 
-            Mat4 worldViewProj = proj * view;
-            Mat4 worldReflectionViewProj = proj * waterCamera->getViewMatrix();
+
 
             waterShader->Bind();
-            waterShader->SetUniform("u_waterBump", 0);     // Slot 0
-            waterShader->SetUniform("u_foamTexture", 1);     // Slot 0
-            waterShader->SetUniform("u_refractionMap", 2); // Slot 1
-            waterShader->SetUniform("u_reflectionMap", 3); // Slot 2
-            waterShader->SetUniform("u_depthMap", 4); // Slot 2
+            waterShader->SetUniform("waterBump", 0); 
+            waterShader->SetUniform("reflectionTexture", 1);    
+            waterShader->SetUniform("refractionTexture", 2); 
+            waterShader->SetUniform("refractionDepth", 3); 
+            waterShader->SetUniform("foamTexture", 4); 
+   
+            if (Input::IsKeyPressed(KEY_P))
+            {
+                depth -=0.1f;
+                LogInfo("Depth: %f", depth);
+            }
+            if (Input::IsKeyPressed(KEY_O))
+            {
+                depth +=0.1f;
+                LogInfo("Depth: %f", depth);
+            }
+
+            waterShader->SetUniform("mult", depth);
+
+
+            
+
             waterShader->SetUniformMat4("projection", proj.m);
             waterShader->SetUniformMat4("view", view.m);
-            waterShader->SetUniformMat4("worldViewProj", worldViewProj.m);
-            waterShader->SetUniformMat4("worldReflectionViewProj", worldReflectionViewProj.m);
-
+ 
             waterShader->SetUniform("u_cameraPosition", cameraPos.x, cameraPos.y, cameraPos.z);
             waterShader->SetUniform("u_waveHeight", waveHeight);
             waterShader->SetUniform("u_waterColor", 0.1f, 0.1f, 0.6f, 1.0f);
@@ -340,54 +369,50 @@ public:
             waterShader->SetUniform("u_windForce", windForce);
             waterShader->SetUniform("u_waveLength", waveLength);
             waterShader->SetUniform("u_time", time);
-            // Onda 1: Grande, lenta
             waterShader->SetUniform("u_wave1", 1.0f, 0.0f, 0.5f, 10.0f);
-
-            // Onda 2: Média, diagonal
             waterShader->SetUniform("u_wave2", 0.7f, 0.7f, 0.3f, 6.0f);
-
-            // Onda 3: Pequena, rápida
             waterShader->SetUniform("u_wave3", 0.0f, 1.0f, 0.2f, 3.0f);
-
-            // Onda 4: Detalhe
             waterShader->SetUniform("u_wave4", -0.5f, 0.5f, 0.15f, 2.0f);
 
-
-
-
-
-
-            // glActiveTexture(GL_TEXTURE0);
-            // glBindTexture(GL_TEXTURE_2D, waterBump->GetHandle());
-
-            // glActiveTexture(GL_TEXTURE1);
-            // glBindTexture(GL_TEXTURE_2D, waterFoam->GetHandle());
-
-            // glActiveTexture(GL_TEXTURE2);
-            // glBindTexture(GL_TEXTURE_2D, refractionRT->GetColorTextureID(0));
-
-            // glActiveTexture(GL_TEXTURE3);
-            // glBindTexture(GL_TEXTURE_2D, reflectionRT->GetColorTextureID(0));
-
-            // glActiveTexture(GL_TEXTURE4);
-            // glBindTexture(GL_TEXTURE_2D, refractionRT->GetDepthTextureID()); // 
+            waterShader->SetUniform("u_foamRange", foamRange);
+            waterShader->SetUniform("u_foamScale", foamScale);
+            waterShader->SetUniform("u_foamSpeed", foamSpeed);
+            waterShader->SetUniform("u_foamIntensity", foamIntensity);
 
             renderPass(waterShader, RenderType::Water);
+
+            skyShader->Bind();
+            skyShader->SetUniformMat4("projection", proj.m);
+            skyShader->SetUniformMat4("view", view.m);
+            skyShader->SetUniform("skybox", 0);
+            glDepthFunc(GL_LEQUAL);  
+            renderPass(skyShader, RenderType::Sky);
+            glDepthFunc(GL_LESS);
+     
+
         }
 
-         Texture *waterDepthTexture = refractionRT->GetDepthTexture();
+  
    
 
-        debugShader->Bind();
-        debugShader->SetUniform("tex", 0);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D,waterDepthTexture->GetHandle());
-        Driver::Instance().DrawScreenQuad(210, 0, 200, 200);
+        // debugShader->Bind();
+        // debugShader->SetUniform("tex", 0);
+        // debugShader->SetUniform("isDepth", 0);
+        // glActiveTexture(GL_TEXTURE0);
+        // glBindTexture(GL_TEXTURE_2D,refractionRT->GetColorTextureID());
+        // Driver::Instance().DrawScreenQuad(5, 0, 200, 200);
 
+        // debugShader->SetUniform("isDepth", 1);
+        // glActiveTexture(GL_TEXTURE0);
+        // glBindTexture(GL_TEXTURE_2D,refractionRT->GetDepthTextureID());
+        // Driver::Instance().DrawScreenQuad(225, 0, 200, 200);
+
+
+        // debugShader->SetUniform("isDepth", 0);
         // debugShader->SetUniform("tex", 0);
         // glActiveTexture(GL_TEXTURE0);
-        // glBindTexture(GL_TEXTURE_2D, refractionRT->GetColorTextureID());
-        // Driver::Instance().DrawScreenQuad(420, 0, 200, 200);
+        // glBindTexture(GL_TEXTURE_2D, reflectionRT->GetColorTextureID());
+        // Driver::Instance().DrawScreenQuad(820, 0, 200, 200);
     }
     bool OnCreate() override
     {
@@ -400,8 +425,9 @@ public:
         terrainShader = ShaderManager::Instance().Load("terrain",
                                                        "assets/shaders/terrain.ps",
                                                        "assets/shaders/terrain.fs");
+       skyShader = ShaderManager::Instance().Load("skybox", "assets/shaders/skybox.ps", "assets/shaders/skybox.fs");
 
-        if (!sceneShader || !mirrorShader || !debugShader || !waterShader || !terrainShader)
+        if (!sceneShader || !mirrorShader || !debugShader || !waterShader || !terrainShader || !skyShader)
             return false;
 
         mirrorCamera = createCamera("MirrorCamera");
@@ -452,6 +478,8 @@ public:
             return false;
         }
 
+        MeshManager::Instance().Save("terrain.h3d",terrain);
+
         TextureManager::Instance().SetLoadPath("assets/");
         terrain->AddMaterial("terrain");
         terrain->SetTexture(0, TextureManager::Instance().Add("terr_dirt-grass.jpg", true)); // grass
@@ -460,10 +488,12 @@ public:
         terrain->SetTexture(3, TextureManager::Instance().Add("snow_1024.jpg", true));       // snow
         terrain->SetTexture(4, TextureManager::Instance().Add("detailmap3.jpg", true));      // detail 4 all
 
+
+
         TextureManager::Instance().Add("wall.jpg", true);
         TextureManager::Instance().Add("marm.jpg", true);
         waterBump = TextureManager::Instance().Add("waterbump.png", true);
-        waterFoam= TextureManager::Instance().Add("foam_shore.png", true);
+        foamTexture = TextureManager::Instance().Add("foam_shore.png", true);
 
         meshMirror = MeshManager::Instance().CreateQuad("mirror", Vec3(1, 0, 0), 5.0f);
         meshMirror->AddMaterial("reflection");
@@ -484,8 +514,7 @@ public:
 
         meshWater->AddMaterial("reflection");
         meshWater->SetTexture(0, waterBump);
-        meshWater->SetTexture(1, waterFoam);
-        
+        meshWater->SetTexture(4, foamTexture);
 
         GameObject *mirror = createGameObject("mirror");
         mirror->addComponent<MeshRenderer>(meshMirror);
@@ -500,6 +529,48 @@ public:
         Mesh *mesh = MeshManager::Instance().CreateCube("Cube", 1);
         mesh->AddMaterial("wall")->SetTexture(0, TextureManager::Instance().Get("wall"));
 
+        Mesh *skymesh = MeshManager::Instance().CreateCube("sky", 1);
+        skymesh->GetBuffer(0)->Reverse();
+ 
+
+        TextureManager::Instance().SetLoadPath("assets/cubemaps/");
+        std::string files[6] = {
+        "cloudy_noon_RT.jpg",  // [0] POSITIVE_X = Right
+        "cloudy_noon_LF.jpg",  // [1] NEGATIVE_X = Left
+        "cloudy_noon_UP.jpg",  // [2] POSITIVE_Y = Top
+        "cloudy_noon_DN.jpg",  // [3] NEGATIVE_Y = Bottom
+        "cloudy_noon_FR.jpg",  // [4] POSITIVE_Z = Front
+        "cloudy_noon_BK.jpg",  // [5] NEGATIVE_Z = Back
+                
+        };
+        Texture* cubemap = TextureManager::Instance().AddCube("cubemap", files,false);
+        skymesh->AddMaterial("main")->SetTexture(0, cubemap);
+
+        TextureManager::Instance().SetLoadPath("assets/");
+        Mesh* tree = MeshManager::Instance().Load("tree","assets/trees/tree3.h3d");
+        tree->AddMaterial("tree");
+        tree->SetTexture(0, TextureManager::Instance().Add("trees/BarkDecidious0143_5_S.jpg",true));
+ 
+
+        {
+            GameObject *cube = createGameObject("Tree");
+            cube->addComponent<MeshRenderer>(tree);
+            cube->setPosition(13.2f, -0.5f, 15.4f);
+        }
+
+    
+
+        {
+            GameObject *cube = createGameObject("Tree");
+            cube->addComponent<MeshRenderer>(tree);
+            cube->setPosition(-13.2f, -0.5f, 15.4f);
+        }
+        {
+            GameObject *cube = createGameObject("Tree");
+            cube->addComponent<MeshRenderer>(tree);
+            cube->setPosition(-0.2f, -0.5f, 20.4f);
+        }
+
         Vec3 cubePositions[] = {
             Vec3(0.0f, 0.5f, 0.0f),
             Vec3(3.0f, 0.5f, -3.0f),
@@ -509,6 +580,14 @@ public:
             Vec3(2.0f, 0.5f, -6.0f),
             Vec3(-2.0f, 0.5f, -6.0f),
         };
+
+
+           {
+            GameObject *terrainObj = createGameObject("skyBOx");
+            terrainObj->setRenderType(RenderType::Sky);
+            terrainObj->addComponent<MeshRenderer>(skymesh);
+            
+        }
 
         {
             GameObject *terrainObj = createGameObject("terrain");
@@ -544,7 +623,7 @@ public:
         }
         auto &rtMgr = RenderTargetManager::Instance();
 
-        mirrorRT = rtMgr.CreateHDR("MirrorReflection", 1024, 1024);
+        mirrorRT = rtMgr.CreateHDR("MirrorReflection", 540, 360);
 
         if (!mirrorRT->Finalize())
         {
@@ -553,7 +632,7 @@ public:
         }
 
         // Render target para REFLEXÃO
-        reflectionRT = rtMgr.Create("WaterReflection", 1024, 1024);
+        reflectionRT = rtMgr.Create("WaterReflection", 640, 360);
         reflectionRT->AddColorAttachment(TextureFormat::RGBA8);
         reflectionRT->AddDepthAttachment(TextureFormat::DEPTH24);
         
@@ -563,11 +642,9 @@ public:
             return false;
         }
 
-        refractionRT = rtMgr.Create("WaterRefraction", 1024, 1024);
+        refractionRT = rtMgr.Create("WaterRefraction", 640, 360);
         refractionRT->AddColorAttachment(TextureFormat::RGBA8);
         refractionRT->AddDepthTexture(TextureFormat::DEPTH24);
-
-  
 
         if (!refractionRT->Finalize())
         {
@@ -620,10 +697,7 @@ public:
         if (Input::IsKeyDown(KEY_E))
             moveInput.y += SPEED; // Up
 
-        if (Input::IsKeyDown(KEY_P))
-            off-=0.1f;
-        if (Input::IsKeyDown(KEY_L))
-            off+=0.1f;
+      
 
             
 
@@ -702,7 +776,7 @@ int main()
 
         //  batch.Grid(10, 1.0f, true);
 
-        scene.Debug(&batch);
+        // scene.Debug(&batch);
 
         batch.Render();
 
@@ -713,16 +787,16 @@ int main()
 
         gui.BeginFrame();
 
-        gui.BeginWindow("Mirror", 10, 10, 280, 150);
-        float y = 10;
-        y += 20;
-        gui.SliderFloat("Fresnel Power", &scene.mirrorFresnelPower, 0.0f, 10.0f, 10, y, 260, 20);
-        y += 25;
-        gui.SliderFloat("Fresnel Min", &scene.mirrorFresnelMin, 0.0f, 1.0f, 10, y, 260, 20);
-        y += 25;
-        gui.SliderFloat("Fov", &scene.mirrorFov, 0.40f, 190.0f, 10, y, 260, 20);
-        y += 25;
-        gui.EndWindow();
+        // gui.BeginWindow("Mirror", 10, 10, 280, 150);
+        // float y = 10;
+        // y += 20;
+        // gui.SliderFloat("Fresnel Power", &scene.mirrorFresnelPower, 0.0f, 10.0f, 10, y, 260, 20);
+        // y += 25;
+        // gui.SliderFloat("Fresnel Min", &scene.mirrorFresnelMin, 0.0f, 1.0f, 10, y, 260, 20);
+        // y += 25;
+        // gui.SliderFloat("Fov", &scene.mirrorFov, 0.40f, 190.0f, 10, y, 260, 20);
+        // y += 25;
+        // gui.EndWindow();
 
         // Stats window
         gui.BeginWindow("Stats", screenWidth - 260, 10, 260, 170);

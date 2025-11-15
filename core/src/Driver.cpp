@@ -469,15 +469,18 @@ void Driver::BindTexture(u32 unit, u32 target, u32 tex)
         cachedTex = &m_textureUnits[unit].tex2D;
         break;
     case GL_TEXTURE_CUBE_MAP:
+    {
+       // LogInfo("[TEXTURE] ? [ID %i] Bound to unit %i", tex, unit);
         cachedTex = &m_textureUnits[unit].texCube;
         break;
+    }
     case GL_TEXTURE_2D_ARRAY:
         cachedTex = &m_textureUnits[unit].tex2DArray;
         break;
     default:
     {
         glBindTexture(target, tex);
-        LogInfo("[TEXTURE] ? [ID %i] Bound to unit %i", tex, unit);
+     //   LogInfo("[TEXTURE] ? [ID %i] Bound to unit %i", tex, unit);
 
         return;
     }

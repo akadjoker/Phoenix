@@ -19,7 +19,7 @@ public:
     // criação
     bool Create(u32 width, u32 height, TextureFormat format, const void *data = nullptr);
     bool Create3D(u32 width, u32 height, u32 depth, TextureFormat format, const void *data = nullptr);
-    bool CreateCube(u32 size, TextureFormat format, const void *faces[6] = nullptr);
+    bool CreateCube(u32 size, TextureFormat format, const void *faces[6]);
 
     // I/O
     bool LoadFromFile(const char *path);
@@ -108,6 +108,7 @@ public:
     Texture *Create(const std::string &name, u32 width, u32 height,TextureFormat format, const void *data = nullptr);
 
     Texture *Add(const std::string &path,bool generateMipmaps = true);
+    Texture *AddCube(const std::string &name,const std::string files[6], bool generateMipmaps = false);
 
   
     Texture *Get(const std::string &name);

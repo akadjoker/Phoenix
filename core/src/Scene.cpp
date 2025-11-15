@@ -212,7 +212,12 @@ void Scene::rebuildRenderLists()
     for (Node3D *object : m_objects)
     {
 
-        if (isVisible(object) && object->getRenderType() == RenderType::Solid)
+         if (object->isActive() && object->getRenderType() == RenderType::Sky)
+        {
+            m_render_skyes.push_back(object);
+            m_visible++;
+        }
+        else if (isVisible(object) && object->getRenderType() == RenderType::Solid)
         {
             m_render_solids.push_back(object);
             m_visible++;
@@ -232,11 +237,7 @@ void Scene::rebuildRenderLists()
             m_render_special.push_back(object);
             m_visible++;
         }
-        else if (object->isActive() && object->getRenderType() == RenderType::Sky)
-        {
-            m_render_skyes.push_back(object);
-            m_visible++;
-        }
+    
         else if (isVisible(object) && object->getRenderType() == RenderType::Light)
         {
             m_render_lights.push_back(object);
@@ -278,6 +279,21 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
 
     rebuildRenderLists();
 
+
+       if (renderPass == RenderType::Sky)
+    {
+        for (Node3D *object : m_render_skyes)
+        {
+            if (!object->isActive())
+                continue;
+            const Mat4 model = object->getWorldTransform();
+            shader->SetUniformMat4("model", model.m);
+            object->render();
+ 
+        }
+    }
+
+
     if (renderPass == RenderType::Terrain)
     {
         for (Node3D *object : m_render_terrains)
@@ -304,18 +320,7 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
         }
     }
 
-    if (renderPass == RenderType::Sky)
-    {
-        for (Node3D *object : m_render_skyes)
-        {
-            if (!object->isActive())
-                continue;
-            const Mat4 model = object->getWorldTransform();
-            shader->SetUniformMat4("model", model.m);
-            object->render();
-        }
-    }
-
+ 
     if (renderPass == RenderType::Solid)
     {
         for (Node3D *object : m_render_solids)

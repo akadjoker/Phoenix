@@ -1,144 +1,109 @@
 #version 300 es
 precision highp float;
 
-// Inputs from vertex shader
-in vec2 v_bumpMapTexCoord;
-in vec2 v_mapTexCoord;
-in vec3 v_refractionTexCoord;
-in vec3 v_reflectionTexCoord;
-in vec3 v_position3D;
-in vec3 v_normal;
- 
-
-
-// Output
 out vec4 FragColor;
 
-// Uniforms - Textures
-uniform sampler2D u_waterBump;        //0
-uniform sampler2D u_foamTexture;        //1
-uniform sampler2D u_refractionMap;    //2
-uniform sampler2D u_reflectionMap;    //3
-uniform sampler2D u_depthMap;         //4
+in vec4 ClipSpace;
+in vec2 TexCoord;
+in vec3 ToCameraVector;
+in vec3 WorldPos;
+in vec3 v_normal;
+in vec2 v_bumpMapTexCoord;
 
-// Uniforms - Water properties
+uniform sampler2D reflectionTexture;
+uniform sampler2D refractionTexture;
+uniform sampler2D refractionDepth;
+uniform sampler2D waterBump;
+uniform sampler2D foamTexture;
+
 uniform vec3 u_cameraPosition;
 uniform float u_waveHeight;
 uniform vec4 u_waterColor;
 uniform float u_colorBlendFactor;
-
 uniform float u_time;
+uniform float mult;
 
-const float near = 0.1;
-const float far = 1000.0;
- 
-const float LOG2 = 1.442695;
-const float FOAM_INTENSITY       = 0.8;   // força da espuma
-const float FOAM_INTERSECTION_BAND = 0.01; // quão “grossa” é a zona de interseção (em depth)
-const float FOAM_TILING          = 4.0;
-const float FOAM_SPEED           = 0.05;
+// ✓ Novos uniforms para foam
+uniform float u_foamRange;      // Distância da borda (substitui foamEdgeDistance)
+uniform float u_foamScale;      // Escala da textura
+uniform float u_foamSpeed;      // Velocidade da animação
+uniform float u_foamIntensity;  // Intensidade geral (0-1)
 
+const float foamCutoff = 0.5;   
 
-float LinearizeDepth(float depth) 
+void main() 
 {
-    float z = depth * 2.0 - 1.0;
-    return (2.0 * near * far) / (far + near - z * (far - near));
-}
 
-void main()
-{
-    vec4 bumpColor = texture(u_waterBump, v_bumpMapTexCoord);
-     vec2 perturbation = u_waveHeight * (bumpColor.rg - 0.5);
-    
-    vec2 ProjectedRefractionTexCoords = clamp(
-        v_refractionTexCoord.xy / v_refractionTexCoord.z + perturbation, 
-        0.0, 
-        1.0
-    );
-    vec4 refractiveColor = texture(u_refractionMap, ProjectedRefractionTexCoords);
-    
-    vec2 ProjectedReflectionTexCoords = clamp(
-        v_reflectionTexCoord.xy / v_reflectionTexCoord.z + perturbation, 
-        0.0, 
-        1.0
-    );
-    vec4 reflectiveColor = texture(u_reflectionMap, ProjectedReflectionTexCoords);
+    float distToCamera = length(u_cameraPosition - WorldPos);
+    float lodFactor = smoothstep(50.0, 100.0, distToCamera);
 
-    vec3 eyeVector = normalize(u_cameraPosition - v_position3D);
+
+    // Bump distortion
+    vec4 bumpColor = texture(waterBump, v_bumpMapTexCoord);
+    vec2 perturbation = u_waveHeight * (bumpColor.rg - 0.5);
+    perturbation *= (1.0 - lodFactor * 0.5);
+    
+    // NDC coordinates
+    vec2 ndc = (ClipSpace.xy / ClipSpace.w) * 0.5 + 0.5;
+    vec2 reflectTexCoords = vec2(ndc.x, 1.0 - ndc.y);
+    vec2 refractTexCoords = vec2(ndc.x, ndc.y);
+    
+    // Depth calculation
+    float near = 0.1;
+    float far = 1000.0;
+    
+    float depth = texture(refractionDepth, refractTexCoords).r;
+    float floorDistance = 2.0 * near * far / (far + near - (2.0 * depth - 1.0) * (far - near));
+    
+    depth = gl_FragCoord.z;
+    float waterDistance = 2.0 * near * far / (far + near - (2.0 * depth - 1.0) * (far - near));
+    float waterDepth = floorDistance - waterDistance;
+    float normalizedDepth = clamp(waterDepth / mult, 0.0, 1.0);
+    
+    // Apply distortion
+    reflectTexCoords = clamp(reflectTexCoords + perturbation, 0.001, 0.999);
+    refractTexCoords = clamp(refractTexCoords + perturbation, 0.001, 0.999);
+    
+    vec4 reflectColor = texture(reflectionTexture, reflectTexCoords);
+    vec4 refractColor = texture(refractionTexture, refractTexCoords);
+    
+    // Fresnel
+    vec3 eyeVector = normalize(u_cameraPosition - WorldPos);
     vec3 upVector = vec3(0.0, 1.0, 0.0);
     float fresnelTerm = max(dot(eyeVector, upVector), 0.0);
- 
     
-    // float sceneDepth  = texture(u_depthMap, ProjectedRefractionTexCoords).r;
-    // float floorDistance = 2.0 * near * far /(far + near - (2.0 * sceneDepth - 1.0) * (far - near));
-
-    // float waterDepth = gl_FragCoord.y;
-    // float waterDistance = 2.0 * near * far /(far + near - (2.0 * waterDepth - 1.0) * (far - near));
-    // float depthDiff = floorDistance - waterDistance;
-
-  
-
-    vec4 combinedColor = refractiveColor * fresnelTerm + reflectiveColor * (1.0 - fresnelTerm);
+    vec4 combinedColor = refractColor * fresnelTerm + reflectColor * (1.0 - fresnelTerm);
     vec4 finalColor = u_colorBlendFactor * u_waterColor + (1.0 - u_colorBlendFactor) * combinedColor;
-
- 
-
-
-   vec2 depthCoords = clamp(v_refractionTexCoord.xy / v_refractionTexCoord.z, 0.0, 1.0);
     
-    float sceneDepth = LinearizeDepth(texture(u_depthMap, ProjectedRefractionTexCoords).r);
-    float waterDepth = LinearizeDepth(gl_FragCoord.y);
-
-float depthDiff = sceneDepth - waterDepth;
-float edgeFoam = 1.0 - smoothstep(0.0, 0.5, depthDiff);
-
-// 3. Calcula wave foam (espuma nas cristas)
-float waveFoam = pow(1.0 - dot(normalize(v_normal), vec3(0, 1, 0)), 20.0);
-
-// 4. Calcula noise foam (textura animada)
-vec2 foamUV = v_position3D.xz * 2.0 + u_time * 0.1;
-float foamPattern = texture(u_foamTexture, foamUV).r;
-
-// 5. Combina todos os tipos de foam
-float finalFoam = (edgeFoam + waveFoam * 0.5) * foamPattern;
-vec3 foamColor = vec3(1.0) * finalFoam;
-
-// 6. BLEND foam com a cor da água
-// Usa o foam como alpha para misturar
-FragColor = vec4(mix(finalColor.rgb, foamColor, finalFoam), 1.0);
- 
-
-/*
-    FragColor =finalColor;
-     vec2 depthCoords = clamp(v_refractionTexCoord.xy / v_refractionTexCoord.z, 0.0, 1.0);
+    // === FOAM SYSTEM ===
     
-    float sceneDepth = LinearizeDepth(texture(u_depthMap, v_bumpMapTexCoord).r);
-    float waterDepth = LinearizeDepth(v_refractionTexCoord.y);//← NÃO gl_FragCoord.z!
-    float depthDiff = max(sceneDepth - waterDepth, 0.0);
+    // 1. Edge foam (shore/shallow water)
+    float edgeFoam = smoothstep(u_foamRange, 0.0, waterDepth);
+    edgeFoam = pow(edgeFoam, 2.0);
     
-    // Blend só onde há interseção próxima
-    float edgeBlend = (1.0 - smoothstep(0.0, 1.0, depthDiff)) * 0.3;
-    finalColor.rgb += vec3(edgeBlend);
+    // 2. Foam texture com animação (2 camadas para mais detalhe)
+    vec2 foamUV1 = WorldPos.xz * u_foamScale + vec2(u_time * u_foamSpeed, u_time * u_foamSpeed * 0.6);
+    vec2 foamUV2 = WorldPos.xz * u_foamScale * 0.7 - vec2(u_time * u_foamSpeed * 0.8, u_time * u_foamSpeed);
     
-   // FragColor = finalColor;
+    float foamPattern1 = texture(foamTexture, foamUV1).r;
+    float foamPattern2 = texture(foamTexture, foamUV2).r;
+    float foamPattern = (foamPattern1 + foamPattern2) * 0.5;
+    
+    // 3. Wave crest foam (baseado na normal)
+    float waveHeight = 1.0 - v_normal.y;
+    float crestFoam = smoothstep(0.4, 0.8, waveHeight) * 0.5;
+    
+    // 4. Combinar todos os tipos de foam
+    float foamFactor = max(edgeFoam, crestFoam);
+    foamFactor = foamFactor * smoothstep(foamCutoff - 0.1, foamCutoff + 0.1, foamPattern);
+    foamFactor *= u_foamIntensity;   
 
-     if (depthDiff < 1.0) 
-     {
-     //   FragColor = vec4(1.0, 0.0, 0.0, 1.0); // VERMELHO onde blend ativo
-      //  return;
-    }
+    foamFactor *= (1.0 - lodFactor * 0.7);
     
-    // Clareia onde toca (0.5m range)
-    float edgeBrightness = 1.0 - smoothstep(0.0, 0.5, depthDiff);
+    // Cor do foam
+    vec3 foamColor = vec3(0.95, 0.98, 1.0);
     
-    // Adiciona brilho
-    //finalColor.rgb += vec3(edgeBrightness * 0.3); // Clareia 30%
-
+    finalColor.rgb = mix(finalColor.rgb, foamColor, foamFactor);
     
-   // FragColor.a = clamp(depthDiff/1.0,0.0,1.0);
-
-     
     FragColor = finalColor;
-    */
- 
 }

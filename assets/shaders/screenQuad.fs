@@ -13,17 +13,26 @@ float LinearizeDepth(float depth) {
     return (2.0 * NEAR * FAR) / (FAR + NEAR - z * (FAR - NEAR));
 }
 
+uniform bool isDepth;
 
 void main() 
 {
 
-     float depth = texture(tex, TexCoord).r;
+
+if (isDepth) {
+                float depth = texture(tex, TexCoord).r;
+                FragColor = vec4(vec3(depth), 1.0);
+            } else {
+                FragColor = texture(tex, TexCoord);
+            }
+
+     //float depth = texture(tex, TexCoord).r;
     
     // Lineariza e normaliza para visualização
-    float linear = LinearizeDepth(depth);
-    float normalized = linear / FAR; // [0, FAR] -> [0, 1]
+    //float linear = LinearizeDepth(depth);
+    //float normalized = linear / FAR; // [0, FAR] -> [0, 1]
     
-    FragColor = vec4(vec3(normalized), 1.0);
+   /// FragColor = vec4(vec3(normalized), 1.0);
 
 
   //  FragColor = texture(tex, TexCoord);

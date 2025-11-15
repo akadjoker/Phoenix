@@ -1133,13 +1133,13 @@ bool CubemapRenderTarget::Create(u32 size, TextureFormat colorFormat, bool withD
 
     // Create cubemap texture
     m_cubemap = new Texture();
-    if (!m_cubemap->CreateCube(size, colorFormat, nullptr))
-    {
-        LogError("[Cubemap:%s] Failed to create cubemap texture", m_name.c_str());
-        delete m_cubemap;
-        m_cubemap = nullptr;
-        return false;
-    }
+    // if (!m_cubemap->CreateCube(size, colorFormat, nullptr))
+    // {
+    //     LogError("[Cubemap:%s] Failed to create cubemap texture", m_name.c_str());
+    //     delete m_cubemap;
+    //     m_cubemap = nullptr;
+    //     return false;
+    // }
 
     m_cubemap->SetMinFilter(FilterMode::LINEAR);
     m_cubemap->SetMagFilter(FilterMode::LINEAR);

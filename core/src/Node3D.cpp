@@ -106,14 +106,14 @@ void Node3D::setPosition(float x, float y, float z, TransformSpace space)
         {
             m_localPosition.x=x;
             m_localPosition.y=y;
-            m_localPosition.z=x;
+            m_localPosition.z=z;
             break;
         }   
         case TransformSpace::Parent:
         {
             m_localPosition.x=x;
             m_localPosition.y=y;
-            m_localPosition.z=x;
+            m_localPosition.z=z;
             break;
         }
             
@@ -400,7 +400,7 @@ void Node3D::scale(const Vec3& scale)
 // Matrizes
 const Mat4& Node3D::getLocalTransform() const
 {
-    if (m_transformDirty)
+   // if (m_transformDirty)
         updateLocalTransform();
     
     return m_localTransform;
@@ -408,7 +408,7 @@ const Mat4& Node3D::getLocalTransform() const
 
 const Mat4& Node3D::getWorldTransform() const
 {
-    if (m_worldTransformDirty)
+   // if (m_worldTransformDirty)
         updateWorldTransform();
     
     return m_worldTransform;

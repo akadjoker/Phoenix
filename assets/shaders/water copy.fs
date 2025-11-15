@@ -65,6 +65,10 @@ void main()
 
     float waterDepth = floorDistance - waterDistance;
 
+
+
+
+
    // FragColor = vec4(waterDepth/50.0);
     FragColor = mix(reflectColor,refractColor,0.5);
 }

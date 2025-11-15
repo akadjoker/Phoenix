@@ -617,7 +617,8 @@ void MeshBuffer::Reverse()
     {
         std::swap(indices[i + 1], indices[i + 2]);
     }
-    m_vdirty = true;
+ 
+    m_idirty = true;
 }
 
 void MeshBuffer::FlipNormals()

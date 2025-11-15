@@ -320,7 +320,7 @@ void Texture::Bind(u32 slot) const
     
  //   glActiveTexture(GL_TEXTURE0 + slot);
 //    glBindTexture(ToGLTextureType(m_type), m_handle);
-   //  LogInfo("[Texture] Binding to slot %u with handle %u", slot, m_handle);
+  //   LogInfo("[Texture] Binding to slot %u with handle %u and name %s", slot, m_handle,m_name.c_str());
 
      Driver::Instance().BindTexture(slot, ToGLTextureType(m_type), m_handle);
 }
@@ -492,65 +492,7 @@ bool Texture::Create3D(u32 width, u32 height, u32 depth, TextureFormat format, c
     return true;
 }
 
-bool Texture::CreateCube(u32 size, TextureFormat format, const void *faces[6])
-{
-    if (!size)
-    {
-        LogError("[Texture] invalid cube size");
-        return false;
-    }
-
-    Release();
-    m_type = TextureType::TEXTURE_CUBE;
-    m_width = size;
-    m_height = size;
-    m_depth = 6;
-    m_format = format;
-    m_hasMipmaps = false;
-
-    const bool hasFaceData = faces && faces[0];
-    m_mipLevels = (m_generateMipmaps && hasFaceData) ? (u32)std::floor(std::log2(size)) + 1 : 1;
-
-    glGenTextures(1, &m_handle);
-    if (!m_handle)
-    {
-        LogError("[Texture] glGenTextures cube failed");
-        return false;
-    }
-
-    const GLenum target = ToGLTextureType(m_type);
-    glBindTexture(target, m_handle);
-    glTexStorage2D(target, m_mipLevels, ToGLFormat(format), size, size);
-
-    if (faces)
-    {
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        const GLenum cubeTargets[6] = {
-            GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
-            GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
-            GL_TEXTURE_CUBE_MAP_POSITIVE_Z, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z};
-        for (int i = 0; i < 6; i++)
-            if (faces[i])
-            {
-                glTexSubImage2D(cubeTargets[i], 0, 0, 0, size, size,
-                                GetDataFormat(format), GetDataType(format), faces[i]);
-            }
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-
-        if (m_generateMipmaps && m_mipLevels > 1 && hasFaceData)
-        {
-            glGenerateMipmap(target);
-            m_hasMipmaps = true;
-        }
-    }
-
-    m_isValid = true;
-    ApplyParameters();
-    glBindTexture(target, 0);
-
-    LogInfo("[Texture] Created cubemap %u (%u, mips=%u)", m_handle, size, m_mipLevels);
-    return true;
-}
+ 
 
 bool Texture::LoadFromFile(const char *path)
 {
@@ -588,62 +530,181 @@ bool Texture::LoadFromFile(const char *path)
     stbi_image_free(img);
     return ok;
 }
+ 
+bool Texture::CreateCube(u32 size, TextureFormat format, const void *faces[6])
+{
+    if (!size)
+    {
+        LogError("[Texture] invalid cube size");
+        return false;
+    }
+
+    Release();
+    m_type = TextureType::TEXTURE_CUBE;
+    m_width = size;
+    m_height = size;
+    m_depth = 6;
+    m_format = format;
+    m_hasMipmaps = false;
+ 
+    const bool hasFaceData = faces && faces[0];
+    m_mipLevels = (m_generateMipmaps && hasFaceData) ? (u32)std::floor(std::log2(size)) + 1 : 1;
+
+    glGenTextures(1, &m_handle);
+    if (!m_handle)
+    {
+        LogError("[Texture] glGenTextures cube failed");
+        return false;
+    }
+
+    const GLenum target = GL_TEXTURE_CUBE_MAP;  // ✓ Hardcode (mais claro)
+    glBindTexture(target, m_handle);
+    glTexStorage2D(target, m_mipLevels, ToGLFormat(format), size, size);
+
+    if (faces)
+    {
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        const GLenum cubeTargets[6] = {
+            GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+            GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+            GL_TEXTURE_CUBE_MAP_POSITIVE_Z, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
+        };
+        
+        for (int i = 0; i < 6; i++)
+        {
+            if (faces[i])
+            {
+                glTexSubImage2D(cubeTargets[i], 0, 0, 0, size, size,
+                                GetDataFormat(format), GetDataType(format), faces[i]);
+                
+         
+                GLenum err = glGetError();
+                if (err != GL_NO_ERROR)
+                {
+                    LogError("[Texture] glTexSubImage2D face %d failed: 0x%x", i, err);
+                    glDeleteTextures(1, &m_handle);
+                    m_handle = 0;
+                    m_isValid = false;
+                    return false;
+                }
+                
+                LogInfo("[Texture] Cube face %d loaded", i);
+            }
+            else
+            {
+                LogWarning("[Texture] Cube face %d is NULL", i);
+            }
+        }
+        
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+        if (m_generateMipmaps && m_mipLevels > 1 && hasFaceData)
+        {
+            glGenerateMipmap(target);
+            m_hasMipmaps = true;
+            LogInfo("[Texture] Generated %u mipmap levels", m_mipLevels);
+        }
+    }
+
+    m_isValid = true;
+    ApplyParameters();
+    glBindTexture(target, 0);
+
+    LogInfo("[Texture] Created cubemap %u (%ux%u, mips=%u)", m_handle, size, size, m_mipLevels);
+    return true;
+}
+
 
 bool Texture::LoadCubeFromFiles(const std::vector<std::string> &paths)
 {
-    int w[6]{}, h[6]{}, ch[6]{};
-    std::vector<stbi_uc *> data;
-    data.reserve(6);
-    bool ok = true;
+    if (paths.size() != 6)
+    {
+        LogError("[Texture] LoadCubeFromFiles requires exactly 6 paths (got %zu)", paths.size());
+        return false;
+    }
 
-    stbi_set_flip_vertically_on_load(true);
+    // ✓ Inicializa array com nullptr
+    stbi_uc *data[6] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
+    int w[6]{}, h[6]{}, ch[6]{};
+    bool ok = true;
+ 
+    stbi_set_flip_vertically_on_load(false);
+    
+    // Carrega todas as faces
     for (int i = 0; i < 6; i++)
     {
         data[i] = stbi_load(paths[i].c_str(), &w[i], &h[i], &ch[i], 0);
         if (!data[i])
         {
-            LogError("[Texture] cube face load failed: %s", paths[i]);
+            LogError("[Texture] cube face %d load failed: %s", i, paths[i].c_str());
             ok = false;
             break;
         }
+        
+        // ✓ Validação: cubemap deve ser QUADRADO
+        if (w[i] != h[i])
+        {
+            LogError("[Texture] cube face %d not square (%dx%d): %s", i, w[i], h[i], paths[i].c_str());
+            ok = false;
+            break;
+        }
+        
+        // ✓ Todas as faces devem ter mesmo tamanho
         if (i > 0 && (w[i] != w[0] || h[i] != h[0]))
         {
-            LogError("[Texture] cube faces size mismatch");
+            LogError("[Texture] cube face %d size mismatch (%dx%d vs %dx%d)",
+                     i, w[i], h[i], w[0], h[0]);
+            ok = false;
+            break;
+        }
+        
+        // ✓ Mesmo número de canais
+        if (i > 0 && ch[i] != ch[0])
+        {
+            LogError("[Texture] cube face %d channel mismatch (%d vs %d)", i, ch[i], ch[0]);
             ok = false;
             break;
         }
     }
+
+    // ✓ Cleanup se falhou
     if (!ok)
     {
-        for (auto *p : data)
-            if (p)
-                stbi_image_free(p);
+        for (int i = 0; i < 6; i++)
+        {
+            if (data[i])
+                stbi_image_free(data[i]);
+        }
         return false;
     }
 
+    // Determina formato
     TextureFormat fmt;
     switch (ch[0])
     {
-    case 1:
-        fmt = TextureFormat::R8;
-        break;
-    case 2:
-        fmt = TextureFormat::RG8;
-        break;
-    case 3:
-        fmt = TextureFormat::RGB8;
-        break;
-    default:
-        fmt = TextureFormat::RGBA8;
-        break;
+        case 1: fmt = TextureFormat::R8; break;
+        case 2: fmt = TextureFormat::RG8; break;
+        case 3: fmt = TextureFormat::RGB8; break;
+        case 4: fmt = TextureFormat::RGBA8; break;
+        default:
+            LogError("[Texture] unsupported channel count: %d", ch[0]);
+            for (int i = 0; i < 6; i++)
+                if (data[i])
+                    stbi_image_free(data[i]);
+            return false;
     }
 
+    // Cria cubemap
     const void *faces[6] = {data[0], data[1], data[2], data[3], data[4], data[5]};
     bool created = CreateCube((u32)w[0], fmt, faces);
 
-    for (auto *p : data)
-        if (p)
-            stbi_image_free(p);
+    // Limpa memória
+    for (int i = 0; i < 6; i++)
+    {
+        if (data[i])
+            stbi_image_free(data[i]);
+    }
+
     return created;
 }
 
@@ -775,6 +836,7 @@ Texture *TextureManager::Load(const std::string &path, bool generateMipmaps)
     auto it = m_textures.find(name);
     if (it != m_textures.end())
     {
+        LogWarning("[TextureManager] Texture already exists: %s", name.c_str());
         return it->second;
     }
 
@@ -830,7 +892,44 @@ Texture *TextureManager::Add(const std::string &path, bool generateMipmaps)
         return Load(finalePath, generateMipmaps);
     }
     LogError("[TextureManager] Texture not found: %s", finalePath.c_str());
-    return nullptr;
+    return defaultTexture;
+}
+
+Texture *TextureManager::AddCube(const std::string &name, const std::string files[6], bool generateMipmaps)
+{
+    auto it = m_textures.find(name);
+    if (it != m_textures.end())
+    {
+        LogWarning("[TextureManager] Texture already exists: %s", name.c_str());
+        return it->second;
+    }
+
+    std::vector<std::string> faces;
+    for (int i = 0; i < 6; i++)
+    {
+        std::string finalePath = defaultPath + files[i];
+        if (!Utils::FileExists(finalePath.c_str()))
+        {
+            LogError("[TextureManager] Texture not found: %s", finalePath.c_str());
+            
+            return defaultTexture;
+        }
+        faces.push_back(defaultPath + files[i]);
+    }
+    
+    Texture *texture = new Texture();
+    texture->SetName(name);
+    texture->SetGenerateMipmaps(generateMipmaps);
+    if (!texture->LoadCubeFromFiles(faces))
+    {
+        LogError("[TextureManager] Failed to create: %s", name.c_str());
+        delete texture;
+        return nullptr;
+    }
+    m_textures[name] = texture;
+    LogInfo("[TextureManager] Created: %s cube", name.c_str());
+    return texture;
+     
 }
 
 Texture *TextureManager::Get(const std::string &name)
@@ -841,7 +940,7 @@ Texture *TextureManager::Get(const std::string &name)
         return it->second;
     }
     LogWarning("[TextureManager] Texture not found: %s", name.c_str());
-    return nullptr;
+    return defaultTexture;
 }
 
 void TextureManager::Unload(const std::string &name)
