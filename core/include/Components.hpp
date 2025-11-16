@@ -5,6 +5,7 @@
 
 
 class Mesh;
+class Terrain;
 
 // ============================================================================
 // MeshRenderer - Renders a mesh
@@ -31,6 +32,30 @@ public:
 
 private:
     Mesh *mesh{nullptr};
+    bool visible;
+};
+
+
+class TerrainRenderer : public Component
+{
+public:
+    TerrainRenderer(Terrain *t);
+
+    const char *getTypeName() const override { return "TerrainRenderer"; }
+
+    void setVisible(bool v) { visible = v; }
+    bool isVisible() const { return visible; }
+
+    void setTerrain(Terrain *t) { terrain = t; }
+
+    Terrain *getTerrain() const { return terrain; }
+
+    void attach() override;
+
+    void render() override;
+
+private:
+    Terrain *terrain{nullptr};
     bool visible;
 };
 

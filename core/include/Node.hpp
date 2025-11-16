@@ -45,5 +45,8 @@ public:
     void show();
     void hide();
 
+    virtual void serialize(Serialize &serialize);
+    virtual void deserialize(const Serialize &in);
+
 protected:
 };

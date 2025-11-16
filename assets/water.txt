@@ -1,0 +1,186 @@
+// Scene Script
+scene
+{
+    name scene
+
+    // Objects in scene
+    objects
+    {
+        object
+        {
+            name "water"
+            type 4
+            scale 1 1 1
+            rotation 0 0 0
+            position 0 0 0
+            flags 1
+            renderType 5
+            active true
+        }
+        object
+        {
+            name "skyBOx"
+            type 4
+            scale 1 1 1
+            rotation 0 0 0
+            position 0 0 0
+            flags 1
+            renderType 6
+            active true
+        }
+        object
+        {
+            name "terrain"
+            type 4
+            scale 1 1 1
+            rotation 0 0 0
+            position 0 -5 0
+            flags 1
+            renderType 1
+            active true
+        }
+        object
+        {
+            name "Tree"
+            type 4
+            scale 1 1 1
+            rotation 0 0 0
+            position 11.6 -1.4 15.4
+            flags 1
+            renderType 0
+            active true
+        }
+        object
+        {
+            name "Tree"
+            type 4
+            scale 1 1 1
+            rotation 0 0 0
+            position -13.2 -0.5 15.4
+            flags 1
+            renderType 0
+            active true
+        }
+        object
+        {
+            name "Tree"
+            type 4
+            scale 1 1 1
+            rotation 0 0 0
+            position -0.2 -0.5 20.4
+            flags 1
+            renderType 0
+            active true
+        }
+        object
+        {
+            name "Cube"
+            type 4
+            scale 1 1 1
+            rotation 0 0 0
+            position 0 0.5 0
+            flags 1
+            renderType 0
+            active true
+        }
+        object
+        {
+            name "Cube"
+            type 4
+            scale 1 1 1
+            rotation 0 0 0
+            position 3 0.5 -3
+            flags 1
+            renderType 0
+            active true
+        }
+        object
+        {
+            name "Cube"
+            type 4
+            scale 1 1 1
+            rotation 0 0 0
+            position -3 0.5 -3
+            flags 1
+            renderType 0
+            active true
+        }
+        object
+        {
+            name "Cube"
+            type 4
+            scale 1 1 1
+            rotation 0 0 0
+            position 5 0.5 2
+            flags 1
+            renderType 0
+            active true
+        }
+        object
+        {
+            name "Cube"
+            type 4
+            scale 1 1 1
+            rotation 0 0 0
+            position -10.1 0.5 2
+            flags 1
+            renderType 0
+            active true
+        }
+        object
+        {
+            name "Cube"
+            type 4
+            scale 1 1 1
+            rotation 0 0 0
+            position 2 0.5 -6
+            flags 1
+            renderType 0
+            active true
+        }
+        object
+        {
+            name "Cube"
+            type 4
+            scale 1 1 1
+            rotation 0 0 0
+            position -2 0.5 -6
+            flags 1
+            renderType 0
+            active true
+        }
+        object
+        {
+            name "Cube"
+            type 4
+            scale 1 1 1
+            rotation 0 0 0
+            position 2.1 0 5
+            flags 1
+            renderType 0
+            active true
+        }
+        object
+        {
+            name "Cube"
+            type 4
+            scale 1 1 1
+            rotation 0 0 0
+            position 5 0 -5
+            flags 1
+            renderType 0
+            active true
+        }
+        object
+        {
+            name "Cube"
+            type 4
+            scale 1 1 1
+            rotation 0 -2.71669 0
+            position 5 0.7 0
+            flags 1
+            renderType 0
+            active true
+        }
+    }
+}

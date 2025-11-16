@@ -26,10 +26,16 @@ void MeshRenderer::attach()
 {
    // LogInfo("[MeshRenderer] attached to %s", m_owner->getName().c_str());
     
-     //m_owner->getBoundingBox().merge(mesh->GetBoundingBox());
+     m_owner->getWorldTransform();
 
-  //   LogInfo("[MeshRenderer] Bounding Box: %f %f %f", m_owner->getBoundingBox().min.x, m_owner->getBoundingBox().min.y, m_owner->getBoundingBox().min.z);
- //    LogInfo("[MeshRenderer] Bounding Box: %f %f %f", m_owner->getBoundingBox().max.x, m_owner->getBoundingBox().max.y, m_owner->getBoundingBox().max.z);
+     m_owner->m_boundBox.expand(mesh->GetBoundingBox());
+
+    //  LogInfo("[MeshRenderer] Bounding mesh Box: %f %f %f", mesh->GetBoundingBox().min.x, mesh->GetBoundingBox().min.y, mesh->GetBoundingBox().min.z);
+    //  LogInfo("[MeshRenderer] Bounding mesh Box: %f %f %f", mesh->GetBoundingBox().max.x, mesh->GetBoundingBox().max.y, mesh->GetBoundingBox().max.z);
+
+
+    //  LogInfo("[MeshRenderer] Bounding Box: %f %f %f", m_owner->getBoundingBox().min.x, m_owner->getBoundingBox().min.y, m_owner->getBoundingBox().min.z);
+    //  LogInfo("[MeshRenderer] Bounding Box: %f %f %f", m_owner->getBoundingBox().max.x, m_owner->getBoundingBox().max.y, m_owner->getBoundingBox().max.z);
 }
 
 void Rotator::update(float deltaTime)
@@ -41,9 +47,9 @@ void Rotator::update(float deltaTime)
     GameObject *owner = getOwner();
     if (owner)
     {
-       // owner->rotateLocalX(rotationSpeed.x * deltaTime);
-       // owner->rotateLocalY(rotationSpeed.y * deltaTime);
-       // owner->rotateLocalZ(rotationSpeed.z * deltaTime);
+        owner->rotateXDeg(rotationSpeed.x * deltaTime);
+        owner->rotateYDeg(rotationSpeed.y * deltaTime);
+        owner->rotateZDeg(rotationSpeed.z * deltaTime);
     }
 }
 
@@ -227,4 +233,26 @@ void FreeCameraComponent::setYaw(float yawDeg)
     
     Quat rotation = Quat::FromEulerAnglesDeg(m_pitch, m_yaw, 0.0f);
     m_camera->setRotation(rotation, TransformSpace::World);
+}
+
+TerrainRenderer::TerrainRenderer(Terrain *t)
+{
+    terrain = t;
+    visible = true;
+}
+
+void TerrainRenderer::attach()
+{
+     m_owner->getWorldTransform();
+     m_owner->m_boundBox.merge(terrain->GetBoundingBox());
+}
+
+void TerrainRenderer::render()
+{
+   
+    if (visible)
+    {
+        terrain->Render();
+    }
+   
 }

@@ -990,23 +990,9 @@ void Mesh::CalculateNormals()
     }
 }
 
-void Mesh::SetTexture(u32 layer, Texture *texture)
-{
-    for (Material *material : materials)
-    {
-        material->SetTexture(layer, texture);
-    }
-}
 
-Material *Mesh::AddMaterial(const std::string &name)
-{
-    Material *material = new Material();
-    material->SetName(name);
-    materials.push_back(material);
-    return material;
-}
 
-Mesh::Mesh()
+Mesh::Mesh(const std::string &name):Visual(name)
 {
 }
 
@@ -1018,11 +1004,6 @@ Mesh::~Mesh()
     }
     buffers.clear();
 
-    for (Material *material : materials)
-    {
-        delete material;
-    }
-    materials.clear();
     for (Bone *bone : m_bones)
     {
         delete bone;
@@ -2083,11 +2064,35 @@ Mesh* MeshManager::CreateTerrainFromPixmap(
     return mesh;
 }
 
+Terrain *MeshManager::CreateTerrain(const std::string &name, const std::string &heightmapPath, float scaleX, float scaleY, float scaleZ, float texScaleU, float texScaleV)
+{
+
+    auto it = m_terrains.find(name);
+    if (it != m_terrains.end())
+    {
+        LogWarning("[MeshManager] Terrain already exists: %s", name.c_str());
+        return it->second;
+    }
+
+    Terrain* terrain = new Terrain(name);
+    terrain->LoadFromHeightmap(heightmapPath, scaleX, scaleY, scaleZ, texScaleU, texScaleV);
+    m_terrains[name] = terrain;
+    return terrain;
+     
+}
 
 void MeshManager::UnloadAll()
 {
-    if (m_meshes.empty())
-        return;
+
+    
+
+
+    for (auto it = m_terrains.begin(); it != m_terrains.end(); it++)
+    {
+        delete it->second;
+    }
+    m_terrains.clear();
+
     for (auto it = m_meshes.begin(); it != m_meshes.end(); it++)
     {
         delete it->second;
@@ -2118,6 +2123,7 @@ Mesh *MeshManager::Load(const std::string &name, const std::string &filename)
     {
         return nullptr;
     }
+  
     mesh->CalculateBoneMatrices();
     return mesh;
 }
@@ -2519,6 +2525,8 @@ bool MeshReader::Load(const std::string &filename, Mesh *mesh)
         LogWarning("[MeshReader] Newer version: %d", version);
     }
 
+    mesh->m_boundBox.clear();
+
     // Read chunks
     while (!m_stream->IsEOF())
     {
@@ -2671,6 +2679,7 @@ void MeshReader::ReadBufferChunk(Mesh *mesh, const ChunkHeader &header)
 
     MeshBuffer *buffer = mesh->AddBuffer(materialIndex);
 
+
     // Read sub-chunks
     while (m_stream->Tell() < endPos)
     {
@@ -2700,6 +2709,7 @@ void MeshReader::ReadBufferChunk(Mesh *mesh, const ChunkHeader &header)
         if (m_stream->Tell() < subEnd)
             m_stream->Seek(subEnd, SeekOrigin::Begin);
     }
+    mesh->m_boundBox.merge(buffer->m_boundBox);
 }
 
 void MeshReader::ReadVerticesChunk(MeshBuffer *buffer, const ChunkHeader &header)
@@ -3037,4 +3047,34 @@ bool AnimReader::ReadChannelChunk(Channel &channel)
     }
 
     return true;
+}
+
+Visual::Visual(const std::string &name):Object(name)
+{
+}
+
+Visual::~Visual()
+{
+
+    for (Material *material : materials)
+    {
+        delete material;
+    }
+    materials.clear();
+}
+
+void Visual::SetTexture(u32 layer, Texture *texture)
+{
+    for (Material *material : materials)
+    {
+        material->SetTexture(layer, texture);
+    }
+}
+
+Material *Visual::AddMaterial(const std::string &name)
+{
+    Material *material = new Material();
+    material->SetName(name);
+    materials.push_back(material);
+    return material;
 }

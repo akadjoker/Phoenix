@@ -227,33 +227,14 @@ void Camera::copyFrom(const Camera *other)
     m_viewDirty = true;
     m_projectionDirty = true;
 }
+ 
+Ray Camera::screenPointToRay(float screenX, float screenY, float viewportWidth, float viewportHeight) const
+{
+  
+    float ndcX = (2.0f * screenX / viewportWidth) - 1.0f;
+    float ndcY = 1.0f - (2.0f * screenY / viewportHeight);  
+    Vec3 screenPosNDC(ndcX, ndcY, 0.0f);  
+    Mat4 invVP = getViewProjectionMatrix().inverse();
 
-// void Camera::copyFromWithMirrorY(const Camera* other, float mirrorY)
-// {
-//     // Posição refletida em Y
-//     Vec3 pos = other->getPosition(TransformSpace::World);
-//     pos.y = -pos.y + 2.0f * mirrorY;
-//     setPosition(pos, TransformSpace::World);
-
-//     // Rotação refletida (inverter pitch e roll)
-//     Vec3 euler = other->getEulerAngles();
-//     euler.x = -euler.x;  // Pitch
-//     euler.z = -euler.z;  // Roll
-//     setEulerAngles(euler);
-
-//     m_up = other->m_up;
-
-//     // Copiar projeção
-//     m_projectionType = other->m_projectionType;
-//     m_fov = other->m_fov;
-//     m_aspect = other->m_aspect;
-//     m_orthoLeft = other->m_orthoLeft;
-//     m_orthoRight = other->m_orthoRight;
-//     m_orthoBottom = other->m_orthoBottom;
-//     m_orthoTop = other->m_orthoTop;
-//     m_near = other->m_near;
-//     m_far = other->m_far;
-
-//     m_viewDirty = true;
-//     m_projectionDirty = true;
-// }
+    return Ray::FromScreen(screenPosNDC, invVP);
+}

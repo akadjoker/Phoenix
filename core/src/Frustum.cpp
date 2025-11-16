@@ -101,23 +101,52 @@ bool Frustum::intersectsSphere(const Vec3 &center, float radius) const
 
 bool Frustum::intersectsAABB(const Vec3 &min, const Vec3 &max) const
 {
+    // for (int i = 0; i < PLANE_COUNT; i++)
+    // {
+    //     const Plane3D &plane = planes[i];
+    //     Vec3 normal = plane.getNormal();
+
+    //     // Encontrar o vértice positivo (mais distante na direção da normal)
+    //     Vec3 pVertex(
+    //         normal.x >= 0 ? max.x : min.x,
+    //         normal.y >= 0 ? max.y : min.y,
+    //         normal.z >= 0 ? max.z : min.z);
+
+    //     // Se o vértice positivo está atrás do plano, BoundingBox está fora
+    //     if (plane.distance(pVertex) < 0)
+    //     {
+    //         return false;
+    //     }
+    // }
+    // return true;
+
+     Vec3 corners[8] = {
+        Vec3(min.x, min.y, min.z),
+        Vec3(max.x, min.y, min.z),
+        Vec3(min.x, max.y, min.z),
+        Vec3(max.x, max.y, min.z),
+        Vec3(min.x, min.y, max.z),
+        Vec3(max.x, min.y, max.z),
+        Vec3(min.x, max.y, max.z),
+        Vec3(max.x, max.y, max.z)
+    };
+    
     for (int i = 0; i < PLANE_COUNT; i++)
     {
-        const Plane3D &plane = planes[i];
-        Vec3 normal = plane.getNormal();
-
-        // Encontrar o vértice positivo (mais distante na direção da normal)
-        Vec3 pVertex(
-            normal.x >= 0 ? max.x : min.x,
-            normal.y >= 0 ? max.y : min.y,
-            normal.z >= 0 ? max.z : min.z);
-
-        // Se o vértice positivo está atrás do plano, BoundingBox está fora
-        if (plane.distance(pVertex) < 0)
+        int out = 0;
+        
+        // Contar quantos cantos estão fora deste plano
+        for (int j = 0; j < 8; j++)
         {
-            return false;
+            if (planes[i].distance(corners[j]) < 0)
+                out++;
         }
+        
+        // Se todos os 8 cantos estão fora, AABB está completamente fora
+        if (out == 8)
+            return false;
     }
+    
     return true;
 }
 

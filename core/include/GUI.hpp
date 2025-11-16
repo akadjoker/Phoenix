@@ -35,37 +35,36 @@ enum class Orientation
 // ========================================
 struct GUITheme
 {
-    // Window colors
+    Color accent = Color(90, 90, 90, 255);
+
     Color windowBg = Color(40, 40, 45, 240);
     Color windowBorder = Color(70, 70, 75, 255);
     Color titleBarBg = Color(50, 50, 55, 255);
     Color titleBarActive = Color(60, 60, 65, 255);
     Color titleText = Color(255, 255, 255, 255);
 
-    // Widget colors
     Color buttonBg = Color(60, 60, 65, 255);
     Color buttonHover = Color(70, 70, 80, 255);
-    Color buttonActive = Color(50, 120, 200, 255);
+    Color buttonActive = accent;
     Color buttonText = Color(255, 255, 255, 255);
 
     Color sliderBg = Color(50, 50, 55, 255);
-    Color sliderFill = Color(50, 120, 200, 255);
-    Color sliderHandle = Color(200, 200, 200, 255);
-    Color sliderHandleHover = Color(255, 255, 255, 255);
+    Color sliderFill = accent;
+    Color sliderHandle = Color(190, 190, 195, 255);
+    Color sliderHandleHover = Color(230, 230, 235, 255);
 
     Color checkboxBg = Color(50, 50, 55, 255);
-    Color checkboxCheck = Color(50, 120, 200, 255);
+    Color checkboxCheck = accent;
     Color checkboxBorder = Color(100, 100, 105, 255);
 
     Color inputBg = Color(30, 30, 35, 255);
     Color inputBorder = Color(70, 70, 75, 255);
     Color inputText = Color(255, 255, 255, 255);
-    Color inputCursor = Color(255, 255, 255, 255);
+    Color inputCursor = accent;
 
     Color labelText = Color(220, 220, 220, 255);
     Color separatorColor = Color(70, 70, 75, 255);
 
-    // Sizing
     float titleBarHeight = 28.0f;
     float windowBorderSize = 1.0f;
     float windowPadding = 8.0f;
@@ -80,32 +79,31 @@ struct GUITheme
     float cornerRadius = 3.0f;
 
     Color progressBarBg = Color(50, 50, 55, 255);
-    Color progressBarFill = Color(50, 120, 200, 255);
+    Color progressBarFill = Color(90, 90, 90, 255);
 
     Color dropdownBg = Color(40, 40, 40, 255);
     Color dropdownHover = Color(70, 70, 80, 255);
     Color dropdownBorder = Color(100, 100, 105, 255);
-    Color dropdownItemHover = Color(40, 40, 40, 255);
+    Color dropdownItemHover = Color(70, 70, 80, 255);
 
     Color radioBg = Color(50, 50, 55, 255);
-    Color radioCheck = Color(50, 120, 200, 255);
+    Color radioCheck = accent;
     Color radioBorder = Color(100, 100, 105, 255);
 
     Color colorPickerBorder = Color(100, 100, 105, 255);
 
     Color listBoxBg = Color(40, 40, 45, 255);
     Color listBoxItemHover = Color(70, 70, 80, 255);
-    Color listBoxItemSelected = Color(50, 120, 200, 255);
+    Color listBoxItemSelected = accent;
     Color listBoxBorder = Color(100, 100, 105, 255);
 
     Color textInputBg = Color(30, 30, 35, 255);
     Color textInputBorder = Color(100, 100, 105, 255);
     Color textInputText = Color(255, 255, 255, 255);
-    Color textInputCursor = Color(255, 255, 255, 255);
-    Color textInputSelection = Color(50, 120, 200, 128);
+    Color textInputCursor = accent;
+    Color textInputSelection = Color(70, 160, 190, 128);
     float textInputHeight = 24.0f;
 
-    // Sizing
     float dropdownHeight = 24.0f;
     float radioSize = 14.0f;
 };
@@ -161,7 +159,7 @@ public:
     bool BeginFrame();
     void EndFrame();
 
-    bool IsFocused() ;
+    bool IsFocused();
 
     // Windows
     bool BeginWindow(const char *title, float x, float y, float width, float height, bool *open = nullptr);
@@ -193,8 +191,23 @@ public:
     void ProgressBar(float progress, float x, float y, float w, float h,
                      Orientation orient = Orientation::Horizontal, const char *overlay = nullptr);
 
-    bool TextInput(const char *label, char *buffer, size_t bufferSize, 
-               float x, float y, float w, float h = 0);
+    bool TextInput(const char *label, char *buffer, size_t bufferSize,
+                   float x, float y, float w, float h = 0);
+
+    bool ToggleSwitch(const char *label, bool *value, float x, float y, float w = 0.0f, float h = 0.0f);
+    void SeparatorText(const char *text, float x, float y, float w);
+    void Spinner(float x, float y, float radius);
+
+    bool DragFloat(const char *label, float *value,
+                   float speed,
+                   float min, float max,
+                   float x, float y, float w, float h);
+
+    bool DragFloat(const char *label, float *value,
+                   float speed,
+                   float min, float max,
+                   float x, float y, float w, float h,
+                   const Color &accentColor);
 
     // RadioButton - retorna true se selecionado
     bool RadioButton(const char *label, int *selected, int value, float x, float y, float size = 0);
@@ -227,6 +240,12 @@ public:
     void SetNextWindowPos(float x, float y);
     void SetNextWindowSize(float width, float height);
 
+    FloatRect MakeContentRect(float x, float y, float w, float h) const;
+    Vec2 MakeContentPos(float x, float y) const;
+    void DrawRectFilled(const FloatRect &rect, const Color &color);
+    void DrawRectOutline(const FloatRect &rect, const Color &color, float thickness = 1.0f);
+    void DrawText(const char *text, float x, float y, const Color &color);
+
 private:
     // Windows
     WindowData *GetOrCreateWindow(const std::string &id);
@@ -240,18 +259,11 @@ private:
     bool IsPointInRect(const Vec2 &point, const FloatRect &rect) const;
     WidgetState GetWidgetState(const FloatRect &rect, const std::string &widgetID);
 
-    void DrawRectFilled(const FloatRect &rect, const Color &color);
-    void DrawRectOutline(const FloatRect &rect, const Color &color, float thickness = 1.0f);
-    void DrawText(const char *text, float x, float y, const Color &color);
     float GetTextWidth(const char *text);
     float GetTextHeight(const char *text);
 
-    // Converte coords locais de conteúdo → coords de ecrã
-    FloatRect MakeContentRect(float x, float y, float w, float h) const;
-    Vec2 MakeContentPos(float x, float y) const;
-
     // Ids
-    std::string GenerateID(const char *label);
+    // std::string GenerateID(const char *label);
     bool IsMouseInWindow() const;
 
 private:
@@ -264,7 +276,6 @@ private:
 
     // Input state
     Vec2 m_mousePos{};
- 
 
     // Windows
     std::unordered_map<std::string, WindowData> m_windows;
@@ -306,7 +317,7 @@ private:
         bool active;
         bool changed;
         int itag;
-        float   ftag;
+        float ftag;
         Control()
         {
             id = 0;
@@ -316,14 +327,14 @@ private:
             changed = false;
         }
     };
-    //std::vector<Control> m_controls;
+    int m_focusedControl = -1;
+    // std::vector<Control> m_controls;
     std::unordered_map<u32, Control> m_controls;
-    Control* AddControl();
+    Control *AddControl();
     u32 m_nextControlID = 0;
     u32 GetNextControlID();
-    u32   m_activeControl;
+    u32 m_activeControl;
     bool m_isFocused = false;
     u32 focusCounter;
-
- 
+    bool AnyControlActive() const;
 };

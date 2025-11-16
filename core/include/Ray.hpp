@@ -17,7 +17,7 @@ public:
     Ray();
     Ray(const Vec3 &origin, const Vec3 &direction);
 
-    // Criar ray de screen coordinates
+ 
     static Ray FromScreen(const Vec3 &screenPos, const Mat4 &invViewProjection);
     static Ray FromCamera(const Vec3 &cameraPos, const Vec3 &cameraForward);
 
@@ -37,6 +37,7 @@ public:
     // Intersecção com AABB
     bool intersectAABB(const Vec3 &min, const Vec3 &max, float &outTMin, float &outTMax) const;
     bool intersectAABB(const BoundingBox &box, float &outTMin, float &outTMax) const;
+    bool intersectAABB(BoundingBox &box, float &outTMin, float &outTMax) const;
 
     // Ponto mais próximo no ray a um ponto
     Vec3 closestPoint(const Vec3 &point) const;

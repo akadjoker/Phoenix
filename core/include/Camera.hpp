@@ -80,6 +80,8 @@ public:
     const Mat4 &getProjectionMatrix() const;
     Mat4 getViewProjectionMatrix() const;
 
+    Ray screenPointToRay(float screenX, float screenY, float viewportWidth, float viewportHeight) const;
+
     // Override para invalidar view quando transformar
     void setPosition(const Vec3 &pos, TransformSpace space = TransformSpace::Local) override;
     void setPosition(float x, float y, float z, TransformSpace space = TransformSpace::Local) override;

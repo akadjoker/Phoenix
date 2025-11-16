@@ -1,5 +1,6 @@
 #pragma once
 #include "Config.hpp"
+#include "Object.hpp"
 #include "LoadTypes.hpp"
 #include <string>
 #include <unordered_map>
@@ -19,6 +20,8 @@ class MeshWriter;
 class MeshLoader;
 class Animator;
 class Pixmap;
+class Terrain;
+ 
 
 constexpr u32 MESH_MAGIC = 0x4D455348; // "MESH"
 constexpr u32 MESH_VERSION = 100;      // 1.00
@@ -342,31 +345,66 @@ public:
 
     AnimationLayer *AddLayer();
     AnimationLayer *GetLayer(u32 index);
+
+
 };
 
-class Mesh
+
+class Visual : public Object
 {
+
+protected:
+    std::vector<Material *> materials;
+    BoundingBox m_boundBox;    
+
+    friend class MeshBuffer;
+    friend class MeshManager;
+    friend class Driver;
+    friend class MeshReader;
 public:
-    Mesh();
-    ~Mesh();
-
-    void Clear();
-    void Build();
-    MeshBuffer *AddBuffer(u32 material = 0);
-    void Render();
-    void CalculateNormals();
-
-    void SetTexture(u32 layer, Texture *texture);
-
+    Visual(const std::string &name = "Visual");
+    ~Visual();
     Material *AddMaterial(const std::string &name);
     Material *GetMaterial(u32 index) const { return materials[index]; }
+    void SetTexture(u32 layer, Texture *texture);
     u32 GetMaterialCount() const { return materials.size(); }
 
+    
+    const BoundingBox &GetBoundingBox() const { return m_boundBox; }
+    BoundingBox &GetBoundingBox() { return m_boundBox; }
+    
+    
+    virtual void Clear() {};
+    virtual void Build() {};
+    virtual void Render() {};
+    virtual void CalculateBoundingBox() {};
+    virtual void Debug(RenderBatch *batch) {(void) batch;};
+};
+
+class Mesh : public Visual
+{
+public:
+    Mesh(const std::string &name = "Mesh");
+    ~Mesh();
+
+    void Clear() override;
+    void Build() override;
+    void Render() override;
+    void CalculateBoundingBox() override;
+    void Debug(RenderBatch *batch) override;
+
+
+    MeshBuffer *AddBuffer(u32 material = 0);
+    void CalculateNormals();
+
+    
+    
     size_t GetBufferCount() const { return buffers.size(); }
     MeshBuffer *GetBuffer(size_t index) const { return buffers[index]; }
-
-    bool SetBufferMaterial(u32 index, u32 material);
+    
     bool SetMaterial(u32 material);
+    bool SetBufferMaterial(u32 index, u32 material);
+
 
     void OptimizeBuffers();
 
@@ -381,9 +419,7 @@ public:
 
     void UpdateSkinning();
 
-    void CalculateBoundingBox();
 
-    void Debug(RenderBatch *batch);
 
     void CalculateBoneMatrices();
     const std::vector<Mat4> &GetBoneMatrices() const { return m_boneMatrices; }
@@ -397,15 +433,12 @@ public:
     void SetBoneStatic(u32 index);
     void ResetBones();
 
-    const BoundingBox &GetBoundingBox() const { return m_boundBox; }
-    BoundingBox &GetBoundingBox() { return m_boundBox; }
 
 private:
     std::vector<Bone *> m_bones;
     std::vector<Mat4> m_boneMatrices;
     std::vector<MeshBuffer *> buffers;
-    std::vector<Material *> materials;
-    BoundingBox m_boundBox;
+   
 
     friend class MeshBuffer;
     friend class MeshManager;
@@ -629,6 +662,9 @@ public:
     void Add(const std::string &name, Mesh *mesh);
     bool Exists(const std::string &name) const;
 
+
+    
+
     Mesh *Create(const std::string &name);
 
     Mesh *CreateCube(const std::string &name, float size = 1.0f);
@@ -662,6 +698,12 @@ public:
         int detailX = 128, int detailY = 128,
         float tilesU = 1.0f, float tilesV = 1.0f);
 
+    Terrain *CreateTerrain(const std::string &name,const std::string& heightmapPath,
+                          float scaleX, float scaleY, float scaleZ,
+                          float texScaleU = 1.0f, float texScaleV = 1.0f);
+    Terrain *GetTerrain(const std::string &name);
+    
+
   
     void UnloadAll();
 
@@ -677,5 +719,7 @@ public:
 
 private:
     std::unordered_map<std::string, Mesh *> m_meshes;
+    std::unordered_map<std::string, Terrain *> m_terrains;
     std::vector<MeshLoader *> m_loaders;
 };
+

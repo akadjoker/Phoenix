@@ -1843,7 +1843,11 @@ void BoundingBox::expand(const BoundingBox &other)
     expand(other.min);
     expand(other.max);
 }
-
+void BoundingBox::copy(const BoundingBox &other)
+{
+    min = other.min;
+    max = other.max;
+}
 void BoundingBox::clear()
 {
     min = Vec3(MAXFLOAT, MAXFLOAT, MAXFLOAT);

@@ -31,6 +31,7 @@
 #include "Batch.hpp"
 #include "Font.hpp"
 #include "Input.hpp"
+#include "Terrain.hpp"
 #include "GUI.hpp"
  
 

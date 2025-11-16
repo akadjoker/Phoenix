@@ -38,7 +38,7 @@ public:
         float waterY=0.0f;
 
          Vec3 position = camera->getPosition(TransformSpace::World);
-      //  position.y = -position.y + 2.0f * waterY;
+         position.y = -position.y + 2.0f * waterY;
         mirror->setPosition(position, TransformSpace::World);
 
         Vec3 euler = camera->getEulerAngles();
@@ -340,7 +340,7 @@ int main()
     GUI gui;
     gui.Init(&batch, &font);
 
-    float mouseSensitivity{0.8f};
+ 
 
     MainScene scene;
     if (!scene.Init())

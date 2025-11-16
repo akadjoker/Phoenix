@@ -16,14 +16,21 @@ Color LerpColor(const Color &a, const Color &b, float t)
         static_cast<u8>(a.a + (b.a - a.a) * t));
 }
 
+ 
+
 // ========================================
-// GUI Implementation
+// Construtor / Destrutor / Init
 // ========================================
-GUI::GUI() 
+
+GUI::GUI()
 {
     focusCounter = 0;
 }
-GUI::~GUI() { Release(); }
+
+GUI::~GUI()
+{
+    Release();
+}
 
 void GUI::Init(RenderBatch *batch, Font *font)
 {
@@ -36,6 +43,10 @@ void GUI::Release()
     m_windows.clear();
     m_windowOrder.clear();
 }
+
+// ========================================
+// Helpers de janela (centros / conteúdo)
+// ========================================
 
 float GUI::GetWindowCenterX() const
 {
@@ -94,15 +105,12 @@ bool GUI::BeginFrame()
     m_nextControlID = 0;
     m_activeControl = 0;
     focusCounter = 0;
- 
+
     m_mousePos = Input::GetMousePosition();
-    
-    
-    
-    
+
     ++m_frameCounter;
     m_widgetCounter = 0;
-    
+
     // Soltou botão → limpa captura e termina drag
     if (Input::IsMouseReleased(MouseButton::LEFT))
     {
@@ -113,9 +121,9 @@ bool GUI::BeginFrame()
             m_draggingWindow = nullptr;
         }
     }
-    
+
     SortWindowsByZOrder();
-    
+
     // Atualiza arrasto em progresso
     if (m_draggingWindow && m_draggingWindow->isDragging && Input::IsMouseDown(MouseButton::LEFT))
     {
@@ -123,7 +131,7 @@ bool GUI::BeginFrame()
         m_draggingWindow->bounds.y = m_mousePos.y - m_draggingWindow->dragOffset.y;
         return true;
     }
-    
+
     // Descobre a janela topmost sob o rato
     WindowData *topWindow = nullptr;
     for (int i = static_cast<int>(m_windowOrder.size()) - 1; i >= 0; --i)
@@ -140,7 +148,7 @@ bool GUI::BeginFrame()
             break;
         }
     }
-    
+
     if (topWindow)
     {
         UpdateWindowInteraction(topWindow);
@@ -152,17 +160,13 @@ bool GUI::BeginFrame()
             p.second.isFocused = false;
         m_focusedWindow = nullptr;
     }
-    
+
     return true;
 }
 
- 
 void GUI::EndFrame()
 {
-
-  
     m_hotID.clear();
-
 }
 
 bool GUI::IsFocused()
@@ -174,45 +178,197 @@ bool GUI::IsFocused()
 // ========================================
 // Theme Management
 // ========================================
-void GUI::SetTheme(const GUITheme &theme) { m_theme = theme; }
-GUITheme &GUI::GetTheme() { return m_theme; }
 
-GUITheme GUI::DarkTheme() { return GUITheme(); }
+void GUI::SetTheme(const GUITheme &theme)
+{
+    m_theme = theme;
+}
+
+GUITheme &GUI::GetTheme()
+{
+    return m_theme;
+}
+
+GUITheme GUI::DarkTheme()
+{
+    GUITheme t; 
+    return t;
+}
 
 GUITheme GUI::LightTheme()
 {
     GUITheme t;
-    t.windowBg = Color(240, 240, 245, 240);
-    t.windowBorder = Color(180, 180, 185, 255);
-    t.titleBarBg = Color(220, 220, 225, 255);
-    t.titleBarActive = Color(200, 200, 210, 255);
-    t.titleText = Color(20, 20, 20, 255);
 
-    t.buttonBg = Color(220, 220, 225, 255);
-    t.buttonHover = Color(200, 200, 210, 255);
-    t.buttonActive = Color(100, 150, 255, 255);
-    t.buttonText = Color(20, 20, 20, 255);
+    // --------------------------
+    // FUNDOS (light neutro)
+    // --------------------------
+    t.windowBg       = Color(230, 230, 235, 255);
+    t.windowBorder   = Color(180, 180, 185, 255);
+    t.titleBarBg     = Color(245, 245, 248, 255);
+    t.titleBarActive = Color(250, 250, 252, 255);
+    t.titleText      = Color(40, 40, 40, 255);
 
-    t.labelText = Color(40, 40, 40, 255);
+    t.labelText      = Color(40, 40, 40, 255);
     t.separatorColor = Color(180, 180, 185, 255);
+
+    // --------------------------
+    // BOTÕES (cinza)
+    // --------------------------
+    t.buttonBg     = Color(210, 210, 215, 255);
+    t.buttonHover  = Color(200, 200, 205, 255);
+    t.buttonActive = Color(170, 170, 175, 255);
+    t.buttonText   = Color(20, 20, 20, 255);
+
+    // --------------------------
+    // INPUTS
+    // --------------------------
+    t.inputBg      = Color(250, 250, 252, 255);
+    t.inputBorder  = Color(180, 180, 185, 255);
+    t.inputText    = Color(20, 20, 20, 255);
+    t.inputCursor  = Color(60, 60, 60, 255);
+
+    t.textInputBg       = t.inputBg;
+    t.textInputBorder   = t.inputBorder;
+    t.textInputText     = t.inputText;
+    t.textInputCursor   = Color(60, 60, 60, 255);
+    t.textInputSelection= Color(150, 150, 150, 128);
+
+    // --------------------------
+    // SLIDERS (fill cinzento)
+    // --------------------------
+    t.sliderBg     = Color(200, 200, 205, 255);
+    t.sliderFill   = Color(150, 150, 155, 255); 
+    t.sliderHandle = Color(240, 240, 245, 255);
+    t.sliderHandleHover = Color(255, 255, 255, 255);
+
+    // --------------------------
+    // PROGRESS BAR
+    // --------------------------
+    t.progressBarBg   = Color(200, 200, 205, 255);
+    t.progressBarFill = Color(150, 150, 155, 255);
+
+    // --------------------------
+    // CHECKBOX / RADIO
+    // --------------------------
+    t.checkboxBg     = Color(220, 220, 225, 255);
+    t.checkboxCheck  = Color(120, 120, 125, 255); 
+    t.checkboxBorder = Color(150, 150, 155, 255);
+
+    t.radioBg        = t.checkboxBg;
+    t.radioCheck     = t.checkboxCheck;
+    t.radioBorder    = t.checkboxBorder;
+
+    // --------------------------
+    // LISTBOX
+    // --------------------------
+    t.listBoxBg           = Color(240, 240, 245, 255);
+    t.listBoxItemHover    = Color(220, 220, 225, 255);
+    t.listBoxItemSelected = Color(170, 170, 175, 255); 
+    t.listBoxBorder       = t.inputBorder;
+
+    // --------------------------
+    // DROPDOWN
+    // --------------------------
+    t.dropdownBg        = Color(240, 240, 245, 255);
+    t.dropdownHover     = Color(220, 220, 225, 255);
+    t.dropdownBorder    = Color(180, 180, 185, 255);
+    t.dropdownItemHover = Color(220, 220, 225, 255);
+
+    // --------------------------
+    // COLOR PICKER
+    // --------------------------
+    t.colorPickerBorder = Color(150, 150, 155, 255);
+
+    // Sizing (mantém default)
+    t.titleBarHeight = 28;
+    t.windowPadding  = 8;
+    t.itemSpacing    = 4;
+    t.inputHeight    = 24;
+    t.sliderHeight   = 20;
+
     return t;
 }
 
+
 GUITheme GUI::BlueTheme()
 {
-    GUITheme t;
-    t.windowBg = Color(25, 35, 45, 240);
-    t.titleBarBg = Color(30, 50, 70, 255);
-    t.titleBarActive = Color(40, 70, 100, 255);
-    t.buttonBg = Color(40, 60, 80, 255);
-    t.buttonHover = Color(50, 80, 110, 255);
-    t.buttonActive = Color(70, 120, 180, 255);
+    GUITheme t = DarkTheme();  
+
+    Color bluePrimary   = Color(90, 160, 230, 255);
+    Color blueSecondary = Color(70, 130, 200, 255);
+    Color blueHover     = Color(55, 85, 130, 255);
+
+    // Fundo mais azulado
+    t.windowBg       = Color(20, 28, 40, 240);
+    t.windowBorder   = Color(55, 75, 100, 255);
+    t.titleBarBg     = Color(28, 42, 60, 255);
+    t.titleBarActive = Color(36, 56, 80, 255);
+    t.titleText      = Color(230, 235, 245, 255);
+
+    // Botões
+    t.buttonBg       = Color(30, 46, 70, 255);
+    t.buttonHover    = blueHover;
+    t.buttonActive   = bluePrimary;
+    t.buttonText     = Color(230, 235, 245, 255);
+
+    // Sliders
+    t.sliderBg          = Color(24, 38, 56, 255);
+    t.sliderFill        = bluePrimary;
+    t.sliderHandle      = Color(200, 210, 225, 255);
+    t.sliderHandleHover = Color(235, 240, 250, 255);
+
+    // Checkbox
+    t.checkboxBg     = Color(30, 46, 70, 255);
+    t.checkboxCheck  = bluePrimary;
+    t.checkboxBorder = Color(80, 100, 130, 255);
+
+    // Labels / separadores
+    t.labelText      = Color(220, 230, 245, 255);
+    t.separatorColor = Color(60, 80, 105, 255);
+
+    // Inputs
+    t.inputBg     = Color(18, 26, 38, 255);
+    t.inputBorder = Color(70, 90, 120, 255);
+    t.inputText   = Color(220, 230, 245, 255);
+    t.inputCursor = t.inputText;
+
+    t.textInputBg        = t.inputBg;
+    t.textInputBorder    = t.inputBorder;
+    t.textInputText      = t.inputText;
+    t.textInputCursor    = t.inputCursor;
+    t.textInputSelection = Color(90, 160, 230, 80);
+
+    // ProgressBar  
+    t.progressBarBg   = Color(24, 38, 56, 255);
+    t.progressBarFill = blueSecondary;
+
+    // Dropdown
+    t.dropdownBg        = Color(24, 34, 50, 255);
+    t.dropdownHover     = blueHover;
+    t.dropdownBorder    = Color(70, 90, 120, 255);
+    t.dropdownItemHover = Color(32, 48, 70, 255);
+
+    // ListBox
+    t.listBoxBg           = Color(24, 32, 46, 255);
+    t.listBoxItemHover    = Color(36, 54, 78, 255);
+    t.listBoxItemSelected = bluePrimary;
+    t.listBoxBorder       = Color(70, 90, 120, 255);
+
+    // Radio
+    t.radioBg     = Color(24, 38, 56, 255);
+    t.radioCheck  = bluePrimary;
+    t.radioBorder = Color(80, 100, 130, 255);
+
+    // ColorPicker
+    t.colorPickerBorder = t.listBoxBorder;
+ 
     return t;
 }
 
 // ========================================
 // Utility
 // ========================================
+
 bool GUI::IsWindowHovered() const
 {
     if (!m_currentWindow)
@@ -232,13 +388,15 @@ void GUI::SetNextWindowPos(float x, float y)
     m_nextWindowPos = Vec2(x, y);
     m_hasNextWindowPos = true;
 }
+
 void GUI::SetNextWindowSize(float width, float height)
 {
     m_nextWindowSize = Vec2(width, height);
     m_hasNextWindowSize = true;
 }
 
-// Helpers
+// Helpers de conteúdo
+
 FloatRect GUI::MakeContentRect(float x, float y, float w, float h) const
 {
     if (!m_currentWindow)
@@ -316,15 +474,6 @@ float GUI::GetTextHeight(const char *text)
     return m_font->GetTextHeight(text);
 }
 
-std::string GUI::GenerateID(const char *label)
-{
-    const char *win = (m_currentWindow ? m_currentWindow->id.c_str() : "");
-    char buf[256];
-
-    std::snprintf(buf, sizeof(buf), "%s##%s_%d", label, win, m_widgetCounter++);
-    return std::string(buf);
-}
-
 bool GUI::IsMouseInWindow() const
 {
     if (!m_currentWindow)
@@ -332,35 +481,47 @@ bool GUI::IsMouseInWindow() const
     return IsPointInRect(m_mousePos, m_currentWindow->bounds);
 }
 
+// ========================================
+// Controls
+// ========================================
+
 GUI::Control *GUI::AddControl()
 {
-   u32 id = GetNextControlID();
-   auto it = m_controls.find(id);
-   if (it == m_controls.end())
-   {
-       Control c;
-       c.id = id;
-       c.active = false;
-       c.ftag = 0.0f;
-       c.itag = 0;
-       c.changed = false;
-       m_controls[id] = c;
-       return &m_controls[id];
-   }
-   return &it->second;
+    u32 id = GetNextControlID();
+    auto it = m_controls.find(id);
+    if (it == m_controls.end())
+    {
+        Control c;
+        c.id = id;
+        c.active = false;
+        c.ftag = 0.0f;
+        c.itag = 0;
+        c.changed = false;
+        m_controls[id] = c;
+        return &m_controls[id];
+    }
+    return &it->second;
 }
-
-
- 
 
 u32 GUI::GetNextControlID()
 {
     return m_nextControlID++;
 }
 
+bool GUI::AnyControlActive() const
+{
+    for (const auto &kv : m_controls)
+    {
+        if (kv.second.active)
+            return true;
+    }
+    return false;
+}
+
 // ========================================
 // Window Management
 // ========================================
+
 bool GUI::BeginWindow(const char *title, float x, float y, float w, float h, bool *open)
 {
     return BeginWindow(title, FloatRect(x, y, w, h), open);
@@ -368,14 +529,10 @@ bool GUI::BeginWindow(const char *title, float x, float y, float w, float h, boo
 
 bool GUI::BeginWindow(const char *title, const FloatRect &bounds, bool *open)
 {
-   
-
-
     m_widgetCounter = 0;
     std::string id = title;
     WindowData *window = GetOrCreateWindow(id);
 
-   
     // Next-window settings
     if (m_hasNextWindowPos)
     {
@@ -401,8 +558,6 @@ bool GUI::BeginWindow(const char *title, const FloatRect &bounds, bool *open)
     // Primeira vez
     if (window->bounds.width == 0.0f)
         window->bounds = bounds;
-
-    
 
     // Close flag externo
     if (open)
@@ -432,11 +587,10 @@ bool GUI::BeginWindow(const char *title, const FloatRect &bounds, bool *open)
     }
 
     bool isHover = IsPointInRect(m_mousePos, window->bounds);
-    if (isHover )
+    if (isHover)
     {
         focusCounter++;
     }
-
 
     return !window->isMinimized;
 }
@@ -474,8 +628,12 @@ WindowData *GUI::GetOrCreateWindow(const std::string &id)
     return &it->second;
 }
 
-WindowData *GUI::GetCurrentWindow() { return m_currentWindow; }
+WindowData *GUI::GetCurrentWindow()
+{
+    return m_currentWindow;
+}
 
+// Versão melhorada com AnyControlActive
 void GUI::UpdateWindowInteraction(WindowData *window)
 {
     if (!window)
@@ -521,8 +679,8 @@ void GUI::UpdateWindowInteraction(WindowData *window)
         window->zOrder = 1000 + m_frameCounter;
     }
 
-    // Drag
-    if (window->canMove && mouseInTitleBar && m_activeID.empty() && Input::IsMousePressed(MouseButton::LEFT))
+    // Drag — só se nenhum controlo estiver ativo
+    if (window->canMove && mouseInTitleBar && !AnyControlActive() && Input::IsMousePressed(MouseButton::LEFT))
     {
         window->isDragging = true;
         m_draggingWindow = window;
@@ -646,30 +804,43 @@ void GUI::BringCurrentWindowToFront()
 // ========================================
 // Widgets (posicionamento explícito)
 // ========================================
+
 bool GUI::Button(const char *label, float x, float y, float w, float h)
 {
-    GUI::Control *c = AddControl();
+    WindowData *win = GetCurrentWindow();
+    if (!win || win->isMinimized || !win->isOpen)
+        return false;
+
+    Control *c = AddControl();
     if (!c)
         return false;
-    m_activeControl = c->id;
+
+    c->changed = false;
+
     FloatRect rect = MakeContentRect(x, y, w, h);
-    bool isHovered = IsPointInRect(m_mousePos, rect) && m_activeControl == c->id;
-    if ( isHovered && Input::IsMousePressed(MouseButton::LEFT))
-    {
-      
-        c->changed = true;
+    bool hovered = IsPointInRect(m_mousePos, rect);
+    bool pressed = hovered && Input::IsMousePressed(MouseButton::LEFT);
+    bool released = Input::IsMouseReleased(MouseButton::LEFT);
+
+    if (pressed)
         c->active = true;
-        
-    } else 
+
+    bool clicked = false;
+
+    if (c->active && released)
     {
-        c->changed = false;
+        if (hovered)
+        {
+            clicked = true;
+            c->changed = true;
+        }
         c->active = false;
     }
 
     Color bg = m_theme.buttonBg;
-    if (c->active && m_activeControl == c->id)
+    if (c->active)
         bg = m_theme.buttonActive;
-    else if (isHovered)
+    else if (hovered)
         bg = m_theme.buttonHover;
 
     DrawRectFilled(rect, bg);
@@ -677,32 +848,38 @@ bool GUI::Button(const char *label, float x, float y, float w, float h)
 
     float tw = GetTextWidth(label);
     float th = GetTextHeight(label);
-    DrawText(label, rect.x + (rect.width - tw) * 0.5f,
-             rect.y + (rect.height - th) * 0.5f, m_theme.buttonText);
-    return c->changed;
+    DrawText(label,
+             rect.x + (rect.width - tw) * 0.5f,
+             rect.y + (rect.height - th) * 0.5f,
+             m_theme.buttonText);
+
+    return clicked;
 }
 
 bool GUI::Checkbox(const char *label, bool *value, float x, float y, float size)
 {
-     GUI::Control *c = AddControl();
+    WindowData *win = GetCurrentWindow();
+    if (!win || win->isMinimized || !win->isOpen)
+        return false;
+
+    Control *c = AddControl();
     if (!c)
         return false;
-    m_activeControl = c->id;
+
+    c->changed = false;
 
     FloatRect box = MakeContentRect(x, y, size, size);
-    Color boxColor = m_theme.checkboxBg;
-     bool isHovered = IsPointInRect(m_mousePos, box) && m_activeControl == c->id;
- 
+    bool hovered = IsPointInRect(m_mousePos, box);
+    bool pressed = hovered && Input::IsMousePressed(MouseButton::LEFT);
 
- 
-    if ( isHovered && Input::IsMousePressed(MouseButton::LEFT))
+    if (pressed)
     {
         *value = !*value;
         c->changed = true;
-
-       
     }
-    if ( isHovered )
+
+    Color boxColor = m_theme.checkboxBg;
+    if (hovered)
         boxColor = LerpColor(m_theme.checkboxBg, m_theme.buttonHover, 0.5f);
 
     DrawRectFilled(box, boxColor);
@@ -711,50 +888,46 @@ bool GUI::Checkbox(const char *label, bool *value, float x, float y, float size)
     if (*value)
     {
         float p = 3.0f;
-        DrawRectFilled(FloatRect(box.x + p, box.y + p, box.width - 2 * p, box.height - 2 * p), m_theme.checkboxCheck);
+        DrawRectFilled(FloatRect(box.x + p, box.y + p,
+                                 box.width - 2 * p,
+                                 box.height - 2 * p),
+                       m_theme.checkboxCheck);
     }
 
     float ly = box.y + (box.height - GetTextHeight(label)) * 0.5f;
     DrawText(label, box.x + box.width + m_theme.itemSpacing, ly, m_theme.labelText);
+
     return c->changed;
 }
 
 bool GUI::SliderFloat(const char *label, float *value, float min, float max,
                       float x, float y, float w, float h)
 {
+    WindowData *win = GetCurrentWindow();
+    if (!win || win->isMinimized || !win->isOpen)
+        return false;
 
-    GUI::Control *c = AddControl();
+    Control *c = AddControl();
     if (!c)
         return false;
-    m_activeControl = c->id;
+
+    c->changed = false;
+
     FloatRect rect = MakeContentRect(x, y, w, h);
     float lw = GetTextWidth(label) + m_theme.itemSpacing * 2.0f;
     float vw = GetTextWidth("9999.99") + m_theme.itemSpacing * 2.0f;
     float sw = std::max(50.0f, rect.width - lw - vw);
     FloatRect slider(rect.x + lw, rect.y, sw, rect.height);
 
-    bool isHovered = IsPointInRect(m_mousePos, slider) ;
- 
+    bool hovered = IsPointInRect(m_mousePos, slider);
+    bool pressed = hovered && Input::IsMousePressed(MouseButton::LEFT);
+    bool released = Input::IsMouseReleased(MouseButton::LEFT);
 
-   
-    
-    if ( isHovered && Input::IsMousePressed(MouseButton::LEFT))
-    {
-        
+    if (pressed)
         c->active = true;
-        float t = Clamp((m_mousePos.x - slider.x) / slider.width, 0.0f, 1.0f);
-        *value = min + t * (max - min);
-        c->changed = true;
-    } 
-
-    if (Input::IsMouseReleased(MouseButton::LEFT))
-    {
-        c->active = false;
-    } 
 
     if (c->active && Input::IsMouseDown(MouseButton::LEFT))
     {
-
         float t = Clamp((m_mousePos.x - slider.x) / slider.width, 0.0f, 1.0f);
         float nv = min + t * (max - min);
         if (nv != *value)
@@ -764,66 +937,65 @@ bool GUI::SliderFloat(const char *label, float *value, float min, float max,
         }
     }
 
+    if (c->active && released)
+        c->active = false;
+
     DrawRectFilled(slider, m_theme.sliderBg);
     DrawRectOutline(slider, m_theme.windowBorder, 1.0f);
 
     float t = Clamp((*value - min) / (max - min), 0.0f, 1.0f);
     float fw = t * slider.width;
-    if (fw > 0)
+    if (fw > 0.0f)
         DrawRectFilled(FloatRect(slider.x, slider.y, fw, slider.height), m_theme.sliderFill);
 
     float handleW = 12.0f;
     float hx = Clamp(slider.x + fw - handleW * 0.5f, slider.x, slider.x + slider.width - handleW);
     FloatRect handle(hx, slider.y - 2.0f, handleW, slider.height + 4.0f);
-    Color hc = (isHovered  && m_activeControl == c->id) ? m_theme.sliderHandleHover : m_theme.sliderHandle;
+    Color hc = (hovered || c->active) ? m_theme.sliderHandleHover : m_theme.sliderHandle;
     DrawRectFilled(handle, hc);
     DrawRectOutline(handle, m_theme.windowBorder, 1.0f);
 
-    DrawText(label, rect.x, rect.y + (rect.height - GetTextHeight(label)) * 0.5f, m_theme.labelText);
+    DrawText(label,
+             rect.x,
+             rect.y + (rect.height - GetTextHeight(label)) * 0.5f,
+             m_theme.labelText);
+
     char buf[32];
     std::snprintf(buf, sizeof(buf), "%.2f", *value);
-    DrawText(buf, slider.x + slider.width + m_theme.itemSpacing,
-             rect.y + (rect.height - GetTextHeight(buf)) * 0.5f, m_theme.labelText);
+    DrawText(buf,
+             slider.x + slider.width + m_theme.itemSpacing,
+             rect.y + (rect.height - GetTextHeight(buf)) * 0.5f,
+             m_theme.labelText);
 
     return c->changed;
 }
 
-bool GUI::SliderInt(const char *label, int *value, int min, int max,float x, float y, float w, float h)
+bool GUI::SliderInt(const char *label, int *value, int min, int max,
+                    float x, float y, float w, float h)
 {
-    GUI::Control *c = AddControl();
+    WindowData *win = GetCurrentWindow();
+    if (!win || win->isMinimized || !win->isOpen)
+        return false;
+
+    Control *c = AddControl();
     if (!c)
         return false;
-    m_activeControl = c->id;
+
+    c->changed = false;
+
     FloatRect rect = MakeContentRect(x, y, w, h);
     float lw = GetTextWidth(label) + m_theme.itemSpacing * 2.0f;
     float vw = GetTextWidth("999999") + m_theme.itemSpacing * 2.0f;
     float sw = std::max(50.0f, rect.width - lw - vw);
     FloatRect slider(rect.x + lw, rect.y, sw, rect.height);
 
- 
+    bool hovered = IsPointInRect(m_mousePos, slider);
+    bool pressed = hovered && Input::IsMousePressed(MouseButton::LEFT);
+    bool released = Input::IsMouseReleased(MouseButton::LEFT);
 
-    bool isHovered = IsPointInRect(m_mousePos, slider) && m_activeControl == c->id;
- 
-
-    if ( isHovered && Input::IsMousePressed(MouseButton::LEFT))
-    {
-        float t = Clamp((m_mousePos.x - slider.x) / slider.width, 0.0f, 1.0f);
-        int nv = min + int(t * (max - min) + 0.5f);
-        if (nv != *value)
-        {
-            *value = nv;
-            c->changed = true;
-        }
+    if (pressed)
         c->active = true;
-    } 
 
-    if (c->active && Input::IsMouseReleased(MouseButton::LEFT))
-    {
-        c->active = false;
-    } 
-    
-
- 
     if (c->active && Input::IsMouseDown(MouseButton::LEFT))
     {
         float t = Clamp((m_mousePos.x - slider.x) / slider.width, 0.0f, 1.0f);
@@ -835,26 +1007,35 @@ bool GUI::SliderInt(const char *label, int *value, int min, int max,float x, flo
         }
     }
 
+    if (c->active && released)
+        c->active = false;
+
     DrawRectFilled(slider, m_theme.sliderBg);
     DrawRectOutline(slider, m_theme.windowBorder, 1.0f);
 
     float t = Clamp(float(*value - min) / float(max - min), 0.0f, 1.0f);
     float fw = t * slider.width;
-    if (fw > 0)
+    if (fw > 0.0f)
         DrawRectFilled(FloatRect(slider.x, slider.y, fw, slider.height), m_theme.sliderFill);
 
     float handleW = 12.0f;
     float hx = Clamp(slider.x + fw - handleW * 0.5f, slider.x, slider.x + slider.width - handleW);
     FloatRect handle(hx, slider.y - 2.0f, handleW, slider.height + 4.0f);
-    Color hc = (isHovered  && m_activeControl == c->id) ? m_theme.sliderHandleHover : m_theme.sliderHandle;
+    Color hc = (hovered || c->active) ? m_theme.sliderHandleHover : m_theme.sliderHandle;
     DrawRectFilled(handle, hc);
     DrawRectOutline(handle, m_theme.windowBorder, 1.0f);
 
-    DrawText(label, rect.x, rect.y + (rect.height - GetTextHeight(label)) * 0.5f, m_theme.labelText);
+    DrawText(label,
+             rect.x,
+             rect.y + (rect.height - GetTextHeight(label)) * 0.5f,
+             m_theme.labelText);
+
     char buf[32];
     std::snprintf(buf, sizeof(buf), "%d", *value);
-    DrawText(buf, slider.x + slider.width + m_theme.itemSpacing,
-             rect.y + (rect.height - GetTextHeight(buf)) * 0.5f, m_theme.labelText);
+    DrawText(buf,
+             slider.x + slider.width + m_theme.itemSpacing,
+             rect.y + (rect.height - GetTextHeight(buf)) * 0.5f,
+             m_theme.labelText);
 
     return c->changed;
 }
@@ -862,37 +1043,31 @@ bool GUI::SliderInt(const char *label, int *value, int min, int max,float x, flo
 bool GUI::SliderFloatVertical(const char *label, float *value, float min, float max,
                               float x, float y, float w, float h)
 {
+    WindowData *win = GetCurrentWindow();
+    if (!win || win->isMinimized || !win->isOpen)
+        return false;
 
-     GUI::Control *c = AddControl();
+    Control *c = AddControl();
     if (!c)
         return false;
-    m_activeControl = c->id;
+
+    c->changed = false;
 
     FloatRect rect = MakeContentRect(x, y, w, h);
 
     // label por cima
-    DrawText(label, rect.x + (rect.width - GetTextWidth(label)) * 0.5f,
-             rect.y - (GetTextHeight(label) + m_theme.itemSpacing), m_theme.labelText);
+    DrawText(label,
+             rect.x + (rect.width - GetTextWidth(label)) * 0.5f,
+             rect.y - (GetTextHeight(label) + m_theme.itemSpacing),
+             m_theme.labelText);
 
-   
-    bool isHovered = IsPointInRect(m_mousePos, rect) && m_activeControl == c->id;
-    if ( isHovered && Input::IsMousePressed(MouseButton::LEFT))
-    {
-        float t = Clamp((rect.y + rect.height - m_mousePos.y) / rect.height, 0.0f, 1.0f);
-        float nv = min + t * (max - min);
-        if (nv != *value)
-        {
-            *value = nv;
-            c->changed = true;
-        }
+    bool hovered = IsPointInRect(m_mousePos, rect);
+    bool pressed = hovered && Input::IsMousePressed(MouseButton::LEFT);
+    bool released = Input::IsMouseReleased(MouseButton::LEFT);
+
+    if (pressed)
         c->active = true;
-    }
-    if (c->active && Input::IsMouseReleased(MouseButton::LEFT))
-    {
-        c->active = false;
-    } 
-    
-  
+
     if (c->active && Input::IsMouseDown(MouseButton::LEFT))
     {
         float t = Clamp((rect.y + rect.height - m_mousePos.y) / rect.height, 0.0f, 1.0f);
@@ -903,65 +1078,62 @@ bool GUI::SliderFloatVertical(const char *label, float *value, float min, float 
             c->changed = true;
         }
     }
+
+    if (c->active && released)
+        c->active = false;
 
     DrawRectFilled(rect, m_theme.sliderBg);
     DrawRectOutline(rect, m_theme.windowBorder, 1.0f);
 
     float t = Clamp((*value - min) / (max - min), 0.0f, 1.0f);
     float fh = t * rect.height;
-    if (fh > 0)
+    if (fh > 0.0f)
         DrawRectFilled(FloatRect(rect.x, rect.y + rect.height - fh, rect.width, fh), m_theme.sliderFill);
 
     float handleH = 12.0f;
     float hy = Clamp(rect.y + rect.height - fh - handleH * 0.5f, rect.y, rect.y + rect.height - handleH);
     FloatRect handle(rect.x - 2.0f, hy, rect.width + 4.0f, handleH);
-        Color hc = (isHovered  && m_activeControl == c->id) ? m_theme.sliderHandleHover : m_theme.sliderHandle;
+    Color hc = (hovered || c->active) ? m_theme.sliderHandleHover : m_theme.sliderHandle;
     DrawRectFilled(handle, hc);
     DrawRectOutline(handle, m_theme.windowBorder, 1.0f);
 
     char buf[32];
     std::snprintf(buf, sizeof(buf), "%.2f", *value);
-    DrawText(buf, rect.x + (rect.width - GetTextWidth(buf)) * 0.5f,
-             rect.y + rect.height + m_theme.itemSpacing, m_theme.labelText);
+    DrawText(buf,
+             rect.x + (rect.width - GetTextWidth(buf)) * 0.5f,
+             rect.y + rect.height + m_theme.itemSpacing,
+             m_theme.labelText);
+
     return c->changed;
 }
 
 bool GUI::SliderIntVertical(const char *label, int *value, int min, int max,
                             float x, float y, float w, float h)
 {
+    WindowData *win = GetCurrentWindow();
+    if (!win || win->isMinimized || !win->isOpen)
+        return false;
 
-      GUI::Control *c = AddControl();
+    Control *c = AddControl();
     if (!c)
         return false;
-    m_activeControl = c->id;
 
+    c->changed = false;
 
     FloatRect rect = MakeContentRect(x, y, w, h);
 
-    DrawText(label, rect.x + (rect.width - GetTextWidth(label)) * 0.5f,
-             rect.y - (GetTextHeight(label) + m_theme.itemSpacing), m_theme.labelText);
+    DrawText(label,
+             rect.x + (rect.width - GetTextWidth(label)) * 0.5f,
+             rect.y - (GetTextHeight(label) + m_theme.itemSpacing),
+             m_theme.labelText);
 
-    bool isHovered = IsPointInRect(m_mousePos, rect) && m_activeControl == c->id;
+    bool hovered = IsPointInRect(m_mousePos, rect);
+    bool pressed = hovered && Input::IsMousePressed(MouseButton::LEFT);
+    bool released = Input::IsMouseReleased(MouseButton::LEFT);
 
-    if ( isHovered && Input::IsMousePressed(MouseButton::LEFT))
-    {
-        float t = Clamp((rect.y + rect.height - m_mousePos.y) / rect.height, 0.0f, 1.0f);
-        int nv = min + int(t * (max - min) + 0.5f);
-        if (nv != *value)
-        {
-            *value = nv;
-            c->changed = true;
-        }
+    if (pressed)
         c->active = true;
-        
-    }
-    if (c->active && Input::IsMouseReleased(MouseButton::LEFT))
-    {
-        c->active = false;
-    } 
-    
-    
- 
+
     if (c->active && Input::IsMouseDown(MouseButton::LEFT))
     {
         float t = Clamp((rect.y + rect.height - m_mousePos.y) / rect.height, 0.0f, 1.0f);
@@ -973,42 +1145,66 @@ bool GUI::SliderIntVertical(const char *label, int *value, int min, int max,
         }
     }
 
+    if (c->active && released)
+        c->active = false;
+
     DrawRectFilled(rect, m_theme.sliderBg);
     DrawRectOutline(rect, m_theme.windowBorder, 1.0f);
 
     float t = Clamp(float(*value - min) / float(max - min), 0.0f, 1.0f);
     float fh = t * rect.height;
-    if (fh > 0)
+    if (fh > 0.0f)
         DrawRectFilled(FloatRect(rect.x, rect.y + rect.height - fh, rect.width, fh), m_theme.sliderFill);
 
     float handleH = 12.0f;
     float hy = Clamp(rect.y + rect.height - fh - handleH * 0.5f, rect.y, rect.y + rect.height - handleH);
     FloatRect handle(rect.x - 2.0f, hy, rect.width + 4.0f, handleH);
-        Color hc = (isHovered  && m_activeControl == c->id) ? m_theme.sliderHandleHover : m_theme.sliderHandle;
+    Color hc = (hovered || c->active) ? m_theme.sliderHandleHover : m_theme.sliderHandle;
     DrawRectFilled(handle, hc);
     DrawRectOutline(handle, m_theme.windowBorder, 1.0f);
 
     char buf[32];
     std::snprintf(buf, sizeof(buf), "%d", *value);
-    DrawText(buf, rect.x + (rect.width - GetTextWidth(buf)) * 0.5f,
-             rect.y + rect.height + m_theme.itemSpacing, m_theme.labelText);
+    DrawText(buf,
+             rect.x + (rect.width - GetTextWidth(buf)) * 0.5f,
+             rect.y + rect.height + m_theme.itemSpacing,
+             m_theme.labelText);
+
     return c->changed;
 }
 
 void GUI::Label(const char *text, float x, float y)
 {
+    WindowData *win = GetCurrentWindow();
+    if (!win)
+        return;
+    if (win->isMinimized || !win->isOpen)
+        return;
+
     Vec2 p = MakeContentPos(x, y);
     DrawText(text, p.x, p.y, m_theme.labelText);
 }
 
 void GUI::LabelColored(const char *text, const Color &color, float x, float y)
 {
+    WindowData *win = GetCurrentWindow();
+    if (!win)
+        return;
+    if (win->isMinimized || !win->isOpen)
+        return;
+
     Vec2 p = MakeContentPos(x, y);
     DrawText(text, p.x, p.y, color);
 }
 
 void GUI::Text(float x, float y, const char *fmt, ...)
 {
+    WindowData *win = GetCurrentWindow();
+    if (!win)
+        return;
+    if (win->isMinimized || !win->isOpen)
+        return;
+
     char buf[1024];
     va_list args;
     va_start(args, fmt);
@@ -1020,13 +1216,194 @@ void GUI::Text(float x, float y, const char *fmt, ...)
 
 void GUI::Separator(float x, float y, float w)
 {
+    WindowData *win = GetCurrentWindow();
+    if (!win)
+        return;
+    if (win->isMinimized || !win->isOpen)
+        return;
+
     DrawRectFilled(MakeContentRect(x, y, w, 2.0f), m_theme.separatorColor);
 }
 
 // ========================================
+// TextInput com foco por controlo
+// ========================================
+bool GUI::TextInput(const char *label, char *buffer, size_t bufferSize,
+                    float x, float y, float w, float h)
+{
+    if (!buffer || bufferSize == 0)
+        return false;
+
+    WindowData *win = GetCurrentWindow();
+    if (!win || win->isMinimized || !win->isOpen)
+        return false;
+
+    if (h <= 0)
+        h = m_theme.textInputHeight;
+
+    Control *control = AddControl();
+    if (!control)
+        return false;
+
+    control->changed = false;
+
+    // Rect do input
+    FloatRect rect = MakeContentRect(x, y, w, h);
+    bool hovered = IsPointInRect(m_mousePos, rect);
+
+    // Foco pelo rato
+    if (Input::IsMousePressed(MouseButton::LEFT))
+    {
+        if (hovered)
+            m_focusedControl = (int)control->id;
+        else if (m_focusedControl == (int)control->id)
+            m_focusedControl = -1;
+    }
+
+    control->active = (m_focusedControl == (int)control->id);
+
+    // Label (se não for vazio)
+    if (label && label[0] != '\0')
+    {
+        float lw = GetTextWidth(label);
+        float lh = GetTextHeight(label);
+        DrawText(label,
+                 rect.x - lw - m_theme.itemSpacing,
+                 rect.y + (rect.height - lh) * 0.5f,
+                 m_theme.labelText);
+    }
+
+    // Garantir cursor dentro dos limites
+    size_t len = std::strlen(buffer);
+    if (control->itag < 0)            control->itag = 0;
+    if (control->itag > (int)len)     control->itag = (int)len;
+
+    // ==========================
+    //   INPUT DE TEXTO
+    // ==========================
+    if (control->active)
+    {
+        // Caracteres "imprimíveis"
+        int ch = Input::GetCharPressed();
+        
+        if (ch >= 32 && ch < 127)
+        {
+            if (len < bufferSize - 1)
+            {
+               
+                size_t pos      = (size_t)control->itag;
+                size_t moveSize = len - pos;
+                if (moveSize > 0)
+                    std::memmove(buffer + pos + 1, buffer + pos, moveSize);
+
+                buffer[pos] = (char)ch;
+                len++;
+                buffer[len] = '\0';
+
+                control->itag++;
+                control->changed = true;
+            }
+        }
+    
+
+        // Backspace (apaga antes do cursor)
+        if (Input::IsKeyPressed(KeyCode::KEY_BACKSPACE))
+        {
+            if (control->itag > 0 && len > 0)
+            {
+                size_t pos      = (size_t)(control->itag - 1);
+                size_t moveSize = len - pos;
+                if (moveSize > 0)
+                    std::memmove(buffer + pos, buffer + pos + 1, moveSize);
+
+                control->itag--;
+                len--;
+                buffer[len] = '\0';
+                control->changed = true;
+            }
+        }
+
+        // Delete (apaga em cima do cursor)
+        if (Input::IsKeyPressed(KeyCode::KEY_DELETE))
+        {
+            if (control->itag < (int)len)
+            {
+                size_t pos      = (size_t)control->itag;
+                size_t moveSize = len - pos;
+                if (moveSize > 0)
+                    std::memmove(buffer + pos, buffer + pos + 1, moveSize);
+
+                len--;
+                buffer[len] = '\0';
+                control->changed = true;
+            }
+        }
+
+        // Movimentação do cursor
+        if (Input::IsKeyPressed(KeyCode::KEY_LEFT) && control->itag > 0)
+            control->itag--;
+
+        if (Input::IsKeyPressed(KeyCode::KEY_RIGHT) && control->itag < (int)len)
+            control->itag++;
+
+        if (Input::IsKeyPressed(KeyCode::KEY_HOME))
+            control->itag = 0;
+
+        if (Input::IsKeyPressed(KeyCode::KEY_END))
+            control->itag = (int)len;
+
+        // Enter → sai do foco (opcional)
+        if (Input::IsKeyPressed(KeyCode::KEY_ENTER) || Input::IsKeyPressed(KeyCode::KEY_KP_ENTER))
+        {
+            m_focusedControl = -1;
+            control->active = false;
+        }
+    }
+
+    // ==========================
+    //   DESENHO
+    // ==========================
+
+    // Background
+    Color bgColor = m_theme.textInputBg;
+    if (hovered)
+        bgColor = Color(40, 40, 50, 255);
+    DrawRectFilled(rect, bgColor);
+
+    // Border
+    Color borderColor = control->active ? m_theme.buttonActive : m_theme.textInputBorder;
+    DrawRectOutline(rect, borderColor, control->active ? 2.0f : 1.0f);
+
+    // Texto
+    float textX = rect.x + 6.0f;
+    float textY = rect.y + (rect.height - GetTextHeight(buffer)) * 0.5f;
+    DrawText(buffer, textX, textY, m_theme.textInputText);
+
+    // Cursor
+    if (control->active)
+    {
+        control->ftag += Device::Instance().GetFrameTime();
+        if (control->ftag > 1.0f)
+            control->ftag = 0.0f;
+
+        bool showCursor = (control->ftag < 0.5f);
+        if (showCursor)
+        {
+            std::string before(buffer, (size_t)control->itag);
+            float cursorX = textX + GetTextWidth(before.c_str());
+
+            DrawRectFilled(FloatRect{cursorX, rect.y + 4.0f, 2.0f, rect.height - 8.0f},
+                           m_theme.textInputCursor);
+        }
+    }
+
+    return control->changed;
+}
+
+
+// ========================================
 // ColorPicker
 // ========================================
-
 static void RGBtoHSV(float r, float g, float b, float &h, float &s, float &v)
 {
     float cmax = (r > g) ? ((r > b) ? r : b) : ((g > b) ? g : b);
@@ -1038,14 +1415,15 @@ static void RGBtoHSV(float r, float g, float b, float &h, float &s, float &v)
 
     if (delta > 0.0f)
     {
-        if (r >= cmax)
+        if (cmax == r)
             h = (g - b) / delta;
-        else if (g >= cmax)
+        else if (cmax == g)
             h = 2.0f + (b - r) / delta;
         else
             h = 4.0f + (r - g) / delta;
+
         h *= 60.0f;
-        if (h < 0)
+        if (h < 0.0f)
             h += 360.0f;
     }
     else
@@ -1054,14 +1432,20 @@ static void RGBtoHSV(float r, float g, float b, float &h, float &s, float &v)
     }
 }
 
-// Helper: HSV to RGB
 static void HSVtoRGB(float h, float s, float v, float &r, float &g, float &b)
 {
+    s = Clamp(s, 0.0f, 1.0f);
+    v = Clamp(v, 0.0f, 1.0f);
+
     if (s <= 0.0f)
     {
         r = g = b = v;
         return;
     }
+
+    h = fmodf(h, 360.0f);
+    if (h < 0.0f)
+        h += 360.0f;
 
     float hh = h / 60.0f;
     int i = (int)hh;
@@ -1072,52 +1456,37 @@ static void HSVtoRGB(float h, float s, float v, float &r, float &g, float &b)
 
     switch (i % 6)
     {
-    case 0:
-        r = v;
-        g = t;
-        b = p;
-        break;
-    case 1:
-        r = q;
-        g = v;
-        b = p;
-        break;
-    case 2:
-        r = p;
-        g = v;
-        b = t;
-        break;
-    case 3:
-        r = p;
-        g = q;
-        b = v;
-        break;
-    case 4:
-        r = t;
-        g = p;
-        b = v;
-        break;
-    case 5:
-        r = v;
-        g = p;
-        b = q;
-        break;
+    case 0: r = v; g = t; b = p; break;
+    case 1: r = q; g = v; b = p; break;
+    case 2: r = p; g = v; b = t; break;
+    case 3: r = p; g = q; b = v; break;
+    case 4: r = t; g = p; b = v; break;
+    case 5: r = v; g = p; b = q; break;
     }
 }
 
 static Color GetHueColor(float hue)
 {
-    float r=0.0f, g=0.0f, b = 0.0f;
+    float r = 0.0f, g = 0.0f, b = 0.0f;
     HSVtoRGB(hue, 1.0f, 1.0f, r, g, b);
     return Color((uint8_t)(r * 255), (uint8_t)(g * 255), (uint8_t)(b * 255), 255);
 }
+
+ 
+
 bool GUI::ColorPicker(const char *label, Color *color, float x, float y, float w)
 {
+    WindowData *win = GetCurrentWindow();
+    if (!win || win->isMinimized || !win->isOpen)
+        return false;
     if (!color)
         return false;
 
-    std::string id = GenerateID(label);
-    bool changed = false;
+    Control *control = AddControl();
+    if (!control)
+        return false;
+    control->changed = false;
+
     float spacing = m_theme.itemSpacing;
 
     // Label
@@ -1127,26 +1496,23 @@ bool GUI::ColorPicker(const char *label, Color *color, float x, float y, float w
         y += GetTextHeight(label) + spacing;
     }
 
-    // Convert current color to HSV
-    float h, s, v;
-    RGBtoHSV(color->r / 255.0f, color->g / 255.0f, color->b / 255.0f, h, s, v);
+    // Estado HSV por controlo
+    static std::unordered_map<u32, Vec3> hsvState;
 
-    // Store HSV per widget (para manter estado)
-    static std::unordered_map<std::string, Vec3> hsvCache;
-    if (hsvCache.find(id) == hsvCache.end())
-    {
-        hsvCache[id] = Vec3(h, s, v);
-    }
-    Vec3 &hsv = hsvCache[id];
+    float h0, s0, v0;
+    RGBtoHSV(color->r / 255.0f, color->g / 255.0f, color->b / 255.0f, h0, s0, v0);
+
+    if (hsvState.find(control->id) == hsvState.end())
+        hsvState[control->id] = Vec3(h0, s0, v0);
+
+    Vec3 &hsv = hsvState[control->id];
 
     // ========================================
-    // SV Box (Saturation/Value gradient)
+    // SV Box
     // ========================================
     float boxSize = w;
     FloatRect svBox = MakeContentRect(x, y, boxSize, boxSize);
 
-    // Desenha gradient (simplificado - 4x4 grid de cores)
-    //Color hueColor = GetHueColor(hsv.x);
     int gridSize = 32;
     float cellW = svBox.width / gridSize;
     float cellH = svBox.height / gridSize;
@@ -1156,80 +1522,72 @@ bool GUI::ColorPicker(const char *label, Color *color, float x, float y, float w
         for (int ix = 0; ix < gridSize; ++ix)
         {
             float saturation = ix / (float)(gridSize - 1);
-            float value = 1.0f - (iy / (float)(gridSize - 1));
+            float value      = 1.0f - (iy / (float)(gridSize - 1));
 
-            float r=0.0f, g=0.0f, b = 0.0f;
+            float r=0.0f, g=0.0f, b=0.0f;
             HSVtoRGB(hsv.x, saturation, value, r, g, b);
 
             FloatRect cell{
                 svBox.x + ix * cellW,
                 svBox.y + iy * cellH,
-                cellW + 1, // +1 para evitar gaps
-                cellH + 1};
+                cellW + 1.0f,
+                cellH + 1.0f};
 
-            DrawRectFilled(cell, Color((uint8_t)(r * 255), (uint8_t)(g * 255), (uint8_t)(b * 255), 255));
+            DrawRectFilled(cell,
+                           Color((uint8_t)(r * 255),
+                                 (uint8_t)(g * 255),
+                                 (uint8_t)(b * 255),
+                                 255));
         }
     }
 
     DrawRectOutline(svBox, m_theme.colorPickerBorder, 2.0f);
 
-    // Cursor na posição atual (s, v)
+    // Cursor SV
     float cursorX = svBox.x + hsv.y * svBox.width;
     float cursorY = svBox.y + (1.0f - hsv.z) * svBox.height;
 
-    // Círculo do cursor (ou quadrado)
     DrawRectOutline(FloatRect{cursorX - 5, cursorY - 5, 10, 10}, Color(255, 255, 255, 255), 2.0f);
-    DrawRectOutline(FloatRect{cursorX - 4, cursorY - 4, 8, 8}, Color(0, 0, 0, 255), 1.0f);
+    DrawRectOutline(FloatRect{cursorX - 4, cursorY - 4, 8, 8},   Color(0, 0, 0, 255),       1.0f);
 
-    // Interação com SV box
     bool svHovered = IsPointInRect(m_mousePos, svBox);
-    static std::string activeSVBox;
+
+    // Qual SV box está a ser arrastado
+    static u32 activeSVId = 0;
 
     if (svHovered && Input::IsMousePressed(MouseButton::LEFT))
-    {
-        activeSVBox = id;
-    }
+        activeSVId = control->id;
 
-    if (activeSVBox == id && Input::IsMouseDown(MouseButton::LEFT))
+    if (activeSVId == control->id && Input::IsMouseDown(MouseButton::LEFT))
     {
         float sx = (m_mousePos.x - svBox.x) / svBox.width;
         float sy = (m_mousePos.y - svBox.y) / svBox.height;
 
-        if (sx < 0)
-            sx = 0;
-        if (sx > 1)
-            sx = 1;
-        if (sy < 0)
-            sy = 0;
-        if (sy > 1)
-            sy = 1;
+        sx = Clamp(sx, 0.0f, 1.0f);
+        sy = Clamp(sy, 0.0f, 1.0f);
 
-        hsv.y = sx;        // saturation
-        hsv.z = 1.0f - sy; // value
+        hsv.y = sx;          // S
+        hsv.z = 1.0f - sy;   // V
 
-        // Convert back to RGB
         float r, g, b;
         HSVtoRGB(hsv.x, hsv.y, hsv.z, r, g, b);
         color->r = (uint8_t)(r * 255);
         color->g = (uint8_t)(g * 255);
         color->b = (uint8_t)(b * 255);
-        changed = true;
+        control->changed = true;
     }
 
     if (!Input::IsMouseDown(MouseButton::LEFT))
-    {
-        activeSVBox.clear();
-    }
+        activeSVId = 0;
 
-    y += boxSize + spacing * 2;
+    y += boxSize + spacing * 2.0f;
 
     // ========================================
-    // Hue Slider (rainbow bar)
+    // Hue Slider
     // ========================================
-    float hueBarH = 20;
+    float hueBarH = 20.0f;
     FloatRect hueBar = MakeContentRect(x, y, boxSize, hueBarH);
 
-    // Desenha rainbow gradient
     int hueSteps = 60;
     float stepW = hueBar.width / hueSteps;
 
@@ -1238,245 +1596,64 @@ bool GUI::ColorPicker(const char *label, Color *color, float x, float y, float w
         float hue = (i / (float)hueSteps) * 360.0f;
         Color hCol = GetHueColor(hue);
 
-        FloatRect step{hueBar.x + i * stepW, hueBar.y, stepW + 1, hueBar.height};
+        FloatRect step{hueBar.x + i * stepW, hueBar.y, stepW + 1.0f, hueBar.height};
         DrawRectFilled(step, hCol);
     }
 
     DrawRectOutline(hueBar, m_theme.colorPickerBorder, 2.0f);
 
-    // Cursor do hue
     float hueX = hueBar.x + (hsv.x / 360.0f) * hueBar.width;
-    DrawRectFilled(FloatRect{hueX - 2, hueBar.y - 2, 4, hueBar.height + 4}, Color(255, 255, 255, 255));
-    DrawRectOutline(FloatRect{hueX - 2, hueBar.y - 2, 4, hueBar.height + 4}, Color(0, 0, 0, 255), 1.0f);
+    DrawRectFilled  (FloatRect{hueX - 2, hueBar.y - 2, 4, hueBar.height + 4}, Color(255, 255, 255, 255));
+    DrawRectOutline (FloatRect{hueX - 2, hueBar.y - 2, 4, hueBar.height + 4}, Color(0, 0, 0, 255), 1.0f);
 
-    // Interação com hue bar
     bool hueHovered = IsPointInRect(m_mousePos, hueBar);
-    static std::string activeHueBar;
+    static u32 activeHueId = 0;
 
     if (hueHovered && Input::IsMousePressed(MouseButton::LEFT))
-    {
-        activeHueBar = id;
-    }
+        activeHueId = control->id;
 
-    if (activeHueBar == id && Input::IsMouseDown(MouseButton::LEFT))
+    if (activeHueId == control->id && Input::IsMouseDown(MouseButton::LEFT))
     {
         float hx = (m_mousePos.x - hueBar.x) / hueBar.width;
-        if (hx < 0)
-            hx = 0;
-        if (hx > 1)
-            hx = 1;
+        hx = Clamp(hx, 0.0f, 1.0f);
 
-        hsv.x = hx * 360.0f; // hue
+        hsv.x = hx * 360.0f;
 
-        // Convert back to RGB
         float r, g, b;
         HSVtoRGB(hsv.x, hsv.y, hsv.z, r, g, b);
         color->r = (uint8_t)(r * 255);
         color->g = (uint8_t)(g * 255);
         color->b = (uint8_t)(b * 255);
-        changed = true;
+        control->changed = true;
     }
 
     if (!Input::IsMouseDown(MouseButton::LEFT))
-    {
-        activeHueBar.clear();
-    }
+        activeHueId = 0;
 
-    y += hueBarH + spacing * 2;
+    y += hueBarH + spacing * 2.0f;
 
-    // ========================================
-    // Preview Box
-    // ========================================
-    FloatRect preview = MakeContentRect(x, y, boxSize, 40);
+    // Preview
+    FloatRect preview = MakeContentRect(x, y, boxSize, 40.0f);
     DrawRectFilled(preview, *color);
     DrawRectOutline(preview, m_theme.colorPickerBorder, 2.0f);
-
-    // Sync cache
-    hsvCache[id] = hsv;
-
-    return changed;
-}
-
-bool GUI::TextInput(const char *label, char *buffer, size_t bufferSize,
-                    float x, float y, float w, float h)
-{
-    if (!buffer || bufferSize == 0)
-        return false;
-
-    if (h <= 0)
-        h = m_theme.textInputHeight;
-
-    GUI::Control* control =  AddControl();
-    if (!control) 
-        return false;
-    FloatRect rect = MakeContentRect(x, y, w, h);
-
- 
-    bool hovered = IsPointInRect(m_mousePos, rect);
-  
- 
- 
-    if (Input::IsMousePressed(MouseButton::LEFT) && hovered )
-    {        
-        control->active = !control->active;
-    }
-  
- 
- 
-  
-
- 
-    
-
-    // Inicializa cursor no final do texto
-    size_t textLen = strlen(buffer);
-    if (control->itag > (int)textLen)
-        control->itag = (int)textLen;
-    if (control->itag < 0)
-        control->itag = 0;
-
-    // Input de texto quando ativo
-    if (control->active )
-    {
-        int ch = Input::GetCharPressed();
-        if (ch != 0)
-        {
-
-            if (ch >= 32 && ch < 127)
-            {   if (textLen < bufferSize - 1)
-                {
-                    for (size_t i = textLen; i > (size_t)control->itag; --i)
-                    {
-                        buffer[i] = buffer[i - 1];
-                    }
-                    buffer[control->itag] = (char)ch;
-                    buffer[textLen + 1] = '\0';
-                    control->itag++;
-                    control->changed = true;
-                }
-            }
-        }
-
-        // Backspace
-        if (Input::IsKeyPressed(KeyCode::KEY_BACKSPACE))
-        {
-            if (control->itag > 0 && textLen > 0)
-            {
-                for (size_t i = control->itag - 1; i < textLen; ++i)
-                {
-                    buffer[i] = buffer[i + 1];
-                }
-                control->itag--;
-                control->changed = true;
-            }
-        }
-
-        // Delete
-        if (Input::IsKeyPressed(KeyCode::KEY_DELETE))
-        {
-            if (control->itag < (int)textLen)
-            {
-                for (size_t i = control->itag; i < textLen; ++i)
-                {
-                    buffer[i] = buffer[i + 1];
-                }
-                control->changed = true;
-            }
-        }
-
-        // Left arrow
-        if (Input::IsKeyPressed(KeyCode::KEY_LEFT))
-        {
-            if (control->itag > 0)
-                control->itag--;
-        }
-
-        // Right arrow
-        if (Input::IsKeyPressed(KeyCode::KEY_RIGHT))
-        {
-            if (control->itag < (int)textLen)
-                control->itag++;
-        }
-
-        // Home
-        if (Input::IsKeyPressed(KeyCode::KEY_HOME))
-        {
-            control->itag = 0;
-        }
-
-        // End
-        if (Input::IsKeyPressed(KeyCode::KEY_END))
-        {
-            control->itag = (int)textLen;
-        }
-
-        // Enter para desativar (opcional)
-        if (Input::IsKeyPressed(KeyCode::KEY_ENTER) || Input::IsKeyPressed(KeyCode::KEY_KP_ENTER))
-        {
-            m_activeID.clear();
-            control->active  = false;
-        }
-    }
-
-    // Background
-    Color bgColor = m_theme.textInputBg;
-    if (hovered)
-        bgColor = Color(40, 40, 50, 255);  
-
-    DrawRectFilled(rect, bgColor);
-
-    // Border
-    Color borderColor = control->active  ? m_theme.buttonActive : m_theme.textInputBorder;
-    DrawRectOutline(rect, borderColor, control->active  ? 2.0f : 1.0f);
-
-    // Text
-    float textX = rect.x + 6;
-    float textY = rect.y + (rect.height - GetTextHeight(buffer)) * 0.5f;
-    DrawText(buffer, textX, textY, m_theme.textInputText);
- 
-    if (control->active )
-    {
-
-        control->ftag += Device::Instance().GetFrameTime();  
-        if (control->ftag > 1.0f)
-            control->ftag = 0.0f;
-
-        bool showCursor = (control->ftag < 0.5f);
-
-        if (showCursor)
-        {
-            // Calcula posição X do cursor
-            std::string textBeforeCursor(buffer, control->itag);
-            float cursorX = textX + GetTextWidth(textBeforeCursor.c_str());
-
-            // Linha do cursor
-            DrawRectFilled(FloatRect{cursorX, rect.y + 4, 2, rect.height - 8}, m_theme.textInputCursor);
-        }
-       
-    }
 
     return control->changed;
 }
 
-// ========================================
-// ProgressBar
-// ========================================
 void GUI::ProgressBar(float progress, float x, float y, float w, float h,
                       Orientation orient, const char *overlay)
 {
-    // Clamp progress 0-1
-    if (progress < 0.0f)
-        progress = 0.0f;
-    if (progress > 1.0f)
-        progress = 1.0f;
+    WindowData *win = GetCurrentWindow();
+    if (!win || win->isMinimized || !win->isOpen)
+        return;
+
+    progress = Clamp(progress, 0.0f, 1.0f);
 
     FloatRect bgRect = MakeContentRect(x, y, w, h);
 
-    // Background
     DrawRectFilled(bgRect, m_theme.progressBarBg);
-    DrawRectOutline(bgRect, m_theme.windowBorder);
+    DrawRectOutline(bgRect, m_theme.windowBorder, 1.0f);
 
-    // Fill
     if (progress > 0.0f)
     {
         FloatRect fillRect = bgRect;
@@ -1487,7 +1664,6 @@ void GUI::ProgressBar(float progress, float x, float y, float w, float h,
         }
         else
         {
-            // Vertical cresce de baixo para cima
             float fillHeight = bgRect.height * progress;
             fillRect.y = bgRect.y + bgRect.height - fillHeight;
             fillRect.height = fillHeight;
@@ -1496,26 +1672,30 @@ void GUI::ProgressBar(float progress, float x, float y, float w, float h,
         DrawRectFilled(fillRect, m_theme.progressBarFill);
     }
 
-    // Overlay text
     if (overlay)
     {
-        float textW = GetTextWidth(overlay);
-        float textH = GetTextHeight(overlay);
-        float textX = bgRect.x + (bgRect.width - textW) * 0.5f;
-        float textY = bgRect.y + (bgRect.height - textH) * 0.5f;
-        DrawText(overlay, textX, textY, m_theme.labelText);
+        float tw = GetTextWidth(overlay);
+        float th = GetTextHeight(overlay);
+        float tx = bgRect.x + (bgRect.width  - tw) * 0.5f;
+        float ty = bgRect.y + (bgRect.height - th) * 0.5f;
+        DrawText(overlay, tx, ty, m_theme.labelText);
     }
 }
 
 bool GUI::ListBox(const char *label, int *selectedIndex, const char **items, int itemCount,
                   float x, float y, float w, float h, int visibleItems)
 {
-    if (!selectedIndex || !items || itemCount <= 0)
+    WindowData *win = GetCurrentWindow();
+    if (!win || win->isMinimized || !win->isOpen)
+        return false;
+    if (!selectedIndex || !items || itemCount <= 0 || visibleItems <= 0)
         return false;
 
-    std::string id = GenerateID(label);
+    Control *control = AddControl();
+    if (!control)
+        return false;
+    control->changed = false;
 
-    // Label
     if (label && label[0] != '\0')
     {
         Label(label, x, y);
@@ -1524,44 +1704,30 @@ bool GUI::ListBox(const char *label, int *selectedIndex, const char **items, int
 
     FloatRect boxRect = MakeContentRect(x, y, w, h);
 
-    // Background
     DrawRectFilled(boxRect, m_theme.listBoxBg);
     DrawRectOutline(boxRect, m_theme.listBoxBorder, 2.0f);
 
-    // Calcula item height
-    float itemH = h / visibleItems;
+    float itemH = h / (float)visibleItems;
     if (itemCount < visibleItems)
-    {
-        itemH = h / itemCount;
-    }
+        itemH = h / (float)itemCount;
 
-    // Scroll offset
-    static std::unordered_map<std::string, float> scrollOffsets;
-    float &scrollOffset = scrollOffsets[id];
+    static std::unordered_map<u32, float> scrollMap;
+    float &scrollOffset = scrollMap[control->id];
 
-    // Limita scroll
     float maxScroll = (itemCount - visibleItems) * itemH;
-    if (maxScroll < 0)
-        maxScroll = 0;
-    if (scrollOffset < 0)
-        scrollOffset = 0;
-    if (scrollOffset > maxScroll)
-        scrollOffset = maxScroll;
+    if (maxScroll < 0.0f) maxScroll = 0.0f;
+    scrollOffset = Clamp(scrollOffset, 0.0f, maxScroll);
 
     bool boxHovered = IsPointInRect(m_mousePos, boxRect);
-    bool changed = false;
-    bool isScrooling = false;
+    bool isScrolling = false;
 
-    // Flag para bloquear items durante drag
-    static std::string draggedScrollbar;
-    static float dragStartY = 0;
-    static float dragStartOffset = 0;
+    static u32 draggingScrollbarId = 0;
+    static float dragStartY = 0.0f;
+    static float dragStartOffset = 0.0f;
 
-    // Draw items
     int firstVisible = (int)(scrollOffset / itemH);
-    int lastVisible = firstVisible + visibleItems;
-    if (lastVisible > itemCount)
-        lastVisible = itemCount;
+    int lastVisible  = firstVisible + visibleItems;
+    if (lastVisible > itemCount) lastVisible = itemCount;
 
     // Scrollbar
     if (itemCount > visibleItems)
@@ -1569,14 +1735,11 @@ bool GUI::ListBox(const char *label, int *selectedIndex, const char **items, int
         float scrollbarX = boxRect.x + boxRect.width - m_theme.scrollbarSize;
         float scrollbarH = boxRect.height;
 
-        // Track
         FloatRect trackRect{scrollbarX, boxRect.y, m_theme.scrollbarSize, scrollbarH};
         DrawRectFilled(trackRect, m_theme.sliderBg);
 
-        // Handle
         float handleHeight = (visibleItems / (float)itemCount) * scrollbarH;
-        if (handleHeight < 20)
-            handleHeight = 20;
+        if (handleHeight < 20.0f) handleHeight = 20.0f;
 
         float handleY = boxRect.y + (scrollOffset / maxScroll) * (scrollbarH - handleHeight);
         FloatRect handleRect{scrollbarX, handleY, m_theme.scrollbarSize, handleHeight};
@@ -1585,101 +1748,98 @@ bool GUI::ListBox(const char *label, int *selectedIndex, const char **items, int
         Color handleColor = handleHovered ? m_theme.sliderHandleHover : m_theme.sliderHandle;
         DrawRectFilled(handleRect, handleColor);
 
-        // Drag scrollbar
         if (handleHovered && Input::IsMousePressed(MouseButton::LEFT))
         {
-            draggedScrollbar = id;
+            draggingScrollbarId = control->id;
             dragStartY = m_mousePos.y;
             dragStartOffset = scrollOffset;
         }
 
-        if (draggedScrollbar == id && Input::IsMouseDown(MouseButton::LEFT))
+        if (draggingScrollbarId == control->id && Input::IsMouseDown(MouseButton::LEFT))
         {
             float deltaY = m_mousePos.y - dragStartY;
             float deltaScroll = (deltaY / (scrollbarH - handleHeight)) * maxScroll;
-            scrollOffset = dragStartOffset + deltaScroll;
-            isScrooling = true;
+            scrollOffset = Clamp(dragStartOffset + deltaScroll, 0.0f, maxScroll);
+            isScrolling = true;
         }
 
         if (!Input::IsMouseDown(MouseButton::LEFT))
-        {
-            draggedScrollbar.clear();
-        }
+            draggingScrollbarId = 0;
     }
 
     for (int i = firstVisible; i < lastVisible; ++i)
     {
         float itemY = boxRect.y + (i - firstVisible) * itemH;
 
-        // Largura do item = largura da box - scrollbar (se existir)
         float itemWidth = boxRect.width;
         if (itemCount > visibleItems)
-        {
             itemWidth -= m_theme.scrollbarSize;
-        }
 
         FloatRect itemRect{boxRect.x, itemY, itemWidth, itemH};
 
-        bool itemHovered = IsPointInRect(m_mousePos, itemRect) && boxHovered && !isScrooling;
-        bool isSelected = (i == *selectedIndex);
+        bool itemHovered = IsPointInRect(m_mousePos, itemRect) && boxHovered && !isScrolling;
+        bool isSelected  = (i == *selectedIndex);
 
         Color itemBg = m_theme.listBoxBg;
-        if (isSelected)
-            itemBg = m_theme.listBoxItemSelected;
-        else if (itemHovered)
-            itemBg = m_theme.listBoxItemHover;
+        if (isSelected)      itemBg = m_theme.listBoxItemSelected;
+        else if (itemHovered) itemBg = m_theme.listBoxItemHover;
 
         DrawRectFilled(itemRect, itemBg);
 
-        // Text
-        float textX = itemRect.x + 8;
-        float textY = itemRect.y + (itemRect.height - GetTextHeight(items[i])) * 0.5f;
-        DrawText(items[i], textX, textY, m_theme.buttonText);
+        const char *txt = items[i] ? items[i] : "";
+        float textY = itemRect.y + (itemRect.height - GetTextHeight(txt)) * 0.5f;
+        DrawText(txt, itemRect.x + 8.0f, textY, m_theme.buttonText);
 
-        // Click to select
         if (itemHovered && Input::IsMousePressed(MouseButton::LEFT))
         {
             *selectedIndex = i;
-            changed = true;
+            control->changed = true;
         }
     }
 
-    return changed;
+    return control->changed;
 }
 
-// ========================================
-// Dropdown/Combo
-// ========================================
 bool GUI::Dropdown(const char *label, int *selectedIndex, const char **items, int itemCount,
                    float x, float y, float w, float h)
 {
-    if (!m_currentWindow || !selectedIndex || !items || itemCount <= 0)
+    WindowData *win = GetCurrentWindow();
+    if (!win || win->isMinimized || !win->isOpen)
+        return false;
+    if (!selectedIndex || !items || itemCount <= 0)
         return false;
 
-    std::string id = GenerateID(label);
+    Control *control = AddControl();
+    if (!control)
+        return false;
+    control->changed = false;
+
     FloatRect rect = MakeContentRect(x, y, w, h);
 
-    bool isOpen = (m_activeID == id);
+    // Estado aberto/fechado
+    static std::unordered_map<u32, bool> openMap;
+    bool &isOpen = openMap[control->id];
+
+    // Label opcional por cima
+    if (label && label[0] != '\0')
+    {
+        float lh = GetTextHeight(label);
+        DrawText(label, rect.x, rect.y - lh - m_theme.itemSpacing, m_theme.labelText);
+    }
+
     bool buttonHovered = IsPointInRect(m_mousePos, rect);
 
-    // Toggle no botão principal
     if (buttonHovered && Input::IsMousePressed(MouseButton::LEFT))
     {
-
-        m_activeID = id;
-        isOpen = true;
-
-        BringCurrentWindowToFront();
+        isOpen = !isOpen;
     }
 
     Color bgColor = m_theme.dropdownBg;
-    if (buttonHovered)
-        bgColor = m_theme.dropdownHover; // ou Lerp(inputBg, buttonHover, 0.4f)
-    if (isOpen)
-        bgColor = m_theme.buttonActive;
+    if (buttonHovered) bgColor = m_theme.dropdownHover;
+    if (isOpen)        bgColor = m_theme.buttonActive;
 
     DrawRectFilled(rect, bgColor);
-    DrawRectOutline(rect, m_theme.dropdownBorder); // ou windowBorder
+    DrawRectOutline(rect, m_theme.dropdownBorder, 1.0f);
 
     int idx = (*selectedIndex >= 0 && *selectedIndex < itemCount) ? *selectedIndex : 0;
     const char *currentText = items[idx] ? items[idx] : "Select...";
@@ -1687,107 +1847,374 @@ bool GUI::Dropdown(const char *label, int *selectedIndex, const char **items, in
     DrawText(currentText, rect.x + 8.0f, textY, m_theme.buttonText);
 
     const char *arrow = isOpen ? "^" : "v";
-    DrawText(arrow, rect.x + rect.width - GetTextWidth(arrow) - 8.0f, textY, m_theme.buttonText);
+    DrawText(arrow,
+             rect.x + rect.width - GetTextWidth(arrow) - 8.0f,
+             textY,
+             m_theme.buttonText);
 
-    bool changed = false;
+    if (!isOpen)
+        return control->changed;
 
-    if (isOpen)
+    // Lista aberta
+    float itemH = std::max(h, m_theme.dropdownHeight);
+    FloatRect listRect(rect.x, rect.y + rect.height + 2.0f, rect.width, itemH * itemCount);
+
+    DrawRectFilled(listRect, m_theme.windowBg);
+    DrawRectOutline(listRect, m_theme.windowBorder, 1.0f);
+
+    for (int i = 0; i < itemCount; ++i)
     {
-        const float itemH = std::max(h, m_theme.dropdownHeight);
-        FloatRect listRect(rect.x, rect.y + rect.height + 2.0f, rect.width, itemH * itemCount);
+        FloatRect itemRect(listRect.x, listRect.y + i * itemH, listRect.width, itemH);
+        bool itemHovered = IsPointInRect(m_mousePos, itemRect);
 
-        DrawRectFilled(listRect, m_theme.windowBg);
-        DrawRectOutline(listRect, m_theme.windowBorder, 1.0f);
+        Color itemBg = m_theme.dropdownBg;
+        if (i == idx)         itemBg = m_theme.buttonActive;
+        else if (itemHovered) itemBg = m_theme.dropdownItemHover;
 
-        for (int i = 0; i < itemCount; ++i)
+        DrawRectFilled(itemRect, itemBg);
+        DrawRectOutline(itemRect, m_theme.dropdownBorder, 1.0f);
+
+        const char *txt = items[i] ? items[i] : "";
+        float itY = itemRect.y + (itemRect.height - GetTextHeight(txt)) * 0.5f;
+        DrawText(txt, itemRect.x + 8.0f, itY, m_theme.buttonText);
+
+        if (itemHovered && Input::IsMousePressed(MouseButton::LEFT))
         {
-            FloatRect itemRect(listRect.x, listRect.y + i * itemH, listRect.width, itemH);
-            bool itemHovered = IsPointInRect(m_mousePos, itemRect);
-
-            Color itemBg = m_theme.dropdownBg;
-            if (i == idx)
-                itemBg = m_theme.buttonActive;
-            else if (itemHovered)
-                itemBg = m_theme.dropdownItemHover;
-
-            DrawRectFilled(itemRect, itemBg);
-            DrawRectOutline(itemRect, m_theme.dropdownBorder);
-
-            const char *txt = items[i] ? items[i] : "";
-            float itY = itemRect.y + (itemRect.height - GetTextHeight(txt)) * 0.5f;
-            DrawText(txt, itemRect.x + 8.0f, itY, m_theme.buttonText);
-
-            if (itemHovered)
+            if (i != *selectedIndex)
             {
-                if (i != *selectedIndex)
-                {
-                    *selectedIndex = i;
-                    changed = true;
-                }
-
-                //  isOpen = false;
+                *selectedIndex = i;
+                control->changed = true;
             }
-        }
-
-        if (Input::IsMousePressed(MouseButton::LEFT) &&
-            !IsPointInRect(m_mousePos, rect) && !IsPointInRect(m_mousePos, listRect))
-        {
-            m_activeID.clear();
             isOpen = false;
         }
     }
 
-    return changed;
+    // Clique fora fecha
+    if (Input::IsMousePressed(MouseButton::LEFT) &&
+        !IsPointInRect(m_mousePos, rect) &&
+        !IsPointInRect(m_mousePos, listRect))
+    {
+        isOpen = false;
+    }
+
+    return control->changed;
 }
 
-// ========================================
-// RadioButton
-// ========================================
 bool GUI::RadioButton(const char *label, int *selected, int value, float x, float y, float size)
 {
+    WindowData *win = GetCurrentWindow();
+    if (!win || win->isMinimized || !win->isOpen)
+        return false;
     if (!selected)
         return false;
 
-    if (size <= 0)
+    if (size <= 0.0f)
         size = m_theme.radioSize;
 
-    std::string id = GenerateID(label);
     FloatRect circleRect = MakeContentRect(x, y, size, size);
 
-    WidgetState state = GetWidgetState(circleRect, id);
+    bool hovered = IsPointInRect(m_mousePos, circleRect);
     bool isSelected = (*selected == value);
 
-    // Background circle
     Color bgColor = m_theme.radioBg;
-    if (state == WidgetState::Hovered)
+    if (hovered)
         bgColor = m_theme.buttonHover;
 
-    DrawRectFilled(circleRect, bgColor); // Usa rect, mas podes fazer círculo se quiseres
-    DrawRectOutline(circleRect, m_theme.radioBorder);
+    DrawRectFilled(circleRect, bgColor);
+    DrawRectOutline(circleRect, m_theme.radioBorder, 1.0f);
 
-    // Inner dot if selected
     if (isSelected)
     {
         FloatRect dotRect = circleRect;
         float margin = size * 0.25f;
-        dotRect.x += margin;
-        dotRect.y += margin;
-        dotRect.width -= margin * 2;
-        dotRect.height -= margin * 2;
+        dotRect.x      += margin;
+        dotRect.y      += margin;
+        dotRect.width  -= margin * 2.0f;
+        dotRect.height -= margin * 2.0f;
         DrawRectFilled(dotRect, m_theme.radioCheck);
     }
 
-    // Label
-    float labelX = circleRect.x + circleRect.width + 8;
+    float labelX = circleRect.x + circleRect.width + 8.0f;
     float labelY = circleRect.y + (circleRect.height - GetTextHeight(label)) * 0.5f;
     DrawText(label, labelX, labelY, m_theme.labelText);
 
-    // Click
-    if (state == WidgetState::Hovered && Input::IsMousePressed(MouseButton::LEFT))
+    if (hovered && Input::IsMousePressed(MouseButton::LEFT))
     {
         *selected = value;
         return true;
     }
 
     return false;
+}
+
+bool GUI::ToggleSwitch(const char *label, bool *value, float x, float y, float w, float h)
+{
+    WindowData *win = GetCurrentWindow();
+    if (!win || win->isMinimized || !win->isOpen)
+        return false;
+    if (!value)
+        return false;
+
+    if (h <= 0.0f)
+        h = m_theme.checkboxSize;
+    if (w <= 0.0f)
+        w = h * 2.0f;
+
+    Control *control = AddControl();
+    if (!control)
+        return false;
+
+    control->changed = false;
+
+    FloatRect rect = MakeContentRect(x, y, w, h);
+    bool hovered = IsPointInRect(m_mousePos, rect);
+
+    if (hovered && Input::IsMousePressed(MouseButton::LEFT))
+    {
+        *value = !*value;
+        control->changed = true;
+    }
+
+    Color bgOff = m_theme.checkboxBg;
+    Color bgOn  = m_theme.sliderFill;
+    Color bg    = *value ? bgOn : bgOff;
+
+    if (hovered)
+        bg = LerpColor(bg, m_theme.buttonHover, 0.35f);
+
+    if (!m_batch)
+        return control->changed;
+
+    float radius = rect.height * 0.5f;
+    float handleR = radius - 2.0f;
+    float cxOff   = rect.x + handleR;
+    float cxOn    = rect.x + rect.width - handleR;
+    float cy      = rect.y + radius;
+ 
+    m_batch->SetColor(bg);
+    m_batch->RoundedRectangle((int)rect.x, (int)rect.y,
+                              (int)rect.width, (int)rect.height,
+                              radius, 8, true);
+
+    m_batch->SetColor(m_theme.checkboxBorder);
+    m_batch->RoundedRectangle((int)rect.x, (int)rect.y,
+                              (int)rect.width, (int)rect.height,
+                              radius, 8, false);
+
+
+
+    float cx = *value ? cxOn : cxOff;
+
+    Color handleColor = hovered ? m_theme.sliderHandleHover : m_theme.sliderHandle;
+    m_batch->SetColor(handleColor);
+    m_batch->Circle((int)cx, (int)cy, handleR, true);
+
+    m_batch->SetColor(m_theme.windowBorder);
+    m_batch->Circle((int)cx, (int)cy, handleR, false);
+
+    if (label && label[0] != '\0')
+    {
+        float textH = GetTextHeight(label);
+        float textY = rect.y + (rect.height - textH) * 0.5f;
+        DrawText(label, rect.x + rect.width + m_theme.itemSpacing * 2.0f,
+                 textY, m_theme.labelText);
+    }
+
+    return control->changed;
+}
+
+void GUI::SeparatorText(const char *text, float x, float y, float w)
+{
+    WindowData *win = GetCurrentWindow();
+    if (!win || win->isMinimized || !win->isOpen)
+        return;
+
+    if (!text || text[0] == '\0')
+    {
+        Separator(x, y, w);
+        return;
+    }
+
+    Vec2 base = MakeContentPos(x, y);
+    float textW = GetTextWidth(text);
+    float textH = GetTextHeight(text);
+
+    float padding = 6.0f;
+
+    float centerX = base.x + w * 0.5f;
+    float textX   = centerX - textW * 0.5f;
+    float textY   = base.y - textH * 0.5f;
+
+    float lineY = base.y;
+
+    float leftStart  = base.x;
+    float leftEnd    = textX - padding;
+    float rightStart = textX + textW + padding;
+    float rightEnd   = base.x + w;
+
+    if (m_batch)
+    {
+        m_batch->SetColor(m_theme.separatorColor);
+        if (leftEnd > leftStart)
+            m_batch->Line2D((int)leftStart, (int)lineY,
+                            (int)leftEnd,   (int)lineY);
+        if (rightEnd > rightStart)
+            m_batch->Line2D((int)rightStart, (int)lineY,
+                            (int)rightEnd,  (int)lineY);
+    }
+
+    DrawText(text, textX, textY, m_theme.labelText);
+}
+
+void GUI::Spinner(float x, float y, float radius)
+{
+    WindowData *win = GetCurrentWindow();
+    if (!win || win->isMinimized || !win->isOpen)
+        return;
+
+    Control *control = AddControl();
+    if (!control)
+        return;
+
+    float dt = Device::Instance().GetFrameTime();
+    control->ftag += dt;
+    if (control->ftag > 1.0f)
+        control->ftag -= 1.0f;
+
+    float startAngleDeg = control->ftag * 360.0f;
+    float arcDeg        = 270.0f;
+    float endAngleDeg   = startAngleDeg + arcDeg;
+
+    const int segments = 32;
+    Vec2 points[segments + 1];
+
+    float startRad = startAngleDeg * 3.14159265f / 180.0f;
+    float endRad   = endAngleDeg   * 3.14159265f / 180.0f;
+    float step     = (endRad - startRad) / segments;
+
+    float cx, cy;
+    {
+        Vec2 p = MakeContentPos(x, y);
+        cx = p.x;
+        cy = p.y;
+    }
+
+    for (int i = 0; i <= segments; ++i)
+    {
+        float a = startRad + step * i;
+        points[i].x = cx + std::cos(a) * radius;
+        points[i].y = cy + std::sin(a) * radius;
+    }
+
+    if (m_batch)
+    {
+        m_batch->SetColor(m_theme.buttonActive);
+        m_batch->Polyline(points, segments + 1);
+    }
+}
+bool GUI::DragFloat(const char *label, float *value,
+                    float speed,
+                    float min, float max,
+                    float x, float y, float w, float h)
+{
+    return DragFloat(label, value, speed, min, max,
+                     x, y, w, h, m_theme.accent);
+}
+
+bool GUI::DragFloat(const char *label, float *value,
+                    float speed,
+                    float min, float max,
+                    float x, float y, float w, float h,
+                    const Color &accentColor)
+{
+    WindowData *win = GetCurrentWindow();
+    if (!win || win->isMinimized || !win->isOpen)
+        return false;
+    if (!value)
+        return false;
+
+    if (h <= 0.0f)
+        h = m_theme.sliderHeight;
+    if (w <= 0.0f)
+        w = m_maxItemWidth;
+
+    Control *control = AddControl();
+    if (!control)
+        return false;
+
+    control->changed = false;
+    FloatRect rect = MakeContentRect(x, y, w, h);
+
+    float labelW = 0.0f;
+    if (label && label[0] != '\0')
+        labelW = GetTextWidth(label) + m_theme.itemSpacing * 2.0f;
+
+    float boxW = 80.0f;
+    if (labelW + boxW > rect.width)
+        boxW = rect.width - labelW;
+
+    FloatRect box(rect.x + labelW, rect.y, boxW, rect.height);
+
+    bool hovered = IsPointInRect(m_mousePos, box);
+
+    if (hovered && Input::IsMousePressed(MouseButton::LEFT))
+    {
+        control->active = true;
+        control->ftag   = *value;
+        control->itag   = (int)m_mousePos.x;
+    }
+
+    if (control->active && Input::IsMouseDown(MouseButton::LEFT))
+    {
+        float dx       = m_mousePos.x - (float)control->itag;
+        float newValue = control->ftag + dx * speed;
+
+        if (min < max)
+            newValue = Clamp(newValue, min, max);
+
+        if (newValue != *value)
+        {
+            *value = newValue;
+            control->changed = true;
+        }
+    }
+
+    if (control->active && Input::IsMouseReleased(MouseButton::LEFT))
+    {
+        control->active = false;
+    }
+
+    Color bg       = m_theme.textInputBg;
+    Color border   = m_theme.textInputBorder;
+    Color textCol  = m_theme.textInputText;
+    Color labelCol = m_theme.labelText;
+
+    if (hovered)
+        bg = LerpColor(bg, m_theme.buttonHover, 0.35f);
+
+    border   = accentColor;
+    labelCol = accentColor;
+    if (control->active)
+    {
+    }
+
+    DrawRectFilled(box, bg);
+    DrawRectOutline(box, border, 1.0f);
+
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), "%.3f", *value);
+    float valW = GetTextWidth(buf);
+    float valH = GetTextHeight(buf);
+    float vx = box.x + (box.width - valW) * 0.5f;
+    float vy = box.y + (box.height - valH) * 0.5f;
+    DrawText(buf, vx, vy, textCol);
+
+    if (label && label[0] != '\0')
+    {
+        float lh = GetTextHeight(label);
+        float ly = rect.y + (rect.height - lh) * 0.5f;
+        DrawText(label, rect.x, ly, labelCol);
+    }
+
+    return control->changed;
 }

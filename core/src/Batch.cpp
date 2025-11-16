@@ -501,38 +501,61 @@ void RenderBatch::Line2D(const Vec2 &start, const Vec2 &end)
     Vertex2f(start.x, start.y);
     Vertex2f(end.x, end.y);
 }
-
 void RenderBatch::Circle(int centerX, int centerY, float radius, bool fill)
 {
+    if (radius <= 0.0f)
+        return;
+
+    int segments = (int)(radius * 2.0f);
+    if (segments < 12)
+        segments = 12;
+    if (segments > 128)
+        segments = 128;
+
+    float angleStep = 2.0f * PI / (float)segments;
+
+    float cx = (float)centerX;
+    float cy = (float)centerY;
 
     if (fill)
     {
         SetMode(TRIANGLES);
 
-        float x = centerX;
-        float y = centerY;
         float angle = 0.0f;
-        float angleInc = 1.0f / radius;
-        for (int i = 0; i < 360; i++)
+        for (int i = 0; i < segments; ++i)
         {
-            Vertex2f(x, y);
-            Vertex2f(x + cos(angle) * radius, y + sin(angle) * radius);
-            angle += angleInc;
-            Vertex2f(x + cos(angle) * radius, y + sin(angle) * radius);
+            float ax = cx + std::cos(angle) * radius;
+            float ay = cy + std::sin(angle) * radius;
+
+            float nextAngle = angle + angleStep;
+            float bx = cx + std::cos(nextAngle) * radius;
+            float by = cy + std::sin(nextAngle) * radius;
+
+            Vertex2f(cx, cy);
+            Vertex2f(bx, by);
+            Vertex2f(ax, ay);
+
+            angle = nextAngle;
         }
     }
     else
     {
         SetMode(LINES);
-        float x = centerX;
-        float y = centerY;
+
         float angle = 0.0f;
-        float angleInc = 1.0f / radius;
-        for (int i = 0; i < 360; i++)
+        for (int i = 0; i < segments; ++i)
         {
-            Vertex2f(x + cos(angle) * radius, y + sin(angle) * radius);
-            angle += angleInc;
-            Vertex2f(x + cos(angle) * radius, y + sin(angle) * radius);
+            float ax = cx + std::cos(angle) * radius;
+            float ay = cy + std::sin(angle) * radius;
+
+            float nextAngle = angle + angleStep;
+            float bx = cx + std::cos(nextAngle) * radius;
+            float by = cy + std::sin(nextAngle) * radius;
+
+            Vertex2f(ax, ay);
+            Vertex2f(bx, by);
+
+            angle = nextAngle;
         }
     }
 }
@@ -1279,85 +1302,263 @@ void RenderBatch::Triangle(float x1, float y1, float x2, float y2, float x3, flo
         Vertex2f(x1, y1);
     }
 }
-
 void RenderBatch::RoundedRectangle(int posX, int posY, int width, int height,
                                    float roundness, int segments, bool fill)
 {
-    if (roundness <= 0)
+    if (width <= 0 || height <= 0)
+        return;
+
+    if (roundness <= 0.0f)
     {
         Rectangle(posX, posY, width, height, fill);
         return;
     }
 
-    float radius = (roundness > width / 2.0f || roundness > height / 2.0f)
-                       ? fmin(width / 2.0f, height / 2.0f)
-                       : roundness;
+    float radius = roundness;
+    float hw = width * 0.5f;
+    float hh = height * 0.5f;
+    if (radius > hw)
+        radius = hw;
+    if (radius > hh)
+        radius = hh;
+
+    if (segments < 2)
+        segments = 2;
+    if (segments > 32)
+        segments = 32;
+
+    float cx_tl = posX + radius;
+    float cy_tl = posY + radius;
+
+    float cx_tr = posX + width - radius;
+    float cy_tr = posY + radius;
+
+    float cx_br = posX + width - radius;
+    float cy_br = posY + height - radius;
+
+    float cx_bl = posX + radius;
+    float cy_bl = posY + height - radius;
+
+    const int cornerSegments = segments;
+    const int totalPoints = cornerSegments * 4;
+    Vec2 pts[totalPoints];
+
+    auto fillCorner = [&](int baseIndex, float cx, float cy, float startDeg, float endDeg)
+    {
+        float startRad = startDeg * (PI / 180.0f);
+        float endRad = endDeg * (PI / 180.0f);
+        float step = (endRad - startRad) / (float)cornerSegments;
+
+        for (int i = 0; i < cornerSegments; ++i)
+        {
+            float a = startRad + step * (float)i;
+            pts[baseIndex + i].x = cx + std::cos(a) * radius;
+            pts[baseIndex + i].y = cy + std::sin(a) * radius;
+        }
+    };
+
+    fillCorner(0 * cornerSegments, cx_tl, cy_tl, 180.0f, 270.0f);
+    fillCorner(1 * cornerSegments, cx_tr, cy_tr, 270.0f, 360.0f);
+    fillCorner(2 * cornerSegments, cx_br, cy_br, 0.0f, 90.0f);
+    fillCorner(3 * cornerSegments, cx_bl, cy_bl, 90.0f, 180.0f);
 
     if (fill)
     {
         SetMode(TRIANGLES);
 
-        // Centro do retângulo
-      //  float cx = posX + width / 2.0f;
-      //  float cy = posY + height / 2.0f;
+        float cx = posX + width * 0.5f;
+        float cy = posY + height * 0.5f;
 
-        // Cantos arredondados (4 quartos de círculo)
-        float corners[4][2] = {
-            {posX + radius, posY + radius},                  // Top-left
-            {posX + width - radius, posY + radius},          // Top-right
-            {posX + width - radius, posY + height - radius}, // Bottom-right
-            {posX + radius, posY + height - radius}          // Bottom-left
-        };
-
-        float angles[4] = {180.0f, 270.0f, 0.0f, 90.0f}; // Ângulos iniciais
-
-        // Desenha os cantos arredondados
-        for (int corner = 0; corner < 4; corner++)
+        for (int i = 0; i < totalPoints; ++i)
         {
-            float startAngle = angles[corner] * DEG2RAD;
-            float endAngle = (angles[corner] + 90.0f) * DEG2RAD;
-            float angleStep = (endAngle - startAngle) / segments;
-
-            for (int i = 0; i < segments; i++)
-            {
-                float angle1 = startAngle + angleStep * i;
-                float angle2 = startAngle + angleStep * (i + 1);
-
-                Vertex2f(corners[corner][0], corners[corner][1]);
-                Vertex2f(corners[corner][0] + cos(angle1) * radius,
-                         corners[corner][1] + sin(angle1) * radius);
-                Vertex2f(corners[corner][0] + cos(angle2) * radius,
-                         corners[corner][1] + sin(angle2) * radius);
-            }
+            const Vec2 &a = pts[i];
+            const Vec2 &b = pts[(i + 1) % totalPoints];
+            Vertex2f(cx, cy);
+            Vertex2f(b.x, b.y);
+            Vertex2f(a.x, a.y);
         }
+    }
+    else
+    {
+        SetMode(LINES);
 
-        // Retângulo central
-        Vertex2f(posX + radius, posY);
-        Vertex2f(posX + radius, posY + height);
-        Vertex2f(posX + width - radius, posY);
-
-        Vertex2f(posX + width - radius, posY);
-        Vertex2f(posX + radius, posY + height);
-        Vertex2f(posX + width - radius, posY + height);
-
-        // Laterais
-        Vertex2f(posX, posY + radius);
-        Vertex2f(posX + radius, posY + radius);
-        Vertex2f(posX, posY + height - radius);
-
-        Vertex2f(posX + radius, posY + radius);
-        Vertex2f(posX + radius, posY + height - radius);
-        Vertex2f(posX, posY + height - radius);
-
-        Vertex2f(posX + width - radius, posY + radius);
-        Vertex2f(posX + width, posY + radius);
-        Vertex2f(posX + width - radius, posY + height - radius);
-
-        Vertex2f(posX + width, posY + radius);
-        Vertex2f(posX + width, posY + height - radius);
-        Vertex2f(posX + width - radius, posY + height - radius);
+        for (int i = 0; i < totalPoints; ++i)
+        {
+            const Vec2 &a = pts[i];
+            const Vec2 &b = pts[(i + 1) % totalPoints];
+            Vertex2f(a.x, a.y);
+            Vertex2f(b.x, b.y);
+        }
     }
 }
+
+// void RenderBatch::RoundedRectangle(int posX, int posY, int width, int height,
+//                                    float roundness, int segments, bool fill)
+// {
+//     if (width <= 0 || height <= 0)
+//         return;
+
+//     if (roundness <= 0.0f)
+//     {
+//         Rectangle(posX, posY, width, height, fill);
+//         return;
+//     }
+
+//     float radius = roundness;
+//     float hw = width  * 0.5f;
+//     float hh = height * 0.5f;
+//     if (radius > hw) radius = hw;
+//     if (radius > hh) radius = hh;
+
+//     if (segments < 2)  segments = 2;
+//     if (segments > 32) segments = 32;
+
+//     float cx_tl = posX + radius;
+//     float cy_tl = posY + radius;
+
+//     float cx_tr = posX + width  - radius;
+//     float cy_tr = posY + radius;
+
+//     float cx_br = posX + width  - radius;
+//     float cy_br = posY + height - radius;
+
+//     float cx_bl = posX + radius;
+//     float cy_bl = posY + height - radius;
+
+//     if (fill)
+//     {
+//         SetMode(TRIANGLES);
+
+//         float x0 = (float)posX;
+//         float y0 = (float)posY;
+//         float x1 = (float)(posX + width);
+//         float y1 = (float)(posY + height);
+
+//         float lx0 = x0;
+//         float lx1 = x0 + radius;
+//         float rx0 = x1 - radius;
+//         float rx1 = x1;
+
+//         float ty0 = y0;
+//         float ty1 = y0 + radius;
+//         float by0 = y1 - radius;
+//         float by1 = y1;
+
+//         Vertex2f(lx1, ty0);
+//         Vertex2f(rx0, ty0);
+//         Vertex2f(lx1, by1);
+
+//         Vertex2f(rx0, ty0);
+//         Vertex2f(rx0, by1);
+//         Vertex2f(lx1, by1);
+
+//         Vertex2f(lx0, ty1);
+//         Vertex2f(lx1, ty1);
+//         Vertex2f(lx0, by0);
+
+//         Vertex2f(lx1, ty1);
+//         Vertex2f(lx1, by0);
+//         Vertex2f(lx0, by0);
+
+//         Vertex2f(rx0, ty1);
+//         Vertex2f(rx1, ty1);
+//         Vertex2f(rx0, by0);
+
+//         Vertex2f(rx1, ty1);
+//         Vertex2f(rx1, by0);
+//         Vertex2f(rx0, by0);
+
+//         auto emitCornerFan = [&](float cx, float cy, float startDeg, float endDeg)
+//         {
+//             float startRad = startDeg * (PI / 180.0f);
+//             float endRad   = endDeg   * (PI / 180.0f);
+//             float step     = (endRad - startRad) / segments;
+
+//             float angle = startRad;
+//             for (int i = 0; i < segments; ++i)
+//             {
+//                 float a1 = angle;
+//                 float a2 = angle + step;
+
+//                 float ax = cx + std::cos(a1) * radius;
+//                 float ay = cy + std::sin(a1) * radius;
+
+//                 float bx = cx + std::cos(a2) * radius;
+//                 float by = cy + std::sin(a2) * radius;
+
+//                 // CW
+//                 Vertex2f(cx, cy);
+//                 Vertex2f(bx, by);
+//                 Vertex2f(ax, ay);
+
+//                 angle = a2;
+//             }
+//         };
+
+//         emitCornerFan(cx_tl, cy_tl, 180.0f, 270.0f);
+//         emitCornerFan(cx_tr, cy_tr, 270.0f, 360.0f);
+//         emitCornerFan(cx_br, cy_br,   0.0f,  90.0f);
+//         emitCornerFan(cx_bl, cy_bl,  90.0f, 180.0f);
+//     }
+//     else
+//     {
+//         SetMode(LINES);
+
+//         auto emitCornerLine = [&](float cx, float cy, float startDeg, float endDeg)
+//         {
+//             float startRad = startDeg * (PI / 180.0f);
+//             float endRad   = endDeg   * (PI / 180.0f);
+//             float step     = (endRad - startRad) / segments;
+
+//             float angle = startRad;
+//             float prevX = cx + std::cos(angle) * radius;
+//             float prevY = cy + std::sin(angle) * radius;
+
+//             for (int i = 0; i < segments; ++i)
+//             {
+//                 angle += step;
+//                 float x = cx + std::cos(angle) * radius;
+//                 float y = cy + std::sin(angle) * radius;
+//                 Vertex2f(prevX, prevY);
+//                 Vertex2f(x, y);
+//                 prevX = x;
+//                 prevY = y;
+//             }
+//         };
+
+//         emitCornerLine(cx_tl, cy_tl, 180.0f, 270.0f);
+//         emitCornerLine(cx_tr, cy_tr, 270.0f, 360.0f);
+//         emitCornerLine(cx_br, cy_br,   0.0f,  90.0f);
+//         emitCornerLine(cx_bl, cy_bl,  90.0f, 180.0f);
+
+//         float x0 = (float)posX;
+//         float y0 = (float)posY;
+//         float x1 = (float)(posX + width);
+//         float y1 = (float)(posY + height);
+
+//         float lx0 = x0;
+//         float lx1 = x0 + radius;
+//         float rx0 = x1 - radius;
+//         float rx1 = x1;
+
+//         float ty0 = y0;
+//         float ty1 = y0 + radius;
+//         float by0 = y1 - radius;
+//         float by1 = y1;
+
+//         Vertex2f(lx1, ty0);
+//         Vertex2f(rx0, ty0);
+
+//         Vertex2f(lx1, by1);
+//         Vertex2f(rx0, by1);
+
+//         Vertex2f(lx0, ty1);
+//         Vertex2f(lx0, by0);
+
+//         Vertex2f(rx1, ty1);
+//         Vertex2f(rx1, by0);
+//     }
+// }
 
 void RenderBatch::Ellipse(int centerX, int centerY, float radiusX, float radiusY, bool fill)
 {

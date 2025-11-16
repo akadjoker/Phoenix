@@ -10,17 +10,29 @@
 #include "GameObject.hpp"
 #include <algorithm>
 
-GameObject::GameObject(const std::string& name)
+void GameObject::serialize(Serialize &serialize)
+{
+    Node3D::serialize(serialize);
+}
+
+void GameObject::deserialize(const Serialize &in)
+{
+    Node3D::deserialize(in);
+    
+}
+
+GameObject::GameObject(const std::string &name)
     : Node3D(name),
       m_started(false)
 {
+   
 }
 
 GameObject::~GameObject()
 {
     removeAllComponents();
 }
-
+ 
 // ==================== Component Management ====================
 
 void GameObject::removeAllComponents()

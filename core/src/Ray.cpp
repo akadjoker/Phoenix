@@ -167,6 +167,11 @@ bool Ray::intersectAABB(const BoundingBox &box, float &outTMin, float &outTMax) 
     return intersectAABB(box.min, box.max, outTMin, outTMax);
 }
 
+bool Ray::intersectAABB(BoundingBox &box, float &outTMin, float &outTMax) const
+{
+    return intersectAABB(box.min, box.max, outTMin, outTMax);
+}
+
 Vec3 Ray::closestPoint(const Vec3 &point) const
 {
     Vec3 toPoint = point - origin;

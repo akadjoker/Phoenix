@@ -1,32 +1,124 @@
 #include "pch.h"
 #include "Node3D.hpp"
- 
+ #include "Mesh.hpp"
 
-Node3D::Node3D(const std::string &name ):
-    Node(name)
-    , m_localPosition(0, 0, 0)
-    , m_localRotation(Quat::Identity())
-    , m_localScale(1, 1, 1)
-    , m_transformDirty(true)
-    , m_worldTransformDirty(true)
-    , m_parent(nullptr)
+void Node3D::serialize(Serialize &serialize)
 {
+    Node::serialize(serialize);
+
+    if (m_parent)
+    {
+        serialize.SetString("parent", m_parent->getName());
+    }
+    serialize.SetInt("flags", (int)m_flags);
+    serialize.SetVec3("position", m_localPosition);
+    serialize.SetVec3("rotation", getEulerAngles());
+    serialize.SetVec3("scale", m_localScale);
 }
+
+void Node3D::deserialize(const Serialize &in)
+{
+    Node::deserialize(in);
+   // m_flags = in.GetInt("flags", 0);
+   // setFlags(m_flags);
+    Vec3 pos = in.GetVec3("position", Vec3(0));
+    setPosition(pos);
+    Vec3 eur = in.GetVec3("rotation", Vec3(0));
+    setEulerAngles(eur);
+    Vec3 scale = in.GetVec3("scale", Vec3(1));
+    setScale(scale);
+    getWorldTransform();
+}
+
+Node3D::Node3D(const std::string &name) : Node(name), m_localPosition(0, 0, 0), m_localRotation(Quat::Identity()), m_localScale(1, 1, 1), m_transformDirty(true), m_worldTransformDirty(true), m_parent(nullptr),
+                                          m_flags(0u)
+{
+    m_boundBox = BoundingBox(Vec3(-0.5f, -0.5f, -0.5f), Vec3(0.5f, 0.5f, 0.5f));
+    setPickable(true);
+ 
+}
+
+ 
 
 Node3D::~Node3D()
 {
-    // Remove de todos os children
+   
     for (Node3D* child : m_children)
     {
         child->m_parent = nullptr;
     }
     
-    // Remove do parent
+ 
     if (m_parent)
     {
         m_parent->removeChild(this);
     }
 }
+
+ 
+
+void Node3D::setFlag(NodeFlag flag, bool enabled)
+{
+    u32 bit = static_cast<u32>(flag);
+    if (enabled)
+        m_flags |= bit;
+    else
+        m_flags &= ~bit;
+}
+
+void Node3D::clearFlag(NodeFlag flag)
+{
+    setFlag(flag, false);
+}
+
+bool Node3D::hasFlag(NodeFlag flag) const
+{
+    u32 bit = static_cast<u32>(flag);
+    return (m_flags & bit) != 0;
+}
+
+void Node3D::setPickable(bool enabled)
+{
+    setFlag(NodeFlag::Pickable, enabled);
+}
+
+bool Node3D::isPickable() const
+{
+    return hasFlag(NodeFlag::Pickable);
+}
+
+void Node3D::setShowBoxes(bool enabled)
+{
+    setFlag(NodeFlag::ShowBox, enabled);
+}
+
+bool Node3D::isShowBoxes() const
+{
+    return hasFlag(NodeFlag::ShowBox);
+}
+
+bool Node3D::pick(const Ray &ray) const
+{
+    if (!isPickable())
+        return false;
+    
+    float tMin, tMax;
+
+    BoundingBox box = getTransformedBoundingBox();
+    return ray.intersectAABB(box, tMin, tMax);
+}
+
+
+void Node3D::setFlags(u32 flags)
+{
+    m_flags = flags;
+}
+
+u32 Node3D::getFlags() const
+{
+    return m_flags;
+}
+
 
 void Node3D::updateLocalTransform() const
 {
@@ -400,7 +492,7 @@ void Node3D::scale(const Vec3& scale)
 // Matrizes
 const Mat4& Node3D::getLocalTransform() const
 {
-   // if (m_transformDirty)
+    if (m_transformDirty)
         updateLocalTransform();
     
     return m_localTransform;
@@ -408,7 +500,7 @@ const Mat4& Node3D::getLocalTransform() const
 
 const Mat4& Node3D::getWorldTransform() const
 {
-   // if (m_worldTransformDirty)
+   if (m_worldTransformDirty)
         updateWorldTransform();
     
     return m_worldTransform;
@@ -569,3 +661,39 @@ void Node3D::lookAt(const Vec3& target, TransformSpace targetSpace, const Vec3& 
     Quat worldRot = Quat::FromMat4(lookAtMat);
     setRotation(worldRot, TransformSpace::World);
 }
+
+const BoundingBox Node3D::getTransformedBoundingBox() const
+{
+    return BoundingBox::Transform(getBoundingBox(),getWorldTransform());
+}
+
+void Node3D::rotateX(float angleRad, TransformSpace space)
+{
+    rotate(Vec3(1.0f, 0.0f, 0.0f), angleRad, space);
+}
+
+void Node3D::rotateY(float angleRad, TransformSpace space)
+{
+    rotate(Vec3(0.0f, 1.0f, 0.0f), angleRad, space);
+}
+
+void Node3D::rotateZ(float angleRad, TransformSpace space)
+{
+    rotate(Vec3(0.0f, 0.0f, 1.0f), angleRad, space);
+}
+
+void Node3D::rotateXDeg(float angleDeg, TransformSpace space)
+{
+    rotateX(angleDeg * DEG2RAD, space);
+}
+
+void Node3D::rotateYDeg(float angleDeg, TransformSpace space)
+{
+    rotateY(angleDeg * DEG2RAD, space);
+}
+
+void Node3D::rotateZDeg(float angleDeg, TransformSpace space)
+{
+    rotateZ(angleDeg * DEG2RAD, space);
+}
+

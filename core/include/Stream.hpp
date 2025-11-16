@@ -43,6 +43,8 @@ public:
 
     std::vector<std::string> SplitLine(size_t index, char delimiter = ',') const;
     std::vector<std::string> GetSection(const std::string& sectionName) const;
+    static std::string Trim(const std::string& str);
+    static std::vector<std::string> Split(const std::string& str, char delimiter);
 
 private:
     char** m_lines;
@@ -51,8 +53,6 @@ private:
 
     void Reserve(size_t capacity);
     void Grow();
-    static std::string Trim(const std::string& str);
-    static std::vector<std::string> Split(const std::string& str, char delimiter);
 };
 
 

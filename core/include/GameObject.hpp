@@ -21,17 +21,22 @@ private:
     std::vector<Component*> m_components;
     bool m_started;
 
-public:
+    
+    public:
     explicit GameObject(const std::string& name = "GameObject");
     ~GameObject() override;
-
     
+    
+    virtual  void serialize(Serialize& serialize) override; ;
+    virtual void deserialize(const Serialize& in) override;
 
     // Non-copyable but movable
     GameObject(const GameObject&) = delete;
     GameObject& operator=(const GameObject&) = delete;
     GameObject(GameObject&&) = default;
     GameObject& operator=(GameObject&&) = default;
+
+    virtual ObjectType getType() override { return ObjectType::GameObject; }
 
     // ==================== Component Management ====================
     
@@ -123,6 +128,9 @@ public:
 
 private:
     void destroyComponent(Component* component);
+
+protected:
+   
 };
 
 // ==================== Template Implementations ====================

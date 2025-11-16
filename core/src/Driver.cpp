@@ -3,6 +3,7 @@
 #include "glad/glad.h"
 #include "Texture.hpp"
 #include "Shader.hpp"
+#include "Frustum.hpp"
 
 extern u32 CalculatePrimitiveCount(PrimitiveType type, u32 vertexCount);
 extern u32 ToGLTextureType(TextureType type);
@@ -127,6 +128,13 @@ void Driver::DrawArrays(u32 mode, u32 first, u32 count)
 
 Driver::Driver()
 {
+    m_frustum = new Frustum();
+    
+}
+
+Driver::~Driver()
+{
+    delete m_frustum;
 }
 
 void Driver::Reset()

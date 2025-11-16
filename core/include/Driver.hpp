@@ -6,6 +6,7 @@
 
 class Mesh;
 class MeshBuffer;
+class Frustum;
 
 enum class BlendFactor : u8
 {
@@ -224,10 +225,13 @@ public:
     void DrawScreenQuad(float x, float y, float w, float h);
     void DrawScreenQuad();
 
+    
+    Frustum *GetFrustum() { return m_frustum; }
+
 
 private:
     Driver();
-    ~Driver() = default;
+    ~Driver();
     Driver(const Driver &) = delete;
     Driver &operator=(const Driver &) = delete;
 
@@ -254,6 +258,8 @@ private:
     u32 m_countDrawCall = 0;
     u32 m_countPrograms = 0;
     u32 m_countTextures = 0;
+
+      Frustum *m_frustum;
 
     ScreenQuad m_quadRenderer;
 

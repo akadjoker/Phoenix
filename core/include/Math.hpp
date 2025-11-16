@@ -588,6 +588,7 @@ struct BoundingBox
     Vec3 size() const;
     bool contains(const Vec3 &point) const;
     bool merge(const BoundingBox &other);
+    void copy(const BoundingBox &other);
     Vec3 getCorner(unsigned int index) const;
     void transform(const Mat4 &m);
 

@@ -2,6 +2,18 @@
 #include "Node.hpp"
 #include "Utils.hpp"
 
+void Node::serialize(Serialize &serialize)
+{
+    Object::serialize(serialize);
+    serialize.SetInt("renderType", (int)getRenderType());
+}
+
+void Node::deserialize(const Serialize &in)
+{
+    Object::deserialize(in);
+    setRenderType((RenderType)in.GetInt("renderType"));
+}
+
 Node::Node(const std::string &name)
     : Object(name)
 {

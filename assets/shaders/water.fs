@@ -58,6 +58,12 @@ void main()
     depth = gl_FragCoord.z;
     float waterDistance = 2.0 * near * far / (far + near - (2.0 * depth - 1.0) * (far - near));
     float waterDepth = floorDistance - waterDistance;
+     if (waterDepth < 0.0)
+    {
+         discard;
+         //FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+         return;
+    }
     float normalizedDepth = clamp(waterDepth / mult, 0.0, 1.0);
     
     // Apply distortion
