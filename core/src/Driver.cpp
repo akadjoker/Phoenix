@@ -83,6 +83,15 @@ void Driver::DrawMeshBuffer(MeshBuffer *meshBuffer)
     meshBuffer->Render();
 }
 
+void Driver::DrawMeshBuffer(MeshBuffer *meshBuffer, PrimitiveType type, u32 count)
+{
+    m_countMeshBuffer++;
+    m_countVertex += count;
+    m_countTriangle += CalculatePrimitiveCount(type, count);
+
+    meshBuffer->Render(type, count);
+}
+
 void Driver::DrawMesh(Mesh *mesh)
 {
     m_countMesh++;

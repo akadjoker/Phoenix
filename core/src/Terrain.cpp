@@ -15,65 +15,9 @@ const int BLOCK_HEIGHT = 17;
 const int QUADS_WIDE = BLOCK_WIDTH - 1;
 const int QUADS_HIGH = BLOCK_HEIGHT - 1;
 
-// ============================================================================
-// TerrainBlock Implementation
-// ============================================================================
+ 
 
-TerrainBlock::TerrainBlock()
-{
-    buffer = new VertexArray();
-    vb = nullptr;
-    ib = nullptr;
-    m_boundBox.clear();
-    m_vdirty = true;
-    m_idirty = true;
-}
-
-TerrainBlock::~TerrainBlock()
-{
-    delete buffer;
-}
-
-void TerrainBlock::Build()
-{
-    if (!vb)
-    {
-        vb = buffer->AddVertexBuffer(sizeof(TerrainVertex), m_vertices.size(), false);
-
-        auto *decl = buffer->GetVertexDeclaration();
-
-        decl->AddElement(0, 0, VET_FLOAT3, VES_POSITION);
-        decl->AddElement(0, 3 * sizeof(float), VET_FLOAT3, VES_NORMAL);
-        decl->AddElement(0, 6 * sizeof(float), VET_FLOAT2, VES_TEXCOORD, 0);
-    }
-
-    if (!ib)
-    {
-        ib = buffer->CreateIndexBuffer(m_indices.size(), false, false);
-    }
-
-    if (m_vdirty)
-    {
-        vb->SetData(m_vertices.data());
-    }
-
-    if (m_idirty)
-    {
-        ib->SetData(m_indices.data());
-    }
-
-    m_idirty = false;
-    m_vdirty = false;
-    buffer->Build();
-}
-
-void TerrainBlock::Render()
-{
-    if (!buffer || m_indices.empty())
-        return;
-
-    buffer->Render(PT_TRIANGLE_STRIP, m_indices.size());
-}
+ 
 
 // ============================================================================
 // Terrain Implementation
@@ -89,10 +33,14 @@ Terrain::Terrain(const std::string &name) : Visual(name)
 Terrain::~Terrain()
 {
 
-    delete[] m_heightData;
-    for (auto *block : m_blocks)
-        delete block;
+    for (MeshBuffer *buffer : m_blocks)
+    {
+        delete buffer;
+    }
     m_blocks.clear();
+
+    delete[] m_heightData;
+ 
 }
 
 bool Terrain::LoadFromHeightmap(const std::string &heightmapPath,
@@ -152,15 +100,14 @@ bool Terrain::LoadFromHeightmap(const std::string &heightmapPath,
     {
         for (int bx = 0; bx < blocksWide; bx++)
         {
-            TerrainBlock *block = new TerrainBlock();
+            MeshBuffer *block = AddBuffer();
             if (!GenerateBlock(block, bx, bz, texScaleU, texScaleV))
             {
                 delete block;
                 LogError("[Terrain] Failed to generate block (%d, %d)", bx, bz);
                 return false;
             }
-            m_boundBox.merge(block->m_boundBox);
-            m_blocks.push_back(block);
+ 
         }
     }
 
@@ -256,14 +203,26 @@ void Terrain::Build()
         block->Build();
 }
 
-TerrainBlock *Terrain::GetBlock(int x, int z) const
+MeshBuffer *Terrain::AddBuffer()
 {
-    if (x < 0 || z < 0 || x >= m_heightmapWidth || z >= m_heightmapHeight)
-        return nullptr;
-    return m_blocks[x + z * m_heightmapWidth];
+    MeshBuffer *buffer = new MeshBuffer();
+    buffer->m_boundBox.clear();
+    m_blocks.push_back(buffer);
+    return buffer;
 }
 
-TerrainBlock *Terrain::GetBlock(u32 index) const
+MeshBuffer *Terrain::GetBlock(int blockX, int blockZ) const
+{
+    int blocksWide = (m_heightmapWidth - 1) / QUADS_WIDE;
+    int blocksHigh = (m_heightmapHeight - 1) / QUADS_HIGH;
+    
+    if (blockX < 0 || blockZ < 0 || blockX >= blocksWide || blockZ >= blocksHigh)
+        return nullptr;
+    
+    return m_blocks[blockX + blockZ * blocksWide];
+}
+
+MeshBuffer *Terrain::GetBlock(u32 index) const
 {
     if (index >= m_blocks.size())
         return nullptr;
@@ -291,20 +250,22 @@ void Terrain::Render()
 
  
 
-    const Frustum *frustum = Driver::Instance().GetFrustum();
-    if (!frustum->intersectsAABB(m_boundBox))
-        return;
+    // const Frustum *frustum = Driver::Instance().GetFrustum();
+    // if (!frustum->intersectsAABB(m_boundBox))
+    //     return;
         
     ApplyMaterial(); 
 
 
-    for (auto *block : m_blocks)
-    {
-        if (!frustum->intersectsAABB(block->m_boundBox))
-            continue;
-        block->Render();
+    // for (auto *block : m_blocks)
+    // {
+    //     if (!frustum->intersectsAABB(block->GetBoundingBox()))
+    //         continue;
+         
+
+    //     Driver::Instance().DrawMeshBuffer(block, PrimitiveType::PT_TRIANGLE_STRIP, block->GetIndexCount());
  
-    }      
+    // }      
     
      
 }
@@ -314,8 +275,8 @@ void Terrain::Debug(RenderBatch *batch)
   
 
     const Frustum *frustum = Driver::Instance().GetFrustum();
-    if (!frustum->intersectsAABB(m_boundBox))
-        return;
+   // if (!frustum->intersectsAABB(m_boundBox))
+   //     return;
         
      
 
@@ -325,25 +286,24 @@ void Terrain::Debug(RenderBatch *batch)
     batch->SetColor(0, 255, 0);
     for (auto *block : m_blocks)
     {
-        if (!frustum->intersectsAABB(block->m_boundBox))
-            continue;
-        batch->Box(block->m_boundBox);
+       // if (!frustum->intersectsAABB(block->GetBoundingBox()))
+       //     continue;
+        batch->Box(block->GetBoundingBox());
      
     }
 
    
 }
 
-bool Terrain::GenerateBlock(TerrainBlock* block, int blockX, int blockZ,
+bool Terrain::GenerateBlock(MeshBuffer* block, int blockX, int blockZ,
                             float texScaleU, float texScaleV)
 {
     int startX = blockX * QUADS_WIDE;
     int startZ = blockZ * QUADS_HIGH;
 
-    int vertexCount = BLOCK_WIDTH * BLOCK_HEIGHT;
+   // int vertexCount = BLOCK_WIDTH * BLOCK_HEIGHT;
     
-    block->m_vertices.reserve(vertexCount);
-    block->m_boundBox.clear();
+   
 
     // ========================================================================
     // Gerar Vértices
@@ -364,18 +324,16 @@ bool Terrain::GenerateBlock(TerrainBlock* block, int blockX, int blockZ,
 
             Vec3 normal = CalculateNormal(worldX, worldZ);
 
-            TerrainVertex vert;
-            vert.x = px; vert.y = py; vert.z = pz;
-            vert.nx = normal.x; vert.ny = normal.y; vert.nz = normal.z;
-            vert.u = u; vert.v = v;
+      
             
-            block->m_vertices.push_back(vert);
-            block->m_boundBox.expand(px, py, pz);
+            block->AddVertex(px, py, pz, normal.x, normal.y, normal.z, u, v);
+           
         }
     }
 
- 
-    block->m_indices.clear();
+    m_boundBox.merge(block->GetBoundingBox());
+
+  
     u32 Counter = 0;
     
     // Calculate the indices for the terrain block tri-strip
@@ -389,13 +347,13 @@ bool Terrain::GenerateBlock(TerrainBlock* block, int blockX, int blockZ,
                 // Force insert winding order switch degenerate?
                 if (vx == 0 && vz > 0)
                 {
-                    block->m_indices.push_back((u32)(vx + vz * BLOCK_WIDTH));
+                    block->AddIndex((u32)(vx + vz * BLOCK_WIDTH));
                     Counter++;
                 }
 
                 // Insert next two indices
-                block->m_indices.push_back((u32)(vx + vz * BLOCK_WIDTH));
-                block->m_indices.push_back((u32)((vx + vz * BLOCK_WIDTH) + BLOCK_WIDTH));
+                block->AddIndex((u32)(vx + vz * BLOCK_WIDTH));
+                block->AddIndex((u32)((vx + vz * BLOCK_WIDTH) + BLOCK_WIDTH));
                 Counter += 2;
 
             } // Next Index Column
@@ -408,13 +366,13 @@ bool Terrain::GenerateBlock(TerrainBlock* block, int blockX, int blockZ,
                 // Force insert winding order switch degenerate?
                 if (vx == (BLOCK_WIDTH - 1))
                 {
-                    block->m_indices.push_back((u32)(vx + vz * BLOCK_WIDTH));
+                    block->AddIndex((u32)(vx + vz * BLOCK_WIDTH));
                     Counter++;
                 }
 
                 // Insert next two indices
-                block->m_indices.push_back((u32)(vx + vz * BLOCK_WIDTH));
-                block->m_indices.push_back((u32)((vx + vz * BLOCK_WIDTH) + BLOCK_WIDTH));
+                block->AddIndex((u32)(vx + vz * BLOCK_WIDTH));
+                block->AddIndex((u32)((vx + vz * BLOCK_WIDTH) + BLOCK_WIDTH));
                 Counter += 2;
 
             } // Next Index Column
@@ -426,7 +384,7 @@ bool Terrain::GenerateBlock(TerrainBlock* block, int blockX, int blockZ,
     block->Build();
     
     LogInfo("[Terrain] Block (%d, %d): %d vertices, %d indices",
-            blockX, blockZ, block->m_vertices.size(), block->m_indices.size());
+            blockX, blockZ, block->GetVertexCount(), block->GetIndexCount());
     
     return true;
 }

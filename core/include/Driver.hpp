@@ -1,6 +1,7 @@
 #pragma once
 #include "Config.hpp"
 #include "Math.hpp"
+#include "GraphicsTypes.hpp"
 #include <array>
 
 
@@ -8,98 +9,7 @@ class Mesh;
 class MeshBuffer;
 class Frustum;
 
-enum class BlendFactor : u8
-{
-    Zero,
-    One,
-    SrcColor,
-    OneMinusSrcColor,
-    DstColor,
-    OneMinusDstColor,
-    SrcAlpha,
-    OneMinusSrcAlpha,
-    DstAlpha,
-    OneMinusDstAlpha,
-    ConstantColor,
-    OneMinusConstantColor,
-    ConstantAlpha,
-    OneMinusConstantAlpha,
-    SrcAlphaSaturate
-};
 
-enum class BlendOp : u8
-{
-    Add,
-    Subtract,
-    RevSubtract,
-    Min,
-    Max
-};
-
-enum class CompareFunc : u8
-{
-    Never,
-    Less,
-    Equal,
-    LEqual,
-    Greater,
-    NotEqual,
-    GEqual,
-    Always
-};
-
-enum class CullMode : u8
-{
-    None,
-    Front,
-    Back,
-    FrontAndBack
-};
-
-enum class FrontFace : u8
-{
-    CW,
-    CCW
-};
-
-enum class ColorWriteMask : u8
-{
-    None = 0,
-    R = 1,
-    G = 2,
-    B = 4,
-    A = 8,
-    RGBA = 15
-};
-
-enum class StencilOp : u8
-{
-    Keep,
-    Zero,
-    Replace,
-    Incr,
-    IncrWrap,
-    Decr,
-    DecrWrap,
-    Invert
-};
-
-enum class TransformState : int
-{
-    WORLD = 0,
-    VIEW,
-    PROJECTION,
-    ORTHO,
-
-    VIEW_PROJECTION,          // P*V
-    WORLD_VIEW,               // V*M
-    WORLD_VIEW_PROJECTION,    // P*V*M
-
-    WORLD_INVERSE,            // inv(M)
-    WORLD_INVERSE_TRANSPOSE,  // transpose(inv(M))
-
-    COUNT
-};
 
 const unsigned CLEAR_NONE = 0u;
 const unsigned CLEAR_COLOR = 1u << 0;
@@ -197,6 +107,7 @@ public:
     u32 GetCurrentVAO() const { return m_currentVAO; }
 
     void DrawMeshBuffer( MeshBuffer *meshBuffer);
+    void DrawMeshBuffer( MeshBuffer *meshBuffer , PrimitiveType type, u32 count);
     void DrawMesh(Mesh *mesh);
  
 

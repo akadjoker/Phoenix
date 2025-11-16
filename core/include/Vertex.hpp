@@ -4,40 +4,7 @@
 #include <map>
 #include <cstdint>
 
-enum VertexElementType
-{
-    VET_FLOAT1,
-    VET_FLOAT2,
-    VET_FLOAT3,
-    VET_FLOAT4,
-    VET_COLOR,  // 4 bytes RGBA
-    VET_SHORT2, // 2 shorts
-    VET_SHORT4, // 4 shorts
-    VET_UBYTE4  // 4 unsigned bytes
-};
 
-enum VertexElementSemantic
-{
-    VES_POSITION = 0,
-    VES_TEXCOORD,
-    VES_COLOR,
-    VES_NORMAL,
-    VES_TANGENT,
-    VES_BINORMAL,
-    VES_BLEND_WEIGHTS,
-    VES_BLEND_INDICES
-};
-
-enum PrimitiveType
-{
-    PT_POINTS,
-    PT_LINES,
-    PT_LINE_STRIP,
-    PT_LINE_LOOP,
-    PT_TRIANGLES,
-    PT_TRIANGLE_STRIP,
-    PT_TRIANGLE_FAN
-};
 
 class VertexBuffer;
 class IndexBuffer;

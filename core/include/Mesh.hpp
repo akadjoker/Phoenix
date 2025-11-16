@@ -1,6 +1,7 @@
 #pragma once
 #include "Config.hpp"
 #include "Object.hpp"
+#include "GraphicsTypes.hpp"
 #include "LoadTypes.hpp"
 #include <string>
 #include <unordered_map>
@@ -134,6 +135,7 @@ private:
     friend class Driver;
     friend class MeshReader;
     friend class MeshWriter;
+    friend class Terrain;
 
 public:
     MeshBuffer();
@@ -156,6 +158,7 @@ public:
     void Build();
 
     void Render();
+    void Render(PrimitiveType type, u32 count);
     void Debug(RenderBatch *batch);
 
     void UpdateSkinning(Mesh *mesh);

@@ -140,6 +140,15 @@ void MeshBuffer::Render()
     buffer->Render(PrimitiveType::PT_TRIANGLES, indices.size());
 }
 
+void MeshBuffer::Render(PrimitiveType type, u32 count)
+{
+    if (m_idirty || m_vdirty)
+    {
+        Build();
+    }
+    buffer->Render(type, count);
+}
+
 void MeshBuffer::Debug(RenderBatch *batch)
 {
 

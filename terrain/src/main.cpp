@@ -642,7 +642,7 @@ int main()
       //  batch.Box(terrain->getTransformedBoundingBox());
 
 
-      ///  scene.terrain->Debug(&batch);
+      //  scene.terrain->Debug(&batch);
 
         batch.Render();
 
