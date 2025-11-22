@@ -4,6 +4,7 @@
 #include "GameObject.hpp"
 #include "Camera.hpp"
 #include "Frustum.hpp"
+#include "Terrain.hpp"
 #include "Mesh.hpp"
 #include "Texture.hpp"
 #include "Shader.hpp"
@@ -130,7 +131,7 @@ void Scene::Debug(RenderBatch *batch)
 
     for (u32 i = 0; i < m_objects.size(); i++)
     {
-        if (m_objects[i]->isShowBoxes())
+       // if (m_objects[i]->isShowBoxes())
             batch->Box(m_objects[i]->getTransformedBoundingBox());
     }
 
@@ -151,6 +152,20 @@ Node3D *Scene::createNode3D(const std::string &name, Node3D *parent)
     return node;
 }
 
+
+Terrain *Scene::createTerrain(const std::string &name, const std::string &heightmapPath, float scaleX, float scaleY, float scaleZ, float texScaleU, float texScaleV)
+{
+    Terrain *node = new Terrain(name);
+    if (!node->LoadFromHeightmap(heightmapPath, scaleX, scaleY, scaleZ, texScaleU, texScaleV))
+    {
+        delete node;
+        return nullptr;
+    }
+    node->setRenderType(RenderType::Terrain);
+    m_objects.push_back(node);
+    m_needRebuildLists = true;
+    return node;
+}
 
 GameObject *Scene::createGameObject(const std::string &name, Node3D *parent)
 {
@@ -234,12 +249,12 @@ void Scene::renderAll(Shader *shader)
     // Render all passes in order
     renderPass(shader, RenderType::Terrain);
     renderPass(shader, RenderType::Light);
-    renderPass(shader, RenderType::Sky);
     renderPass(shader, RenderType::Solid);
-    renderPass(shader, RenderType::Trasparent);
-    renderPass(shader, RenderType::Special);
     renderPass(shader, RenderType::Mirror);
     renderPass(shader, RenderType::Water);
+    renderPass(shader, RenderType::Trasparent);
+    renderPass(shader, RenderType::Special);
+    renderPass(shader, RenderType::Sky);
 }
 
 void Scene::SetCamera(Camera *camera)
@@ -275,6 +290,8 @@ void Scene::rebuildRenderLists()
     m_render_mirrors.clear();
     m_render_waters.clear();
     m_render_terrains.clear();
+
+ 
 
     // Cull and sort
     for (Node3D *object : m_objects)

@@ -35,6 +35,20 @@ public:
 			);
 	}
 
+	static Color FromUInt(u32 value)
+	{
+		u8 r = (u8)((value >> 16) & 0xFF);
+		u8 g = (u8)((value >> 8) & 0xFF);
+		u8 b = (u8)((value >> 0) & 0xFF);
+		u8 a = (u8)((value >> 24) & 0xFF);
+		return Color(r, g, b, a);
+	}
+	
+	static Color FromFloat(float r, float g, float b, float a = 1.0f)
+	{
+		return Color((u8)(r * 255.0f), (u8)(g * 255.0f), (u8)(b * 255.0f), (u8)(a * 255.0f));
+	}
+
 	// std::string ToString() const
 	// {
 	// 	char tempBuffer[128];

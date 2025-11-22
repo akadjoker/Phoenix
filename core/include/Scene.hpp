@@ -12,6 +12,7 @@ class Frustum;
 class Shader;
 class Camera;
 class Color;
+class Terrain;
 
 class SceneParser;
 
@@ -86,6 +87,8 @@ public:
 
     Node3D *createNode3D(const std::string &name = "Node3D", Node3D *parent = nullptr);
     GameObject *createGameObject(const std::string &name = "GameObject", Node3D *parent = nullptr);
+    
+    Terrain *createTerrain(const std::string &name,const std::string& heightmapPath,float scaleX, float scaleY, float scaleZ,float texScaleU = 1.0f, float texScaleV = 1.0f);
 
     const std::vector<Node3D *> &getObjects() const { return m_objects; }
 

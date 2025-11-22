@@ -32,7 +32,7 @@ Texture *Material::GetTexture(u32 index) const
     return nullptr;
 }
 
-MeshBuffer::MeshBuffer()
+MeshBuffer::MeshBuffer( const std::string &name) : Spatial(name)
 {
     buffer = new VertexArray();
     vb = nullptr;
@@ -381,8 +381,7 @@ void MeshBuffer::RemoveDuplicateVertices(float threshold)
 
             if (distSq > threshold * threshold)
                 return false;
-
-            // Também compara normais e UVs
+ 
             float dnx = a.nx - b.nx;
             float dny = a.ny - b.ny;
             float dnz = a.nz - b.nz;
@@ -406,7 +405,7 @@ void MeshBuffer::RemoveDuplicateVertices(float threshold)
     {
         const Vertex &v = vertices[i];
 
-        // Procura vértice similar
+ 
         bool found = false;
         for (size_t j = 0; j < uniqueVertices.size(); ++j)
         {
@@ -454,7 +453,7 @@ void MeshBuffer::Optimize()
         int bestTriangle = -1;
         int bestScore = -1;
 
-        // Encontra o melhor triângulo para adicionar
+  
         for (size_t i = 0; i < indices.size() / 3; ++i)
         {
             if (emitted[i])
@@ -465,8 +464,7 @@ void MeshBuffer::Optimize()
             u32 i2 = indices[i * 3 + 2];
 
             int score = 0;
-
-            // Pontos para vértices recentemente usados
+ 
             if (lastUsed[i0] >= 0 && (currentTime - lastUsed[i0]) < (int)cacheSize)
                 score += 10;
             if (lastUsed[i1] >= 0 && (currentTime - lastUsed[i1]) < (int)cacheSize)
@@ -480,8 +478,7 @@ void MeshBuffer::Optimize()
                 bestTriangle = (int)i;
             }
         }
-
-        // Se não encontrou nenhum, pega o primeiro não emitido
+ 
         if (bestTriangle < 0)
         {
             for (size_t i = 0; i < indices.size() / 3; ++i)
@@ -494,7 +491,7 @@ void MeshBuffer::Optimize()
             }
         }
 
-        // Adiciona o triângulo
+ 
         if (bestTriangle >= 0)
         {
             u32 i0 = indices[bestTriangle * 3 + 0];
@@ -2073,34 +2070,14 @@ Mesh* MeshManager::CreateTerrainFromPixmap(
     return mesh;
 }
 
-Terrain *MeshManager::CreateTerrain(const std::string &name, const std::string &heightmapPath, float scaleX, float scaleY, float scaleZ, float texScaleU, float texScaleV)
-{
-
-    auto it = m_terrains.find(name);
-    if (it != m_terrains.end())
-    {
-        LogWarning("[MeshManager] Terrain already exists: %s", name.c_str());
-        return it->second;
-    }
-
-    Terrain* terrain = new Terrain(name);
-    terrain->LoadFromHeightmap(heightmapPath, scaleX, scaleY, scaleZ, texScaleU, texScaleV);
-    m_terrains[name] = terrain;
-    return terrain;
-     
-}
+ 
 
 void MeshManager::UnloadAll()
 {
 
     
 
-
-    for (auto it = m_terrains.begin(); it != m_terrains.end(); it++)
-    {
-        delete it->second;
-    }
-    m_terrains.clear();
+ 
 
     for (auto it = m_meshes.begin(); it != m_meshes.end(); it++)
     {
@@ -3058,7 +3035,7 @@ bool AnimReader::ReadChannelChunk(Channel &channel)
     return true;
 }
 
-Visual::Visual(const std::string &name):Object(name)
+Visual::Visual(const std::string &name):Spatial(name)
 {
 }
 

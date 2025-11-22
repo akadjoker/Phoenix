@@ -110,8 +110,8 @@ scene
             name "Cube"
             type 4
             scale 1 1 1
-            rotation 0 0 0
-            position 5 0.5 2
+            rotation 0.677188 0 0
+            position 8.2 3.2 2
             flags 1
             renderType 0
             active true
@@ -177,7 +177,7 @@ scene
             type 4
             scale 1 1 1
             rotation 0 -2.71669 0
-            position 5 0.7 0
+            position -2.1 1.1 6.9
             flags 1
             renderType 0
             active true

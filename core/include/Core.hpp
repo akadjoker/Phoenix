@@ -33,6 +33,7 @@
 #include "Input.hpp"
 #include "Terrain.hpp"
 #include "GUI.hpp"
+#include "Effects.hpp"
  
 
 

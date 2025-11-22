@@ -25,7 +25,19 @@ enum class RenderType : u8
     Light
 };
 
-class Node : public Object
+
+class Spatial : public Object
+{
+protected:
+    BoundingBox m_boundBox;
+public:
+    Spatial(const std::string &name = "Spatial") : Object(name) {}
+    virtual ~Spatial() = default;
+    BoundingBox getBoundingBox() { return m_boundBox; }
+    const BoundingBox &getBoundingBox() const { return m_boundBox; }
+};
+
+class Node : public Spatial
 {
 protected:
     RenderType m_renderType;

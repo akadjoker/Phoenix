@@ -23,15 +23,15 @@ const int QUADS_HIGH = BLOCK_HEIGHT - 1;
 // Terrain Implementation
 // ============================================================================
 
-Terrain::Terrain(const std::string &name) : Visual(name)
+Terrain::Terrain(const std::string &name) : Node3D(name)
 {
     material = new Material();
-    materials.push_back(material);
     m_heightData = nullptr;
 }
 
 Terrain::~Terrain()
 {
+    delete material;
 
     for (MeshBuffer *buffer : m_blocks)
     {
@@ -107,7 +107,6 @@ bool Terrain::LoadFromHeightmap(const std::string &heightmapPath,
                 LogError("[Terrain] Failed to generate block (%d, %d)", bx, bz);
                 return false;
             }
- 
         }
     }
 
@@ -243,51 +242,56 @@ void Terrain::ApplyMaterial()
 
 }
 
-void Terrain::Render()
+void Terrain::render()
 {
     if (m_blocks.empty())
         return;
 
  
 
-    // const Frustum *frustum = Driver::Instance().GetFrustum();
-    // if (!frustum->intersectsAABB(m_boundBox))
+    const Frustum *frustum = Driver::Instance().GetFrustum();
+    // BoundingBox box = BoundingBox::Transform(getBoundingBox(), getWorldTransform());
+
+    // if (!frustum->intersectsAABB(box))
     //     return;
+
         
     ApplyMaterial(); 
 
 
-    // for (auto *block : m_blocks)
-    // {
-    //     if (!frustum->intersectsAABB(block->GetBoundingBox()))
-    //         continue;
+    for (auto *block : m_blocks)
+    {
+        BoundingBox blockBox = BoundingBox::Transform(block->GetBoundingBox(), getWorldTransform());
+
+        if (!frustum->intersectsAABB(blockBox))
+            continue;
+
          
 
-    //     Driver::Instance().DrawMeshBuffer(block, PrimitiveType::PT_TRIANGLE_STRIP, block->GetIndexCount());
+        Driver::Instance().DrawMeshBuffer(block, PrimitiveType::PT_TRIANGLE_STRIP, block->GetIndexCount());
  
-    // }      
-    
+    }      
      
 }
 
-void Terrain::Debug(RenderBatch *batch)
+void Terrain::renderDebug(RenderBatch *batch)
 {
   
 
     const Frustum *frustum = Driver::Instance().GetFrustum();
-   // if (!frustum->intersectsAABB(m_boundBox))
-   //     return;
+    if (!frustum->intersectsAABB(m_boundBox))
+        return;
         
      
 
 
     batch->SetColor(255, 0, 0);
-    batch->Box(m_boundBox);
+    batch->Box(getBoundingBox());
     batch->SetColor(0, 255, 0);
     for (auto *block : m_blocks)
     {
-       // if (!frustum->intersectsAABB(block->GetBoundingBox()))
-       //     continue;
+       if (!frustum->intersectsAABB(block->GetBoundingBox()))
+           continue;
         batch->Box(block->GetBoundingBox());
      
     }
@@ -383,8 +387,8 @@ bool Terrain::GenerateBlock(MeshBuffer* block, int blockX, int blockZ,
 
     block->Build();
     
-    LogInfo("[Terrain] Block (%d, %d): %d vertices, %d indices",
-            blockX, blockZ, block->GetVertexCount(), block->GetIndexCount());
+    // LogInfo("[Terrain] Block (%d, %d): %d vertices, %d indices",
+    //         blockX, blockZ, block->GetVertexCount(), block->GetIndexCount());
     
     return true;
 }

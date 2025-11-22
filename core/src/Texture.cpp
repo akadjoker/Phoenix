@@ -500,7 +500,7 @@ bool Texture::LoadFromFile(const char *path)
     int w, h, ch;
     void *img = nullptr;
 
-    stbi_set_flip_vertically_on_load(true);
+ 
     if (isHDR)
         img = stbi_loadf(path, &w, &h, &ch, 0);
     else
@@ -628,7 +628,7 @@ bool Texture::LoadCubeFromFiles(const std::vector<std::string> &paths)
     int w[6]{}, h[6]{}, ch[6]{};
     bool ok = true;
  
-    stbi_set_flip_vertically_on_load(false);
+   // stbi_set_flip_vertically_on_load(false);
     
     // Carrega todas as faces
     for (int i = 0; i < 6; i++)
@@ -943,6 +943,12 @@ Texture *TextureManager::Get(const std::string &name)
     return defaultTexture;
 }
 
+void TextureManager::SetFlipVerticalOnLoad(bool flip)
+{
+
+    stbi_set_flip_vertically_on_load(flip);
+}
+
 void TextureManager::Unload(const std::string &name)
 {
     auto it = m_textures.find(name);
@@ -984,6 +990,7 @@ void TextureManager::PrintStats() const
 
 void TextureManager::Init()
 {
+      stbi_set_flip_vertically_on_load(true);
     defaultPath ="assets/textures/";
     u8 whitePixel[] = {255, 255, 255, 255};
     defaultTexture = Create("white", 1, 1, TextureFormat::RGBA8, whitePixel);

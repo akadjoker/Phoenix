@@ -9,7 +9,7 @@ add_subdirectory(water)
 add_subdirectory(terrain)
 add_subdirectory(test_gui)
  
-#add_subdirectory(rtrender)
+add_subdirectory(effects)
 
 add_subdirectory(exporter)
  

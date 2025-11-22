@@ -1,8 +1,8 @@
 #pragma once
 #include "Config.hpp"
-#include "Object.hpp"
 #include "GraphicsTypes.hpp"
 #include "LoadTypes.hpp"
+#include "Node.hpp"
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -15,6 +15,8 @@ class MeshBuffer;
 class MeshManager;
 class Stream;
 class Texture;
+class Spatial;
+class Object;
 class Driver;
 class RenderBatch;
 class MeshWriter;
@@ -114,7 +116,7 @@ public:
     float GetShininess() const { return m_shininess; }
 };
 
-class MeshBuffer
+class MeshBuffer : public Spatial
 {
 private:
     std::vector<Vertex> vertices;
@@ -128,7 +130,7 @@ private:
     VertexArray *buffer;
     VertexBuffer *vb;
     IndexBuffer *ib;
-    BoundingBox m_boundBox;
+ 
     u32 m_material{0};
     friend class Mesh;
     friend class MeshManager;
@@ -138,7 +140,7 @@ private:
     friend class Terrain;
 
 public:
-    MeshBuffer();
+    MeshBuffer(const std::string &name = "MeshBuffer");
     ~MeshBuffer();
 
     void Clear();
@@ -353,12 +355,12 @@ public:
 };
 
 
-class Visual : public Object
+class Visual : public Spatial
 {
 
 protected:
     std::vector<Material *> materials;
-    BoundingBox m_boundBox;    
+   
 
     friend class MeshBuffer;
     friend class MeshManager;
@@ -701,10 +703,6 @@ public:
         int detailX = 128, int detailY = 128,
         float tilesU = 1.0f, float tilesV = 1.0f);
 
-    Terrain *CreateTerrain(const std::string &name,const std::string& heightmapPath,
-                          float scaleX, float scaleY, float scaleZ,
-                          float texScaleU = 1.0f, float texScaleV = 1.0f);
-    Terrain *GetTerrain(const std::string &name);
     
 
   
@@ -722,7 +720,7 @@ public:
 
 private:
     std::unordered_map<std::string, Mesh *> m_meshes;
-    std::unordered_map<std::string, Terrain *> m_terrains;
+   
     std::vector<MeshLoader *> m_loaders;
 };
 

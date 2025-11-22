@@ -15,7 +15,7 @@ class TerrainRenderer;
 
  
 
-class Terrain : public Visual
+class Terrain : public Node3D
 {
   
     float *m_heightData;
@@ -25,7 +25,7 @@ class Terrain : public Visual
     Material *material;
     std::vector<MeshBuffer *> m_blocks;
 
-    friend class TerrainRenderer;
+
 
     void FilterHeightMap();
 
@@ -46,9 +46,9 @@ public:
 
     u32 GetBlockCount() const { return m_blocks.size(); }
 
-    void Render() override;
+    void render() override;
 
-    void Debug(RenderBatch *batch) override;
+    void renderDebug(RenderBatch *batch) ;
 
     void ApplyMaterial();
 

@@ -397,7 +397,7 @@ public:
    
         waterCamera->copyFrom(camera);
 
-        terrain = MeshManager::Instance().CreateTerrain("terrain", "assets/terrain-heightmap.png",   
+        terrain = createTerrain("terrain", "assets/terrain-heightmap.png",   
                            1.1f,   // scaleX
                            20.0f,  // scaleY (altura)
                            1.1f,   // scaleZ
@@ -409,16 +409,19 @@ public:
             LogError("[Main] Failed to create terrain");
             return false;
         }
+        terrain->setPosition(0,-5,0);
 
    
 
         TextureManager::Instance().SetLoadPath("assets/");
+
+        
        
-        terrain->SetTexture(0, TextureManager::Instance().Add("terr_dirt-grass.jpg", true)); // grass
-        terrain->SetTexture(1, TextureManager::Instance().Add("terr_rock-dirt.jpg", true));  // dirt
-        terrain->SetTexture(2, TextureManager::Instance().Add("terr_rock6.jpg", true));      // rock
-        terrain->SetTexture(3, TextureManager::Instance().Add("snow_1024.jpg", true));       // snow
-        terrain->SetTexture(4, TextureManager::Instance().Add("detailmap3.jpg", true));      // detail 4 all
+        terrain->GetMaterial()->SetTexture(0, TextureManager::Instance().Add("terr_dirt-grass.jpg", true)); // grass
+        terrain->GetMaterial()->SetTexture(1, TextureManager::Instance().Add("terr_rock-dirt.jpg", true));  // dirt
+        terrain->GetMaterial()->SetTexture(2, TextureManager::Instance().Add("terr_rock6.jpg", true));      // rock
+        terrain->GetMaterial()->SetTexture(3, TextureManager::Instance().Add("snow_1024.jpg", true));       // snow
+        terrain->GetMaterial()->SetTexture(4, TextureManager::Instance().Add("detailmap3.jpg", true));      // detail 4 all
 
         
 
@@ -481,13 +484,7 @@ public:
             skyObj->addComponent<MeshRenderer>(skymesh);
         }
 
-        {
-            GameObject *terrainObj = createGameObject("terrain");
-            terrainObj->setRenderType(RenderType::Terrain);
-            terrainObj->addComponent<TerrainRenderer>(terrain);
-            terrainObj->setPosition(0, -5, 0); // Abaixo da água
-        }
-
+ 
         
         auto &rtMgr = RenderTargetManager::Instance();
 
@@ -605,7 +602,7 @@ int main()
     scene.OnResize(device.GetWidth(), device.GetHeight());
 
 
-    GameObject *terrain = scene.getGameObjectByName("terrain");
+    //GameObject *terrain = scene.getGameObjectByName("terrain");
 
     while (device.Run())
     {

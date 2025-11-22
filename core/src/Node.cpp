@@ -15,7 +15,7 @@ void Node::deserialize(const Serialize &in)
 }
 
 Node::Node(const std::string &name)
-    : Object(name)
+    : Spatial(name)
 {
 }
 

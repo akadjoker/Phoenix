@@ -23,6 +23,7 @@ const float M_INFINITY = 1.0e30f;
 #define ToRadians(x) (float)(((x) * Pi / 180.0f))
 #define ToDegrees(x) (float)(((x) * 180.0f / Pi))
 
+inline float Lerp(float a, float b, float t) { return a + (b - a) * t; } 
 inline float Sin(float a) { return sin(a * Pi / 180); }
 inline float Cos(float a) { return cos(a * Pi / 180); }
 inline float Tan(float a) { return tan(a * Pi / 180); }

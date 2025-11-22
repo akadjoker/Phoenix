@@ -113,6 +113,8 @@ public:
   
     Texture *Get(const std::string &name);
 
+    void SetFlipVerticalOnLoad(bool flip);
+
  
     void Unload(const std::string &name);
     void UnloadAll();

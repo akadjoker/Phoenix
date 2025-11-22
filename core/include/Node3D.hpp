@@ -50,7 +50,7 @@ protected:
     u32 m_flags;
     std::vector<Node3D *> m_children;
 
-    BoundingBox m_boundBox;
+ 
 
     void updateLocalTransform() const;
     void updateWorldTransform() const;
@@ -140,8 +140,7 @@ public:
 
     virtual void lookAt(const Vec3 &target, TransformSpace targetSpace = TransformSpace::World, const Vec3 &up = Vec3(0, 1, 0));
 
-    BoundingBox getBoundingBox() { return m_boundBox; }
-    const BoundingBox &getBoundingBox() const { return m_boundBox; }
+
     const BoundingBox getTransformedBoundingBox() const;
 
     void setPickable(bool enabled);

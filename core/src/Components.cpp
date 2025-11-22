@@ -28,7 +28,7 @@ void MeshRenderer::attach()
 
     m_owner->getWorldTransform();
 
-    m_owner->m_boundBox.expand(mesh->GetBoundingBox());
+    m_owner->m_boundBox.expand(mesh->getBoundingBox());
 
     //  LogInfo("[MeshRenderer] Bounding mesh Box: %f %f %f", mesh->GetBoundingBox().min.x, mesh->GetBoundingBox().min.y, mesh->GetBoundingBox().min.z);
     //  LogInfo("[MeshRenderer] Bounding mesh Box: %f %f %f", mesh->GetBoundingBox().max.x, mesh->GetBoundingBox().max.y, mesh->GetBoundingBox().max.z);
@@ -208,42 +208,4 @@ void FreeCameraComponent::setYaw(float yawDeg)
     Quat rotation = Quat::FromEulerAnglesDeg(m_pitch, m_yaw, 0.0f);
     m_camera->setRotation(rotation, TransformSpace::World);
 }
-
-TerrainRenderer::TerrainRenderer(Terrain *t)
-{
-    terrain = t;
-    visible = true;
-}
-
-void TerrainRenderer::attach()
-{
-    m_owner->getWorldTransform();
-    m_owner->m_boundBox.merge(terrain->GetBoundingBox());
-}
-
-void TerrainRenderer::render()
-{
-
-    if (visible)
-    {
-
-        const Frustum *frustum = Driver::Instance().GetFrustum();
-        BoundingBox box = BoundingBox::Transform(terrain->GetBoundingBox(), m_owner->getWorldTransform());
-
-        if (!frustum->intersectsAABB(box))
-            return;
-
-        terrain->Render();
-
-        for (auto *block : terrain->m_blocks)
-        {
-
-            BoundingBox blockBox = BoundingBox::Transform(block->GetBoundingBox(), m_owner->getWorldTransform());
-
-            if (!frustum->intersectsAABB(blockBox))
-                continue;
-
-            Driver::Instance().DrawMeshBuffer(block, PrimitiveType::PT_TRIANGLE_STRIP, block->GetIndexCount());
-        }
-    }
-}
+ 

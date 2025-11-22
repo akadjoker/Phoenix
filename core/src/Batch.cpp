@@ -1082,8 +1082,84 @@ void RenderBatch::Grid(int slices, float spacing, bool axes)
 //     Line3D(edges[5], edges[4]);
 // }
 
+
+void RenderBatch::QuadCentered(Texture *texture, float x, float y, 
+                               float size, const FloatRect &clip)
+{
+    float left = 0, right = 1, top = 0, bottom = 1;
+    int textureWidth = 1, textureHeight = 1;
+
+    if (texture != nullptr)
+    {
+        textureWidth = texture->GetWidth();
+        textureHeight = texture->GetHeight();
+        SetTexture(texture->GetHandle());
+        
+        left = (2.0f * clip.x + 1.0f) / (2.0f * textureWidth);
+        right = left + (clip.width * 2.0f - 2.0f) / (2.0f * textureWidth);
+        top = (2.0f * clip.y + 1.0f) / (2.0f * textureHeight);
+        bottom = top + (clip.height * 2.0f - 2.0f) / (2.0f * textureHeight);
+    }
+
+    float quadSize = size * 80.0f;
+
+    Vec2 coords[4] = {
+        {x - quadSize, y - quadSize},  // top-left
+        {x - quadSize, y + quadSize},  // bottom-left
+        {x + quadSize, y + quadSize},  // bottom-right
+        {x + quadSize, y - quadSize}   // top-right
+    };
+
+    Vec2 texcoords[4] = {
+        {left, top},
+        {left, bottom},
+        {right, bottom},
+        {right, top}
+    };
+
+    Quad(coords, texcoords);
+}
+
+void RenderBatch::Quad(Texture *texture,float x1, float y1, float x2, float y2, const FloatRect &src)
+{
+  
+    float left = 0, right = 1, top = 0, bottom = 1;
+    int widthTex = 1, heightTex = 1;
+
+    if (texture != nullptr)
+    {
+        widthTex = texture->GetWidth();
+        heightTex = texture->GetHeight();
+        SetTexture(texture->GetHandle());
+        
+        left = (2.0f * src.x + 1.0f) / (2.0f * widthTex);
+        right = left + (src.width * 2.0f - 2.0f) / (2.0f * widthTex);
+        top = (2.0f * src.y + 1.0f) / (2 * heightTex);
+        bottom = top + (src.height * 2.0f - 2.0f) / (2.0f * heightTex);
+    }
+
+    Vec2 coords[4] = {
+        {x1, y1},    // top-left
+        {x1, y2},    // bottom-left
+        {x2, y2},    // bottom-right
+        {x2, y1}     // top-right
+    };
+
+    Vec2 texcoords[4] = {
+        {left, top},
+        {left, bottom},
+        {right, bottom},
+        {right, top}
+    };
+
+    Quad(coords, texcoords);
+}
+
+
+
 void RenderBatch::Quad(const Vec2 *coords, const Vec2 *texcoords)
 {
+    
     SetMode(QUAD);
 
     TexCoord2f(texcoords[0].x, texcoords[0].y);

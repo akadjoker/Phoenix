@@ -260,7 +260,7 @@ IndexBuffer::IndexBuffer(u32 iCount, bool dynamic, bool use16Bit)
     CHECK_GL_ERROR(glGenBuffers(1, &m_ibo));
     CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ibo));
     
-    size_t size = m_indexCount * (m_is16Bit ? sizeof(uint16_t) : sizeof(u32));
+    size_t size = m_indexCount * (m_is16Bit ? sizeof(s16) : sizeof(u32));
     GLenum usage = dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
     
     CHECK_GL_ERROR(glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, nullptr, usage));
@@ -311,7 +311,7 @@ void IndexBuffer::SetSubData(u32 offset, u32 count, const void* data)
 
     if (offset + count > m_indexCount)
     {
-        LogError("IndexBuffer::setSubData - offset + count exceeds buffer size\n");
+        LogError("IndexBuffer::setSubData -  count %d  exceeds buffer size %d", offset + count ,m_indexCount);
         return;
     }
 

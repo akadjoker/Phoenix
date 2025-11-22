@@ -81,13 +81,12 @@ public:
     void TexturedQuad(const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, const Vec2 &p4, const Vec2 &uv1, const Vec2 &uv2, const Vec2 &uv3, const Vec2 &uv4, unsigned int textureId);
     void TexturedTriangle(const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, unsigned int textureId);
     void TexturedTriangle(const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, const Vec2 &uv1, const Vec2 &uv2, const Vec2 &uv3, unsigned int textureId);
-    
+
     void BezierQuadratic(const Vec2 &p0, const Vec2 &p1, const Vec2 &p2, int segments = 20);
     void BezierCubic(const Vec2 &p0, const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int segments = 30);
     void CatmullRomSpline(const Vec2 *points, int pointCount, int segments = 20);
     void BSpline(const Vec2 *points, int pointCount, int segments = 20, int degree = 3);
     void HermiteSpline(const HermitePoint *points, int pointCount, int segments = 20);
-    
 
     // Spline com espessura
     void ThickSpline(const Vec2 *points, int pointCount, float thickness, int segments = 20);
@@ -113,6 +112,8 @@ public:
     void Quad(Texture *texture, float x, float y, float width, float height);
     void Quad(Texture *texture, const FloatRect &src, float x, float y, float width, float height);
     void Quad(u32 texture, float x, float y, float width, float height);
+    void Quad(Texture *texture, float x1, float y1, float x2, float y2, const FloatRect &src);
+    void QuadCentered(Texture *texture, float x, float y, float size, const FloatRect &clip);
 
     void BeginTransform(const Mat4 &transform);
     void EndTransform();

@@ -1812,7 +1812,7 @@ Mat4 operator*(float scalar, const Mat4 &mat)
 
 // ==================== BoundingBox ====================
 
-BoundingBox::BoundingBox() : min(Vec3(0, 0, 0)), max(Vec3(0, 0, 0)) {}
+BoundingBox::BoundingBox() : min(Vec3(MAXFLOAT, MAXFLOAT, MAXFLOAT)), max(Vec3(-MAXFLOAT, -MAXFLOAT, -MAXFLOAT)) {}
 
 BoundingBox::BoundingBox(const Vec3 &min, const Vec3 &max) : min(min), max(max) {}
 

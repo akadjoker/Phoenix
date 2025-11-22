@@ -11,18 +11,8 @@
 class RenderBatch;
 class Font;
 
-#pragma once
-
-#include "Config.hpp"
-#include "Math.hpp"
-#include "Color.hpp"
-
-#include <string>
-#include <vector>
-#include <unordered_map>
-
-class RenderBatch;
-class Font;
+ 
+ 
 
 enum class Orientation
 {
