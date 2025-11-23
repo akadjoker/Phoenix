@@ -7,6 +7,7 @@ add_subdirectory(core)
 add_subdirectory(main)
 add_subdirectory(water)
 add_subdirectory(terrain)
+add_subdirectory(terrains)
 add_subdirectory(test_gui)
  
 add_subdirectory(effects)

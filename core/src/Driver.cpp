@@ -4,6 +4,7 @@
 #include "Texture.hpp"
 #include "Shader.hpp"
 #include "Frustum.hpp"
+#include "Camera.hpp"
 
 extern u32 CalculatePrimitiveCount(PrimitiveType type, u32 vertexCount);
 extern u32 ToGLTextureType(TextureType type);
@@ -126,12 +127,17 @@ void Driver::DrawMesh(Mesh *mesh)
 void Driver::DrawElements(u32 mode, u32 count, u32 type, const void *indices)
 {
     m_countDrawCall++;
+
+    m_countTriangle += CalculatePrimitiveCount(static_cast<PrimitiveType>(mode), count);
+    
     CHECK_GL_ERROR(glDrawElements(mode, count, type, indices));
 }
 
 void Driver::DrawArrays(u32 mode, u32 first, u32 count)
 {
     m_countDrawCall++;
+    m_countTriangle += CalculatePrimitiveCount(static_cast<PrimitiveType>(mode), count);
+
     CHECK_GL_ERROR(glDrawArrays(mode, first, count));
 }
 
@@ -653,6 +659,16 @@ void Driver::DrawScreenQuad(float x, float y, float w, float h)
 void Driver::DrawScreenQuad()
 {
     m_quadRenderer.render();
+}
+
+void Driver::SetCamera(Camera *camera)
+{
+    m_camera = camera;
+}
+
+Camera *Driver::GetCamera() const
+{
+    return m_camera;
 }
 
 void Driver::SaveViewPort()

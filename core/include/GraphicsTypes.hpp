@@ -212,3 +212,25 @@ enum class TransformState : int
 
     COUNT
 };
+
+enum PatchSize
+{
+    PATCH_9 = 9,
+    PATCH_17 = 17,
+    PATCH_33 = 33,
+    PATCH_65 = 65,
+    PATCH_129 = 129
+};
+ 
+struct Vertex
+{
+    float x, y, z;
+    float nx, ny, nz;
+    float u, v;
+};
+
+struct VertexSkin
+{
+    u8 boneIDs[4];
+    float weights[4];
+};

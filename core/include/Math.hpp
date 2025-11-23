@@ -13,10 +13,18 @@ const float Pi = 3.141592654f;
 const float TwoPi = 6.283185307f;
 const float PiHalf = 1.570796327f;
 
+const double PI64 = 3.1415926535897932384626433832795028841971693993751;
+const double RECIPROCAL_PI64 = 1.0 / PI64;
+ 
+const double DEGTORAD64 = PI64 / 180.0;
+const double RADTODEG64 = 180.0 / PI64;
+const float ROUNDING_ERROR_f32 = 0.000001f;
+const double ROUNDING_ERROR_f64 = 0.00000001;
+const float M_INFINITY = 1.0e30f;
 const float Epsilon = 0.000001f;
 const float ZeroEpsilon = 32.0f * MinPosFloat; // Very small epsilon for checking against 0.0f
 
-const float M_INFINITY = 1.0e30f;
+ 
 
 #define powi(base, exp) (int)powf((float)(base), (float)(exp))
 
@@ -108,6 +116,19 @@ inline int Clamp(int a, int min, int max)
     else if (a > max)
         a = max;
     return a;
+}
+inline float isZero(float v, float eps = 1e-6)
+{
+    return std::fabs(v) <= eps;
+};
+
+inline float Reciprocal(float v, float eps = 1e-12f)
+{
+    return (std::fabs(v) <= eps) ? 0.0f : 1.0f / v;
+}
+inline bool Equals(const float a, const float b, const float tolerance = ROUNDING_ERROR_f32)
+{
+    return (a + tolerance >= b) && (a - tolerance <= b);
 }
 
 template <typename T>
@@ -352,6 +373,8 @@ public:
     static Vec3 Lerp(const Vec3 &a, const Vec3 &b, float t);
     static Vec3 Min(const Vec3 &a, const Vec3 &b);
     static Vec3 Max(const Vec3 &a, const Vec3 &b);
+    static Vec3 Zero;
+    static Vec3 One;
 };
 
 // Scalar * Vec3
@@ -529,6 +552,9 @@ public:
     Vec3 TransformPoint(const Vec3 &point) const;
     Vec3 TransformVector(const Vec3 &vec) const;
     void TransformBox(BoundingBox &box) const;
+    Vec3 getTranslation() const;
+    Vec3 getScale() const;
+    Vec3 getRotationDegrees() const;
 
     // Funções de criação de transformações
     static Mat4 Identity();
@@ -584,6 +610,11 @@ struct BoundingBox
     void expand(float x, float y, float z);
     void expand(const Vec3 &point);
     void expand(const BoundingBox &other);
+    void addPoint(float x, float y, float z);
+    void addPoint(const Vec3 &point);
+    Vec3 getCenter() const;
+    Vec3 getExtent() const;
+    void reset(const Vec3 &point);
     void clear();
     Vec3 center() const;
     Vec3 size() const;

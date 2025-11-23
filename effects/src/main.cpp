@@ -22,9 +22,9 @@ class MainScene : public Scene
     float mouseSensitivity{0.8f};
     float roll = 3.0;
     Vec3 lightPos = Vec3(-2.0f, 8.0f, -4.0f);
-    
-    public:
-    GameObject* nodeLight;
+
+public:
+    GameObject *nodeLight;
     void OnRender() override
     {
 
@@ -208,44 +208,84 @@ int main()
     TextureManager::Instance().SetFlipVerticalOnLoad(false);
 
     Texture *flareTexture = TextureManager::Instance().Add("sprites.png", false);
-        TextureManager::Instance().SetFlipVerticalOnLoad(true);
+    TextureManager::Instance().SetFlipVerticalOnLoad(true);
     Texture *trailTex = TextureManager::Instance().Add("trail.png", false);
     Texture *ribonTex = TextureManager::Instance().Add("beam.png", false);
+    Texture *grassTexture = TextureManager::Instance().Add("grass1.png", true);
+    Texture *treeTexture = TextureManager::Instance().Add("grass2.png", true);
 
     LensFlare lensFlare(flareTexture);
     Shader *trailShader = ShaderManager::Instance().Load("trailShader",
-                                                       "assets/shaders/effect.vs",
-                                                       "assets/shaders/effect.fs");
+                                                         "assets/shaders/effect.vs",
+                                                         "assets/shaders/effect.fs");
 
     TrailRenderer *trail = new TrailRenderer(trailTex, 50, 2.0f);
     trail->SetWidth(0.5f, 0.05f);                  // Start large, end thin
     trail->SetColor(Vec3(1, 1, 1), Vec3(1, 0, 1)); // Yellow to red
     trail->SetMinDistance(0.1f);                   // Add point every 0.1 units
+    trail->SetOrientation(true);                   // Use fixed normal
+    // trail->SetFixedNormal(Vec3(1, 0, 0)); // Up vector
 
     Vec3 objectPosition = Vec3(0, 2, 0);
     float angle = 0.0f;
     float time = 0.0f;
 
-    RibbonTrail* ribbon = new RibbonTrail(50, 2);
-    ribbon->SetTrailLength(2.0f);
-    ribbon->SetMinDistance(0.1f);
+    RibbonTrail *ribbon = new RibbonTrail(100, 2);
+    float radius = 5.0f;
+    float angle2 = 0.0f;
+    Vec3 pos0, pos1, pos2, pos3;
 
-    // Chain 0 - Engine esquerda
-    ribbon->AddNode(scene.nodeLight, 0);
-    ribbon->SetChainOffset(0, Vec3(-1, 0, -2));
-    ribbon->SetInitialColor(0, Vec3(1, 1.0f, 1));  // Laranja
+    ribbon->SetChainPosition(0, &pos0);
+    ribbon->SetChainPosition(1, &pos1);
+
+    // Configurar aparência
+    ribbon->SetInitialColor(0, Vec3(0.2f, 0.4f, 1.0f)); // Azul brilhante
+    ribbon->SetInitialColor(1, Vec3(0.2f, 0.4f, 1.0f));
     ribbon->SetInitialWidth(0, 0.3f);
-    ribbon->SetWidthChange(0, -0.25f);
-
-    //Chain 1 - Engine direita
-    ribbon->AddNode(scene.nodeLight, 1);
-    ribbon->SetChainOffset(1, Vec3(1, 0, -2));
-    ribbon->SetInitialColor(1, Vec3(0, 0.5f, 1));  // Azul
     ribbon->SetInitialWidth(1, 0.3f);
-    ribbon->SetWidthChange(1, -0.25f);
-
+    ribbon->SetTrailLength(0.8f);
+    ribbon->SetMinDistance(0.05f);
     ribbon->SetTexture(ribonTex);
-  
+    ribbon->SetConnectionAtachment(true);
+
+    StaticBillboardBatch *grass = new StaticBillboardBatch(StaticBillboardBatch::BillboardType::Cross);
+
+    grass->SetTexture(grassTexture);
+    grass->SetDefaultSize(Vec2(0.5f, 0.8f));
+
+    grass->Begin();
+
+    for (int x = 0; x < 100; x++)
+    {
+        for (int z = 0; z < 100; z++)
+        {
+            Vec3 pos(x * 0.5f, 1, z * 0.5f);
+            Vec3 normal(0, 1, 0); // Chão plano
+
+            float variation = (rand() % 100) / 100.0f * 0.2f;
+            Vec4 color(0.3f + variation, 0.8f + variation, 0.3f, 1.0f);
+
+            grass->AddPoint(pos, normal, Vec2(0.5f, 0.8f), color);
+        }
+    }
+
+    grass->End();
+
+
+    BillboardSet* trees = new BillboardSet(100, BillboardSet::BillboardType::CrossY);
+    trees->SetTexture(treeTexture);
+
+    for (int i = 0; i < 50; i++)
+    {
+        Vec3 pos(rand() % 100 - 50, 0, rand() % 100 - 50);
+        trees->AddBillboard(pos, Vec2(3.0f, 4.0f));
+    }
+
+    DecalManager* decals = new DecalManager(200);
+    decals->SetTexture(treeTexture);
+    decals->SetDefaultLifetime(1.0f);  // 15 segundos
+    decals->SetDefaultFadeStart(0.8f);  // Fade nos últimos 20%
+
 
     while (device.Run())
     {
@@ -273,25 +313,49 @@ int main()
         scene.Render();
 
 
+        if (Input::IsMouseDown(MouseButton::RIGHT))
+        {
+            Vec3 pos = Vec3(0, 2, 5);
+            Vec3 normal = Vec3(0, 1, 0);
+        
+            decals->AddDecal(pos, normal);
+        }
 
         time += dt;
-        angle += dt * 2.0f;  // Rotate 2 rad/s
-        
+        angle += dt * 2.0f; // Rotate 2 rad/s
+        angle2 += dt;
+
+        pos0.x = cos(angle) * radius;
+        pos0.z = sin(angle) * radius;
+        pos0.y = 3.0f + sin(angle * 2.0f) * 1.0f;
+
+        // Base da espada: circula no mesmo ponto mas mais baixo
+        pos1.x = cos(angle) * radius * 0.3f;
+        pos1.z = sin(angle) * radius * 0.3f;
+        pos1.y = 2.0f + sin(angle * 2.0f) * 0.3f;
+
         // Move object in circular pattern
         float radius = 3.0f;
         objectPosition.x = cos(angle) * radius;
         objectPosition.z = sin(angle) * radius;
-        objectPosition.y = 2.0f + sin(angle * 2.0f) * 0.5f;  // Up and down
-        
+        objectPosition.y = 2.0f + sin(angle * 2.0f) * 0.5f; // Up and down
+
         // Add point to trail
         trail->AddPoint(objectPosition, time);
         trail->Update(time);
+        decals->Update(dt);
+
         ribbon->Update(time, scene.getCamera());
+        trees->Update(scene.getCamera());
+
         trailShader->Bind();
         trailShader->SetUniformMat4("projection", proj.m);
         trailShader->SetUniformMat4("view", view.m);
-        trail->Render( scene.getCamera ());
-        ribbon->Render( );
+        trail->Render(scene.getCamera());
+        ribbon->Render();
+        grass->Render();
+        trees->Render();
+        decals->Render();
 
         batch.SetMatrix(mvp);
         driver.SetDepthTest(true);
@@ -351,6 +415,9 @@ int main()
         device.Flip();
     }
 
+    delete decals;
+    delete trees;
+    delete grass;
     delete ribbon;
     delete trail;
     scene.Release();

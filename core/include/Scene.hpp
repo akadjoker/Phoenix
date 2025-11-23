@@ -2,6 +2,7 @@
 #include "Config.hpp"
 #include "Math.hpp"
 #include "Node.hpp"
+#include "GraphicsTypes.hpp"
 #include <vector>
 #include <unordered_map>
 
@@ -13,7 +14,7 @@ class Shader;
 class Camera;
 class Color;
 class Terrain;
-
+class TerrainLod;
 class SceneParser;
 
 class Scene
@@ -87,12 +88,20 @@ public:
 
     Node3D *createNode3D(const std::string &name = "Node3D", Node3D *parent = nullptr);
     GameObject *createGameObject(const std::string &name = "GameObject", Node3D *parent = nullptr);
-    
-    Terrain *createTerrain(const std::string &name,const std::string& heightmapPath,float scaleX, float scaleY, float scaleZ,float texScaleU = 1.0f, float texScaleV = 1.0f);
+
+    Terrain *createTerrain(const std::string &name, const std::string &heightmapPath, float scaleX, float scaleY, float scaleZ, float texScaleU = 1.0f, float texScaleV = 1.0f);
+    TerrainLod *createTerrainLod(const std::string &name,const std::string &heightmapPath,
+                                 int maxLOD = 4,
+                                 PatchSize patchSize = PATCH_17,
+                                 const Vec3 &position = Vec3(0, 0, 0),
+                      
+                                 const Vec3 &scale = Vec3(1, 1, 1),
+                                 float heightScale = 1.0f,
+                                 int smoothFactor = 0);
 
     const std::vector<Node3D *> &getObjects() const { return m_objects; }
 
-    GameObject * getGameObjectByName(const std::string &name) const;
+    GameObject *getGameObjectByName(const std::string &name) const;
 
     Camera *getActiveCamera() const { return ActiveCamera; }
 
@@ -105,11 +114,12 @@ public:
 
 protected:
     virtual void OnRender() = 0;
+    virtual void OnDebug(RenderBatch *batch) {};
     virtual void OnUpdate(float dt) {};
     virtual bool OnCreate() { return true; }
     virtual void OnDestroy() {}
     virtual void OnResize(u32 w, u32 h) {}
-    virtual void OnSerialize(Serialize& obj) {}
+    virtual void OnSerialize(Serialize &obj) {}
 
     void rebuildRenderLists();
 };
@@ -139,7 +149,6 @@ protected:
     bool HasMoreLines() const;
     void SkipEmptyLines();
 
-
     bool ParseScene(Scene &scene);
     bool ParseObjects(Scene &scene);
     bool ParseObject(Serialize &obj);
@@ -149,15 +158,11 @@ protected:
         int indent,
         const Serialize &s);
 
-
-        void WritePropertyLine(
-    std::string &output,
-    int indent,
-    const std::string &key,
-    const Property &prop);
+    void WritePropertyLine(
+        std::string &output,
+        int indent,
+        const std::string &key,
+        const Property &prop);
 
     bool ParseProperty(const std::string &line, std::string &key, std::string &value);
- 
-
- 
 };

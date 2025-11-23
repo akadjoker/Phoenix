@@ -114,6 +114,7 @@ void Scene::Release()
 
 void Scene::Debug(RenderBatch *batch)
 {
+    OnDebug(batch);
     // for (auto *m : m_meshes)
     // {
     //     batch->SetColor(255, 0, 0);
@@ -132,8 +133,16 @@ void Scene::Debug(RenderBatch *batch)
     for (u32 i = 0; i < m_objects.size(); i++)
     {
        // if (m_objects[i]->isShowBoxes())
+          //  batch->Box(m_objects[i]->getTransformedBoundingBox());
+    }
+
+    for (u32 i = 0; i < m_objects.size(); i++)
+    {
+      //  m_objects[i]->debug(batch);
+        if (m_objects[i]->isShowBoxes())
             batch->Box(m_objects[i]->getTransformedBoundingBox());
     }
+
 
 
 
@@ -162,6 +171,16 @@ Terrain *Scene::createTerrain(const std::string &name, const std::string &height
         return nullptr;
     }
     node->setRenderType(RenderType::Terrain);
+    m_objects.push_back(node);
+    m_needRebuildLists = true;
+    return node;
+}
+
+TerrainLod *Scene::createTerrainLod(const std::string &name, const std::string &heightmapPath,int maxLOD, PatchSize patchSize, const Vec3 &position,   const Vec3 &scale,float heightScale ,int smoothFactor)
+{
+    TerrainLod *node = new TerrainLod(name, maxLOD, patchSize, position,   scale);
+    node->setRenderType(RenderType::Terrain);
+    node->LoadHeightMap( heightmapPath);  
     m_objects.push_back(node);
     m_needRebuildLists = true;
     return node;
@@ -197,6 +216,7 @@ GameObject *Scene::getGameObjectByName(const std::string &name) const
 void Scene::setActiveCamera(Camera *camera)
 {
     ActiveCamera = camera;
+    Driver::Instance().SetCamera(camera);
 }
 
 const Mat4 &Scene::getViewMatrix() const
@@ -264,6 +284,7 @@ void Scene::SetCamera(Camera *camera)
         LogWarning("[Scene] Scene is not ready");
         return;
     }
+    Driver::Instance().SetCamera(camera);
     ActiveCamera = camera;
     m_view = ActiveCamera->getViewMatrix();
     m_proj = ActiveCamera->getProjectionMatrix();
@@ -367,14 +388,17 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
 
     if (renderPass == RenderType::Sky)
     {
+        glDepthFunc(GL_LEQUAL);
+        
         for (Node3D *object : m_render_skyes)
         {
             if (!object->isActive())
-                continue;
+            continue;
             const Mat4 model = object->getWorldTransform();
             shader->SetUniformMat4("model", model.m);
             object->render();
         }
+        glDepthFunc(GL_LESS);
     }
 
     if (renderPass == RenderType::Terrain)

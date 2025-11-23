@@ -468,9 +468,13 @@ public:
             "cloudy_noon_DN.jpg", // [3] NEGATIVE_Y = Bottom
             "cloudy_noon_FR.jpg", // [4] POSITIVE_Z = Front
             "cloudy_noon_BK.jpg", // [5] NEGATIVE_Z = Back
-
+            
         };
+        
+        TextureManager::Instance().SetFlipVerticalOnLoad(false);
         Texture *cubemap = TextureManager::Instance().AddCube("cubemap", files, false);
+        TextureManager::Instance().SetFlipVerticalOnLoad(true);
+
         skymesh->AddMaterial("main")->SetTexture(0, cubemap);
 
         TextureManager::Instance().SetLoadPath("assets/");

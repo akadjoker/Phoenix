@@ -8,7 +8,7 @@
 class Mesh;
 class MeshBuffer;
 class Frustum;
-
+class Camera;
 
 
 const unsigned CLEAR_NONE = 0u;
@@ -139,6 +139,9 @@ public:
     
     Frustum *GetFrustum() { return m_frustum; }
 
+    void SetCamera(Camera *camera);
+    Camera *GetCamera() const;
+
 
 private:
     Driver();
@@ -170,7 +173,8 @@ private:
     u32 m_countPrograms = 0;
     u32 m_countTextures = 0;
 
-      Frustum *m_frustum;
+    Frustum *m_frustum;
+    Camera *m_camera;
 
     ScreenQuad m_quadRenderer;
 

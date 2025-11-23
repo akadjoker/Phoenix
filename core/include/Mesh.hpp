@@ -57,18 +57,6 @@ struct ChunkHeader
 
 const u32 MAX_TEXTURES = 6;
 
-struct Vertex
-{
-    float x, y, z;
-    float nx, ny, nz;
-    float u, v;
-};
-
-struct VertexSkin
-{
-    u8 boneIDs[4];
-    float weights[4];
-};
 
 struct Bone
 {
@@ -130,6 +118,10 @@ private:
     VertexArray *buffer;
     VertexBuffer *vb;
     IndexBuffer *ib;
+
+    bool m_DynamicVertexBuffer = false;
+    bool m_DynamicIndexBuffer = false;
+ 
  
     u32 m_material{0};
     friend class Mesh;
@@ -143,7 +135,18 @@ public:
     MeshBuffer(const std::string &name = "MeshBuffer");
     ~MeshBuffer();
 
+
+    void SetDynamicVertexBuffer(bool dynamic) { m_DynamicVertexBuffer = dynamic; }
+    void SetDynamicIndexBuffer(bool dynamic) { m_DynamicIndexBuffer = dynamic; }
+ 
+
+    VertexBuffer* CreateVertexBuffer(u32 vertexCount, bool dynamic = false);
+    IndexBuffer* CreateIndexBuffer(u32 indexCount, bool dynamic = false);
+
     void Clear();
+    
+    void ClearVertices();
+    void ClearIndices();
 
     u32 AddVertex(const Vertex &v);
     u32 AddVertex(float x, float y, float z, float u, float v);
@@ -209,6 +212,12 @@ public:
     }
     const Vertex *GetVertices() const { return vertices.data(); }
     const u32 *GetIndices() const { return indices.data(); }
+
+    Vec3 GetVertexPosition(u32 index) const;
+    
+    Vertex& GetVertex(u32 index);
+    Vertex GetVertex(u32 index) const;
+    void SetVertex(u32 index, const Vertex &vertex);
 };
 
 struct AnimationKeyframe

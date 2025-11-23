@@ -47,11 +47,49 @@ MeshBuffer::~MeshBuffer()
     delete buffer;
 }
 
+VertexBuffer *MeshBuffer::CreateVertexBuffer(u32 vertexCount, bool dynamic)
+{
+    if (vb)
+    {
+        LogWarning("[MeshBuffer] Vertex buffer already created.");
+        return vb;
+    }
+    m_DynamicVertexBuffer = dynamic;
+    m_vdirty = true;
+    vb = buffer->AddVertexBuffer(sizeof(Vertex), vertexCount, dynamic);
+    return vb;
+}
+
+IndexBuffer *MeshBuffer::CreateIndexBuffer(u32 indexCount, bool dynamic)
+{
+    if (ib)
+    {
+        LogWarning("[MeshBuffer] Index buffer already created.");
+        return ib;
+    }
+    m_DynamicIndexBuffer = dynamic;
+    ib = buffer->CreateIndexBuffer(indexCount, dynamic, false);
+    m_idirty = true;
+    return ib;
+}
+
 void MeshBuffer::Clear()
 {
     vertices.clear();
     indices.clear();
     m_vdirty = true;
+    m_idirty = true;
+}
+
+void MeshBuffer::ClearVertices()
+{
+    vertices.clear();
+    m_vdirty = true;
+}
+
+void MeshBuffer::ClearIndices()
+{
+    indices.clear();
     m_idirty = true;
 }
 
@@ -101,7 +139,7 @@ void MeshBuffer::Build()
 
     if (!vb)
     {
-        vb = buffer->AddVertexBuffer(sizeof(Vertex), vertices.size(), false);
+        vb = buffer->AddVertexBuffer(sizeof(Vertex), vertices.size(), m_DynamicVertexBuffer);
 
         auto *decl = buffer->GetVertexDeclaration();
 
@@ -112,17 +150,31 @@ void MeshBuffer::Build()
 
     if (!ib)
     {
-        ib = buffer->CreateIndexBuffer(indices.size(), false, false);
+        ib = buffer->CreateIndexBuffer(indices.size(), m_DynamicIndexBuffer, false);
     }
 
     if (m_vdirty)
     {
-        vb->SetData(vertices.data());
+        if (m_DynamicVertexBuffer)
+        {
+            vb->SetSubData(0, vertices.size(), vertices.data());
+        }
+        else
+        {
+            vb->SetData(vertices.data());
+        }
     }
 
     if (m_idirty)
     {
-        ib->SetData(indices.data());
+        if (m_DynamicIndexBuffer)
+        {
+            ib->SetSubData(0, indices.size(), indices.data());
+        }
+        else
+        {
+            ib->SetData(indices.data());
+        }
     }
 
     buffer->Build();
@@ -666,6 +718,36 @@ void MeshBuffer::Merge(const MeshBuffer &other)
     {
         indices.push_back(idx + indexOffset);
     }
+    m_vdirty = true;
+}
+
+Vec3 MeshBuffer::GetVertexPosition(u32 index) const
+{
+    if (index >= vertices.size())
+        return Vec3(0, 0, 0);
+    const Vertex &v = vertices[index];
+    return Vec3(v.x, v.y, v.z);
+}
+
+Vertex &MeshBuffer::GetVertex(u32 index)
+{
+    if (index >= vertices.size())
+        return vertices[0];
+    return vertices[index];
+}
+
+Vertex MeshBuffer::GetVertex(u32 index) const
+{
+    if (index >= vertices.size())
+        return vertices[0];
+    return vertices[index];
+}
+
+void MeshBuffer::SetVertex(u32 index, const Vertex &vertex)
+{
+    if (index >= vertices.size())
+        return;
+    vertices[index] = vertex;
     m_vdirty = true;
 }
 

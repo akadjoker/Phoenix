@@ -247,6 +247,9 @@ Vec2 operator*(float scalar, const Vec2 &vec)
 
 // ==================== Vec3 ====================
 
+Vec3 Vec3::Zero = Vec3(0.0f, 0.0f, 0.0f);
+Vec3 Vec3::One = Vec3(1.0f, 1.0f, 1.0f);
+
 Vec3::Vec3() : x(0.0f), y(0.0f), z(0.0f) {}
 
 Vec3::Vec3(float x, float y, float z) : x(x), y(y), z(z) {}
@@ -1384,6 +1387,86 @@ void Mat4::TransformBox(BoundingBox &box) const
     box.max.y = Bmax[1];
     box.max.z = Bmax[2];
 }
+
+Vec3 Mat4::getRotationDegrees() const
+{
+    Vec3 scale = getScale();
+
+    if (scale.y < 0 && scale.z < 0)
+    {
+        scale.y = -scale.y;
+        scale.z = -scale.z;
+    }
+    else if (scale.x < 0 && scale.z < 0)
+    {
+        scale.x = -scale.x;
+        scale.z = -scale.z;
+    }
+    else if (scale.x < 0 && scale.y < 0)
+    {
+        scale.x = -scale.x;
+        scale.y = -scale.y;
+    }
+
+    const Vec3 invScale(Reciprocal(scale.x), Reciprocal(scale.y), Reciprocal(scale.z));
+
+    float Y = -std::asin(Clamp(m[2] * invScale.x, -1.0f, 1.0f));
+    const float C = std::cos(Y);
+    Y *= RAD2DEG;
+
+    float X, Z;
+    if (!isZero(C))
+    {
+        const float invC = Reciprocal(C);
+        float rotx = m[10] * invC * invScale.z;
+        float roty = m[6] * invC * invScale.y;
+        X = std::atan2(roty, rotx) * RAD2DEG;
+
+        rotx = m[0] * invC * invScale.x;
+        roty = m[1] * invC * invScale.x;
+        Z = std::atan2(roty, rotx) * RAD2DEG;
+    }
+    else
+    {
+        X = 0.0f;
+        float rotx = m[5] * invScale.y;
+        float roty = -m[4] * invScale.y;
+        Z = std::atan2(roty, rotx) * RAD2DEG;
+    }
+
+    // normaliza para [0,360)
+    if (X < 0.0f)
+        X += 360.0f;
+    if (Y < 0.0f)
+        Y += 360.0f;
+    if (Z < 0.0f)
+        Z += 360.0f;
+
+    return Vec3(X, Y, Z);
+}
+
+Vec3 Mat4::getScale() const
+{
+
+    // Deal with the 0 rotation case first
+    if (isZero(m[1]) && isZero(m[2]) &&
+        isZero(m[4]) && isZero(m[6]) &&
+        isZero(m[8]) && isZero(m[9]))
+    {
+        return Vec3(m[0], m[5], m[10]);
+    }
+
+    // Full calculation
+    return Vec3(
+        std::sqrt(m[0] * m[0] + m[1] * m[1] + m[2] * m[2]),
+        std::sqrt(m[4] * m[4] + m[5] * m[5] + m[6] * m[6]),
+        std::sqrt(m[8] * m[8] + m[9] * m[9] + m[10] * m[10]));
+}
+
+Vec3 Mat4::getTranslation() const
+{
+    return Vec3(m[12], m[13], m[14]);
+}
 Mat4 Mat4::inverse() const
 {
     // Método de adjunta
@@ -1843,6 +1926,38 @@ void BoundingBox::expand(const BoundingBox &other)
     expand(other.min);
     expand(other.max);
 }
+void BoundingBox::addPoint(float x, float y, float z)
+{
+    if (x > max.x)
+        max.x = x;
+    if (y > max.y)
+        max.y = y;
+    if (z > max.z)
+        max.z = z;
+    if (x < min.x)
+        min.x = x;
+    if (y < min.y)
+        min.y = y;
+    if (z < min.z)
+        min.z = z;
+}
+void BoundingBox::addPoint(const Vec3 &point)
+{
+    addPoint(point.x, point.y, point.z);
+}
+Vec3 BoundingBox::getCenter() const
+{
+    return (min + max) * 0.5f;
+}
+Vec3 BoundingBox::getExtent() const
+{
+    return max - min;
+}
+void BoundingBox::reset(const Vec3 &point)
+{
+    min = point;
+    max = point;
+}
 void BoundingBox::copy(const BoundingBox &other)
 {
     min = other.min;
@@ -1950,7 +2065,6 @@ void BoundingBox::transform(const Mat4 &m)
     // Efficient algorithm for transforming an AABB, taken from Graphics
     // Gems
 
-   
     float minA[3] = {min.x, min.y, min.z};
     float maxA[3] = {max.x, max.y, max.z};
     float minB[3], maxB[3];
@@ -1965,8 +2079,16 @@ void BoundingBox::transform(const Mat4 &m)
         {
             float a = minA[j] * m(i, j);
             float b = maxA[j] * m(i, j);
-            if (a < b) { minB[i] += a; maxB[i] += b; }
-            else       { minB[i] += b; maxB[i] += a; }
+            if (a < b)
+            {
+                minB[i] += a;
+                maxB[i] += b;
+            }
+            else
+            {
+                minB[i] += b;
+                maxB[i] += a;
+            }
         }
     }
 
@@ -2266,7 +2388,6 @@ Mat3 Quat::toMat3() const
     return result;
 }
 
-
 Vec3 Quat::toEulerAnglesDeg() const
 {
     Vec3 rad = toEulerAngles();
@@ -2293,11 +2414,11 @@ Vec3 Quat::toEulerAngles() const
 {
     // Inverter a ordem YXZ  FromEulerAngles
     Quat q = normalized();
-    
+
     // Extrair pitch (rotação em X)
     float sinPitch = 2.0f * (q.w * q.x - q.y * q.z);
     float pitch;
-    
+
     if (std::fabs(sinPitch) >= 1.0f)
     {
         pitch = std::copysign(PI / 2.0f, sinPitch); // Gimbal lock
@@ -2306,20 +2427,19 @@ Vec3 Quat::toEulerAngles() const
     {
         pitch = std::asin(sinPitch);
     }
-    
+
     // Extrair yaw (rotação em Y)
     float sinYaw = 2.0f * (q.w * q.y + q.x * q.z);
     float cosYaw = 1.0f - 2.0f * (q.y * q.y + q.x * q.x);
     float yaw = std::atan2(sinYaw, cosYaw);
-    
+
     // Extrair roll (rotação em Z)
     float sinRoll = 2.0f * (q.w * q.z + q.x * q.y);
     float cosRoll = 1.0f - 2.0f * (q.x * q.x + q.z * q.z);
     float roll = std::atan2(sinRoll, cosRoll);
-    
+
     return Vec3(pitch, yaw, roll);
 }
- 
 
 Quat Quat::FromEulerAngles(float pitch, float yaw, float roll)
 {
@@ -2330,17 +2450,16 @@ Quat Quat::FromEulerAngles(float pitch, float yaw, float roll)
     float sp = std::sin(pitch * 0.5f);
     float cr = std::cos(roll * 0.5f);
     float sr = std::sin(roll * 0.5f);
-    
+
     Quat q;
     q.w = cr * cp * cy + sr * sp * sy;
     q.x = cr * sp * cy + sr * cp * sy;
     q.y = cr * cp * sy - sr * sp * cy;
     q.z = sr * cp * cy - cr * sp * sy;
-    
+
     return q;
 }
 
- 
 Quat Quat::FromEulerAnglesDeg(float pitch, float yaw, float roll)
 {
     return FromEulerAngles(pitch * DEG_TO_RAD, yaw * DEG_TO_RAD, roll * DEG_TO_RAD);
