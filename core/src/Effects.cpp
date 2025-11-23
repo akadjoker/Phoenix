@@ -180,7 +180,8 @@ void LensFlare::Render(RenderBatch *batch, const Mat4 &view, const Mat4 &project
 
             batch->SetColor(color.x, color.y, color.z);
             batch->SetAlpha(quadOpacity);
-            RenderFace(batch, screenCenter.x, screenCenter.y, 8.0f, burnClip);
+            //RenderFace(batch, screenCenter.x, screenCenter.y, 8.0f, burnClip);
+            batch->Rectangle(0,0, screenWidth, screenHeight, true);
         }
 
         Vec3 col = colors[0];

@@ -3,7 +3,7 @@
 #include "Core.hpp"
 
 int screenWidth = 1024;
-int screenHeight = 768;
+int screenHeight = 720;
 
 class MainScene : public Scene
 {
@@ -67,8 +67,7 @@ public:
         driver.SetCulling(CullMode::Back);
         driver.SetDepthTest(true);
         driver.SetBlendEnable(false);
-
-        //driver.SetCulling(CullMode::None);
+ 
 
         // RENDER MIRROR REFLECTION
 
@@ -117,6 +116,8 @@ public:
             sceneShader->SetUniform("viewPos", camPos.x, camPos.y, camPos.z);
 
             // Renderiza apenas objetos ABAIXO da água
+            sceneShader->SetUniform("useClipPlane", 1);
+            sceneShader->SetUniform("clipPlane", 0.0f, -1.0f, 0.0f, 0);
 
             renderPass(sceneShader, RenderType::Solid);
 
@@ -190,6 +191,8 @@ public:
             sceneShader->SetUniformMat4("view", view.m);
             sceneShader->SetUniform("lightPos", lightPos.x, lightPos.y, lightPos.z);
             sceneShader->SetUniform("viewPos", cameraPos.x, cameraPos.y, cameraPos.z);
+            sceneShader->SetUniform("useClipPlane", 1);
+            sceneShader->SetUniform("clipPlane", 0.0f, 1.0f, 0.0f, 0);
 
             renderPass(sceneShader, RenderType::Solid);
 
@@ -197,9 +200,9 @@ public:
             skyShader->SetUniformMat4("projection", proj.m);
             skyShader->SetUniformMat4("view", view.m);
             skyShader->SetUniform("skybox", 0);
-            glDepthFunc(GL_LEQUAL);
+       
             renderPass(skyShader, RenderType::Sky);
-            glDepthFunc(GL_LESS);
+        
 
             reflectionRT->Unbind();
 
@@ -255,8 +258,10 @@ public:
             sceneShader->SetUniformMat4("view", view.m);
             sceneShader->SetUniform("lightPos", lightPos.x, lightPos.y, lightPos.z);
             sceneShader->SetUniform("viewPos", cameraPos.x, cameraPos.y, cameraPos.z);
+            sceneShader->SetUniform("useClipPlane", 0);
 
             renderPass(sceneShader, RenderType::Solid);
+
 
             waterShader->Bind();
             waterShader->SetUniform("waterBump", 0);
@@ -265,16 +270,7 @@ public:
             waterShader->SetUniform("refractionDepth", 3);
             waterShader->SetUniform("foamTexture", 4);
 
-            if (Input::IsKeyPressed(KEY_P))
-            {
-                depth -= 0.1f;
-                LogInfo("Depth: %f", depth);
-            }
-            if (Input::IsKeyPressed(KEY_O))
-            {
-                depth += 0.1f;
-                LogInfo("Depth: %f", depth);
-            }
+           
 
             waterShader->SetUniform("mult", depth);
 
@@ -302,8 +298,8 @@ public:
             waterShader->SetUniform("u_foamIntensity", foamIntensity);
 
             driver.SetBlendEnable(true);
-            driver.SetDepthTest(true);
-            driver.SetDepthWrite(false);
+         //   driver.SetDepthTest(true);
+        //    driver.SetDepthWrite(false);
             driver.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
   
     
@@ -313,6 +309,8 @@ public:
             driver.SetBlendEnable(false);
             driver.SetDepthTest(true);
             driver.SetDepthWrite(true);
+
+   
             
             skyShader->Bind();
             skyShader->SetUniformMat4("projection", proj.m);
@@ -496,7 +494,9 @@ public:
             "cloudy_noon_BK.jpg", // [5] NEGATIVE_Z = Back
 
         };
+        TextureManager::Instance().SetFlipVerticalOnLoad(false);
         Texture *cubemap = TextureManager::Instance().AddCube("cubemap", files, false);
+        TextureManager::Instance().SetFlipVerticalOnLoad(true);
         skymesh->AddMaterial("main")->SetTexture(0, cubemap);
 
         TextureManager::Instance().SetLoadPath("assets/");
@@ -823,6 +823,11 @@ int main()
     }
     scene.OnResize(device.GetWidth(), device.GetHeight());
 
+    TextureManager::Instance().SetFlipVerticalOnLoad(false);
+    Texture *flareTexture = TextureManager::Instance().Add("sprites.png", false);
+    LensFlare lensFlare(flareTexture);
+
+   
     while (device.Run())
     {
 
@@ -843,7 +848,8 @@ int main()
 
         const Mat4 ortho = Mat4::Ortho(0.0f, (float)screenWidth, (float)screenHeight, 0.0f, -1.0f, 1.0f);
 
-        // driver.Clear(CLEAR_COLOR | CLEAR_DEPTH);
+        lensFlare.Update(&scene, Vec3(-2.0f, 8.0f, -4.0f), cameraPos, scene.getCamera()->getDirection());
+
 
         scene.Render();
 
@@ -860,6 +866,7 @@ int main()
         batch.SetMatrix(ortho);
         driver.SetDepthTest(false);
         driver.SetBlendEnable(true);
+         lensFlare.Render(&batch, view, proj, screenWidth, screenHeight);
         driver.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
 
         gui.BeginFrame();

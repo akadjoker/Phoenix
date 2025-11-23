@@ -14,6 +14,7 @@ void MeshRenderer::render()
         return;
     if (mesh)
     {
+        //LogInfo("[MeshRenderer] render %s", mesh->getName().c_str());
         Driver::Instance().DrawMesh(mesh);
     }
 }

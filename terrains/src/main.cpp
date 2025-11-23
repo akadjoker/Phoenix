@@ -5,6 +5,29 @@
 int screenWidth = 1024;
 int screenHeight = 768;
 
+enum class BrushMode
+{
+    RAISE,   // Elevar terreno
+    LOWER,   // Baixar terreno
+    FLATTEN, // Achatar
+    SMOOTH,  // Suavizar
+    PAINT    // Pintar textura (futuro)
+};
+
+struct BrushSettings
+{
+    BrushMode mode;
+    float radius;
+    float strength;
+    float falloff;
+
+    BrushSettings()
+        : mode(BrushMode::PAINT),
+          radius(10.0f),
+          strength(1.0f),
+          falloff(1.0f) {}
+};
+
 class MainScene : public Scene
 {
     Shader *sceneShader;
@@ -20,18 +43,21 @@ class MainScene : public Scene
     float height = 1.0f;
     float yaw = 0.0f;
     Vec3 lightPos = Vec3(-2.0f, 8.0f, -4.0f);
+    TerrainRaycastHit m_currentHit;
+    bool m_isEditing = false;
+    float m_editTimer = 0.0f;
 
 public:
     Terrain *terrain;
-    
+
     float colorBlendFactor = 0.2f;
- 
+
     float time = 0.0f;
 
     float terrainMaxHeight = 30.0f;
     float terrainMinHeight = 0.0f;
     float terrainTextureScale = 1.0f;   // Base textures
-    float terrainDetailScale = 32.0f;    // Detail repete muito
+    float terrainDetailScale = 32.0f;   // Detail repete muito
     float terrainDetailStrength = 0.5f; // 50% de intensidade
     float terrainWidth = 1000.0f;
     float terrainHeight = 1000.0f;
@@ -45,12 +71,111 @@ public:
 
     Node3D *pick = nullptr;
     bool openInspector = false;
-       TerrainLod  *lod;
+    TerrainLod *lod;
+    BrushSettings m_brush;
 
 public:
+    void ApplyBrush(float dt)
+    {
+        if (!m_currentHit.hit)
+            return;
+
+        Vec3 pos = m_currentHit.position;
+
+        switch (m_brush.mode)
+        {
+        case BrushMode::RAISE:
+        {
+            float delta = m_brush.strength * 10.0f * dt;
+            lod->ModifyHeight(pos.x, pos.z, delta, m_brush.radius);
+            break;
+        }
+
+        case BrushMode::LOWER:
+        {
+            float delta = -m_brush.strength * 10.0f * dt;
+            lod->ModifyHeight(pos.x, pos.z, delta, m_brush.radius);
+            break;
+        }
+
+        case BrushMode::FLATTEN:
+        {
+            float targetHeight = lod->GetHeight(pos.x, pos.z);
+            lod->Flatten(pos.x, pos.z, targetHeight,
+                         m_brush.radius, m_brush.strength * 0.5f);
+            break;
+        }
+
+        case BrushMode::SMOOTH:
+        {
+            // Suavização local (apenas na área do brush)
+            lod->SmoothArea(pos.x, pos.z, m_brush.radius, 1);
+            break;
+        }
+
+        case BrushMode::PAINT:
+            // TODO: Implementar pintura de textura
+            break;
+        }
+    }
+
+    void RenderGizmo(RenderBatch *batch)
+    {
+        if (!m_currentHit.hit)
+            return;
+
+        // Desenhar círculo no ponto de hit
+        Vec3 pos = m_currentHit.position;
+
+        // Cor baseada no modo
+        switch (m_brush.mode)
+        {
+        case BrushMode::RAISE:
+            batch->SetColor(0, 255, 0, 150); // Verde
+            break;
+        case BrushMode::LOWER:
+            batch->SetColor(255, 0, 0, 150); // Vermelho
+            break;
+        case BrushMode::FLATTEN:
+            batch->SetColor(0, 0, 255, 150); // Azul
+            break;
+        case BrushMode::SMOOTH:
+            batch->SetColor(255, 255, 0, 150); // Amarelo
+            break;
+        default:
+            batch->SetColor(255, 255, 255, 150);
+            break;
+        }
+
+        // Desenhar círculo do brush
+        const int segments = 32;
+        const float angleStep = (2.0f * 3.14159f) / segments;
+
+        for (int i = 0; i < segments; ++i)
+        {
+            float angle1 = i * angleStep;
+            float angle2 = (i + 1) * angleStep;
+
+            float x1 = pos.x + cos(angle1) * m_brush.radius;
+            float z1 = pos.z + sin(angle1) * m_brush.radius;
+            float y1 = lod->GetHeight(x1, z1) + 0.1f; // Offset para não z-fight
+
+            float x2 = pos.x + cos(angle2) * m_brush.radius;
+            float z2 = pos.z + sin(angle2) * m_brush.radius;
+            float y2 = lod->GetHeight(x2, z2) + 0.1f;
+
+            batch->Line3D(Vec3(x1, y1, z1), Vec3(x2, y2, z2));
+        }
+
+        batch->SetColor(255, 255, 0, 255);
+        Vec3 normalEnd = pos + m_currentHit.normal * 5.0f;
+        batch->Line3D(pos, normalEnd);
+    }
+
     void OnDebug(RenderBatch *batch) override
     {
-        //lod->debug(batch);
+        // lod->debug(batch);
+        RenderGizmo(batch);
     }
 
     void OnRender() override
@@ -72,7 +197,6 @@ public:
         const Mat4 view = getViewMatrix();
         const Mat4 proj = getProjectionMatrix();
 
-
         terrainShader->Bind();
         terrainShader->SetUniformMat4("view", view.m);
         terrainShader->SetUniformMat4("projection", proj.m);
@@ -80,10 +204,9 @@ public:
         terrainShader->SetUniform("textureScale", terrainTextureScale);
         terrainShader->SetUniform("detailScale", terrainDetailScale);
         terrainShader->SetUniform("detailStrength", terrainDetailStrength);
-        terrainShader->SetUniform("basicTexture",  0);
+        terrainShader->SetUniform("basicTexture", 0);
         terrainShader->SetUniform("detailTexture", 1);
         terrainShader->SetUniform("useClipPlane", 0);
-
 
         renderPass(terrainShader, RenderType::Terrain);
 
@@ -103,9 +226,8 @@ public:
         skyShader->SetUniformMat4("projection", proj.m);
         skyShader->SetUniformMat4("view", view.m);
         skyShader->SetUniform("skybox", 0);
- 
+
         renderPass(skyShader, RenderType::Sky);
- 
 
         if (Input::IsMousePressed(MouseButton::RIGHT))
         {
@@ -156,17 +278,17 @@ public:
         camera->setPosition(0.0f, 10.5f, 40.0f);
 
         lod = createTerrainLod("terrainLOD", "assets/terrain-heightmap.png",
-                                     5,               // maxLOD
-                                     PATCH_17,       // patchSize
-                                     Vec3(0, 0, 0), // position
-                        
-                                     Vec3(40.0f, 2.4f, 40.0f)   // scale
+                               5,             // maxLOD
+                               PATCH_17,      // patchSize
+                               Vec3(0, 0, 0), // position
+
+                               Vec3(40.0f, 2.4f, 40.0f) // scale
         );
 
         terrain = createTerrain("terrain", "assets/terrain-heightmap.png",
-                                0.2f,   // scaleX
+                                0.2f,  // scaleX
                                 0.5f,  // scaleY (altura)
-                                0.2f,   // scaleZ
+                                0.2f,  // scaleZ
                                 1.0f,  // texScaleU
                                 1.0f); // texScaleV
 
@@ -175,18 +297,17 @@ public:
             LogError("[Main] Failed to create terrain");
             return false;
         }
-        //terrain->setPosition(0, -5, 0);
+        // terrain->setPosition(0, -5, 0);
 
         terrain->setActive(false);
-        //lod->setActive(false);
+        // lod->setActive(false);
         TextureManager::Instance().SetLoadPath("assets/");
 
-        terrain->GetMaterial()->SetTexture(0, TextureManager::Instance().Add("terrain-texture.jpg", true));  
-        terrain->GetMaterial()->SetTexture(1, TextureManager::Instance().Add("detailmap3.jpg", true));       
+        terrain->GetMaterial()->SetTexture(0, TextureManager::Instance().Add("terrain-texture.jpg", true));
+        terrain->GetMaterial()->SetTexture(1, TextureManager::Instance().Add("detailmap3.jpg", true));
 
-        lod->GetMaterial()->SetTexture(0, TextureManager::Instance().Add("terrain-texture.jpg", true));  
-        lod->GetMaterial()->SetTexture(1, TextureManager::Instance().Add("detailmap3.jpg", true));       
-
+        lod->GetMaterial()->SetTexture(0, TextureManager::Instance().Add("terrain-texture.jpg", true));
+        lod->GetMaterial()->SetTexture(1, TextureManager::Instance().Add("detailmap3.jpg", true));
 
         TextureManager::Instance().Add("wall.jpg", true);
         TextureManager::Instance().Add("marm.jpg", true);
@@ -224,6 +345,7 @@ public:
             skyObj->setRenderType(RenderType::Sky);
             skyObj->addComponent<MeshRenderer>(skymesh);
         }
+        SetBrushRadius(1);
 
         return true;
     }
@@ -231,8 +353,81 @@ public:
     void OnDestroy() override
     {
     }
+    void SetBrushMode(BrushMode mode) { m_brush.mode = mode; }
+    void SetBrushRadius(float radius) { m_brush.radius = radius; }
+    void SetBrushStrength(float strength) { m_brush.strength = strength; }
+
+    BrushSettings &GetBrush() { return m_brush; }
+    const TerrainRaycastHit &GetCurrentHit() const { return m_currentHit; }
+    bool IsEditing() const { return m_isEditing; }
+    void StartEditing()
+    {
+        m_isEditing = true;
+        m_editTimer = 0.0f;
+    }
+
+    void StopEditing()
+    {
+        m_isEditing = false;
+    }
     void OnUpdate(float dt) override
     {
+
+        if (Input::IsKeyPressed(KEY_ONE))
+            SetBrushMode(BrushMode::RAISE);
+        else if (Input::IsKeyPressed(KEY_TWO))
+            SetBrushMode(BrushMode::LOWER);
+        else if (Input::IsKeyPressed(KEY_THREE))
+            SetBrushMode(BrushMode::FLATTEN);
+        else if (Input::IsKeyPressed(KEY_FOUR))
+            SetBrushMode(BrushMode::SMOOTH);
+
+        
+
+        // Ajustar tamanho do brush com scroll
+        if (Input::GetMouseWheelMoveV() != 0)
+        {
+            float radius = GetBrush().radius;
+            radius += Input::GetMouseWheelMoveV() * 2.0f;
+            if (radius < 1.0f)
+                radius = 1.0f;
+            else if (radius > 20.0f)
+                radius = 20.0f;
+           // radius = std::max(50.0f, std::min(1.0f, radius));
+            SetBrushRadius(radius);
+        }
+
+
+
+        if (Input::IsMousePressed(MouseButton::RIGHT))
+        {
+            int x = Input::GetMouseX();
+            int y = Input::GetMouseY();
+
+            const u32 width = Device::Instance().GetWidth();
+            const u32 height = Device::Instance().GetHeight();
+            Ray ray = getCamera()->screenPointToRay(x, y, width, height);
+            m_currentHit = lod->Raycast(ray);
+            StartEditing();
+        }
+        if (Input::IsMouseReleased(MouseButton::RIGHT))
+        {
+            StopEditing();
+        }
+
+        if (m_isEditing && m_currentHit.hit)
+        {
+            m_editTimer += dt;
+ 
+            const float editInterval = 0.016f; // ~60 FPS
+            
+            if (m_editTimer >= editInterval)
+            {
+                ApplyBrush(dt);
+                m_editTimer = 0.0f;
+            }
+        }
+
 
         time += dt * 0.5f;
 

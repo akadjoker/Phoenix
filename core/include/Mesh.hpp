@@ -26,35 +26,6 @@ class Pixmap;
 class Terrain;
  
 
-constexpr u32 MESH_MAGIC = 0x4D455348; // "MESH"
-constexpr u32 MESH_VERSION = 100;      // 1.00
-
-constexpr u32 BUFFER_FLAG_SKINNED = 1 << 0;  // Tem skinning data
-constexpr u32 BUFFER_FLAG_TANGENTS = 1 << 1; // Tem tangents
-constexpr u32 BUFFER_FLAG_COLORS = 1 << 2;   // Tem vertex colors
-
-constexpr u32 CHUNK_MATS = 0x4D415453; // "MATS" - Materials
-constexpr u32 CHUNK_BUFF = 0x42554646; // "BUFF" - Buffer
-constexpr u32 CHUNK_VRTS = 0x56525453; // "VRTS" - Vertices
-constexpr u32 CHUNK_IDXS = 0x49445853; // "IDXS" - Indices
-constexpr u32 CHUNK_SKEL = 0x534B454C; // "SKEL" - Skeleton
-constexpr u32 CHUNK_SKIN = 0x534B494E; // "SKIN" - Skinning data
-constexpr u32 CHUNK_ANIM = 0x414E494D; // "ANIM" - Reserved
-
-constexpr u32 ANIM_MAGIC = 0x414E494D; // "ANIM"
-constexpr u32 ANIM_VERSION = 100;      // v1.00
-
-// Chunk IDs
-constexpr u32 ANIM_CHUNK_INFO = 0x494E464F; // "INFO" - Animation info
-constexpr u32 ANIM_CHUNK_CHAN = 0x4348414E; // "CHAN" - Channel (per bone)
-constexpr u32 ANIM_CHUNK_KEYS = 0x4B455953; // "KEYS" - Keyframes
-
-struct ChunkHeader
-{
-    u32 id;
-    u32 length;
-};
-
 const u32 MAX_TEXTURES = 6;
 
 
@@ -143,6 +114,10 @@ public:
     VertexBuffer* CreateVertexBuffer(u32 vertexCount, bool dynamic = false);
     IndexBuffer* CreateIndexBuffer(u32 indexCount, bool dynamic = false);
 
+    VertexArray* GetBuffer() const { return buffer; }
+    VertexBuffer* GetVertexBuffer() const { return vb; }
+    IndexBuffer* GetIndexBuffer() const { return ib; }
+
     void Clear();
     
     void ClearVertices();
@@ -214,154 +189,14 @@ public:
     const u32 *GetIndices() const { return indices.data(); }
 
     Vec3 GetVertexPosition(u32 index) const;
-    
+    void SetVertexPosition(u32 index, const Vec3 &position);
+
     Vertex& GetVertex(u32 index);
     Vertex GetVertex(u32 index) const;
     void SetVertex(u32 index, const Vertex &vertex);
 };
 
-struct AnimationKeyframe
-{
-    float time;
-    Vec3 position;
-    Quat rotation;
 
-    AnimationKeyframe() : time(0.0f), position(), rotation() {}
-};
-
-struct AnimationChannel
-{
-    std::string boneName;
-    u32 boneIndex; // Index no mesh
-    std::vector<AnimationKeyframe> keyframes;
-};
-
-class Animation
-{
-public:
-    bool Load(const std::string &filename);
-    void Update(float deltaTime);
-    void BindToMesh(Mesh *mesh);
-    float GetDuration() const { return m_duration; }
-    float GetTicksPerSecond() const { return m_ticksPerSecond; }
-    const std::string &GetName() const { return m_name; }
-
-    AnimationChannel *GetChannel(u32 index) { return &m_channels[index]; }
-
-    AnimationChannel *FindChannel(const std::string &name);
-
-    Vec3 InterpolatePosition(const AnimationChannel &channel, float time);
-    Quat InterpolateRotation(const AnimationChannel &channel, float time);
-
-    u32 GetChannelCount() const { return m_channels.size(); }
-
-    bool operator==(const Animation &other) const { return m_name == other.m_name; }
-    bool operator!=(const Animation &other) const { return !(*this == other); }
-
-private:
-    std::string m_name;
-    float m_duration;
-    float m_ticksPerSecond;
-    Mesh *m_mesh = nullptr;
-    float m_currentTime;
-    friend class Animator;
-    friend class AnimationLayer;
-
-    void Sample(float time);
-
-    std::vector<AnimationChannel> m_channels;
-};
-
-enum class PlayMode
-{
-    Once,
-    Loop,
-    PingPong
-};
-
-class AnimationLayer
-{
-public:
-    AnimationLayer(Mesh *mesh);
-    ~AnimationLayer();
-
-    void AddAnimation(const std::string &name, Animation *anim);
-    Animation *GetAnimation(const std::string &name);
-    Animation *LoadAnimation(const std::string &name, const std::string &filename);
-
-    // Controle de playback (animação única)
-    void Play(const std::string &animName, PlayMode mode = PlayMode::Loop,
-              float blendTime = 0.3f);
-    void PlayOneShot(const std::string &animName, const std::string &returnTo, float blendTime = 0.3f, PlayMode toMode = PlayMode::Loop);
-    void CrossFade(const std::string &toAnim, float duration);
-    void Stop(float blendOutTime = 0.3f);
-    void Pause();
-    void Resume();
-
-    // Update
-    void Update(float deltaTime);
-
-    // Getters
-    bool IsPlaying(const std::string &animName) const;
-    float GetCurrentTime() const { return m_currentTime; }
-    const std::string &GetCurrentAnimation() const { return m_currentAnimName; }
-
-    // Settings
-    void SetSpeed(float speed) { m_globalSpeed = speed; }
-    void SetDefaultBlendTime(float time) { m_defaultBlendTime = time; }
-
-private:
-    Mesh *m_mesh;
-    std::map<std::string, Animation *> m_animations;
-
-    // Animação única atual
-    std::string m_currentAnimName;
-    std::string m_previousAnimName;
-    Animation *m_currentAnim;
-    Animation *m_previousAnim;
-    Animation *m_playTo;
-
-    float m_currentTime;
-    float m_currentTimeBlend;
-    float m_globalSpeed;
-    bool m_isPaused;
-
-    // Blending
-    bool m_isBlending;
-    float m_blendTime;
-    float m_blendDuration;
-
-    // OneShot
-    std::string m_returnToAnim;
-    bool m_shouldReturn;
-
-    PlayMode m_currentMode;
-    PlayMode m_toReturnMode;
-    float m_defaultBlendTime;
-    bool m_isPingPongReverse;
-
-    // Métodos privados
-    void UpdateBlending(float deltaTime);
-    void UpdateLayers(float deltaTime);
-    bool CheckAnimationEnd();
-};
-
-class Animator
-{
-
-    std::vector<AnimationLayer *> layers;
-    Mesh *m_mesh;
-
-public:
-    Animator(Mesh *mesh);
-    ~Animator();
-    void Update(float deltaTime);
-
-    AnimationLayer *AddLayer();
-    AnimationLayer *GetLayer(u32 index);
-
-
-};
 
 
 class Visual : public Spatial
@@ -637,35 +472,7 @@ private:
     void ReadSkinChunk(MeshBuffer *buffer, const ChunkHeader &header);
 };
 
-class AnimReader
-{
-public:
-    struct Channel
-    {
-        std::string boneName;                     // Nome do bone (ex: "mixamorig:LeftArm")
-        std::vector<AnimationKeyframe> keyframes; // Keyframes ao longo do tempo
-    };
 
-    struct FrameAnimation
-    {
-        std::string name;              // Nome da animação (ex: "idle", "walk", "run")
-        float duration;                // Duração total em segundos (ex: 2.5s)
-        float ticksPerSecond;          // FPS/ticks (ex: 25.0, 30.0, 60.0)
-        std::vector<Channel> channels; // 1 channel por bone animado
-
-        FrameAnimation()
-            : name("unnamed"), duration(0.0f), ticksPerSecond(25.0f)
-        {
-        }
-    };
-
-    FrameAnimation *Load(const std::string &filename);
-
-private:
-    Stream *m_stream;
-    bool ReadInfoChunk(FrameAnimation &info);
-    bool ReadChannelChunk(Channel &channel);
-};
 
 class MeshManager
 {

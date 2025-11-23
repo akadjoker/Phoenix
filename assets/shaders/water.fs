@@ -23,7 +23,7 @@ uniform float u_colorBlendFactor;
 uniform float u_time;
 uniform float mult;
 
-// ✓ Novos uniforms para foam
+ 
 uniform float u_foamRange;      // Distância da borda (substitui foamEdgeDistance)
 uniform float u_foamScale;      // Escala da textura
 uniform float u_foamSpeed;      // Velocidade da animação
@@ -58,13 +58,17 @@ void main()
     depth = gl_FragCoord.z;
     float waterDistance = 2.0 * near * far / (far + near - (2.0 * depth - 1.0) * (far - near));
     float waterDepth = floorDistance - waterDistance;
-     if (waterDepth < 0.0)
+    if (waterDepth < 0.0) 
     {
          discard;
-         //FragColor = vec4(0.0, 0.0, 0.0, 1.0);
          return;
     }
     float normalizedDepth = clamp(waterDepth / mult, 0.0, 1.0);
+
+
+
+
+ 
     
     // Apply distortion
     reflectTexCoords = clamp(reflectTexCoords + perturbation, 0.001, 0.999);
@@ -80,6 +84,10 @@ void main()
     
     vec4 combinedColor = refractColor * fresnelTerm + reflectColor * (1.0 - fresnelTerm);
     vec4 finalColor = u_colorBlendFactor * u_waterColor + (1.0 - u_colorBlendFactor) * combinedColor;
+
+ 
+        
+    
     
     // === FOAM SYSTEM ===
     
@@ -105,11 +113,15 @@ void main()
     foamFactor *= u_foamIntensity;   
 
     foamFactor *= (1.0 - lodFactor * 0.7);
+
+    float foamDistanceFade = 1.0 - smoothstep(2.0, 50.0, distToCamera);
+    foamFactor *= foamDistanceFade;
     
     // Cor do foam
     vec3 foamColor = vec3(0.95, 0.98, 1.0);
     
-    finalColor.rgb = mix(finalColor.rgb, foamColor, foamFactor);
+   finalColor.rgb = mix(finalColor.rgb, foamColor, foamFactor);
+    
     
     FragColor = finalColor;
 }

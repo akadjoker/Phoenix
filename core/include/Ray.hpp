@@ -30,6 +30,8 @@ public:
     bool intersectTriangle(const Triangle &triangle, float &outT) const;
     bool intersectTriangle(const Triangle &triangle, float &outT, float &outU, float &outV) const;
 
+
+
     // Intersecção com esfera
     bool intersectSphere(const Vec3 &center, float radius, float &outT) const;
     bool intersectSphere(const Vec3 &center, float radius, float &outT1, float &outT2) const;

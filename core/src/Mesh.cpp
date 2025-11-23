@@ -6,6 +6,7 @@
 #include "Stream.hpp"
 #include "Batch.hpp"
 #include "Pixmap.hpp"
+#include "Animation.hpp"
 #include "glad/glad.h"
 
 Material::Material()
@@ -139,7 +140,7 @@ void MeshBuffer::Build()
 
     if (!vb)
     {
-        vb = buffer->AddVertexBuffer(sizeof(Vertex), vertices.size(), m_DynamicVertexBuffer);
+        vb =buffer->AddVertexBuffer(sizeof(Vertex),   vertices.size(), m_DynamicVertexBuffer);
 
         auto *decl = buffer->GetVertexDeclaration();
 
@@ -250,7 +251,7 @@ void MeshBuffer::UpdateSkinning(Mesh *mesh)
 
     if (!m_isSkinned || mesh->m_boneMatrices.empty() || vertices.empty() || m_skinData.empty())
     {
-        LogWarning("Mesh not skinned or malformed!");
+       // LogWarning("Mesh not skinned or malformed!");
         return;
     }
 
@@ -727,6 +728,17 @@ Vec3 MeshBuffer::GetVertexPosition(u32 index) const
         return Vec3(0, 0, 0);
     const Vertex &v = vertices[index];
     return Vec3(v.x, v.y, v.z);
+}
+
+void MeshBuffer::SetVertexPosition(u32 index, const Vec3 &position)
+{
+    if (index >= vertices.size())
+        return;
+    Vertex &v = vertices[index];
+    v.x = position.x;
+    v.y = position.y;
+    v.z = position.z;
+    m_vdirty = true;
 }
 
 Vertex &MeshBuffer::GetVertex(u32 index)

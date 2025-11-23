@@ -372,36 +372,24 @@ TerrainLod::TerrainLod(const std::string &name, int maxLOD, PatchSize patchSize,
       m_terrainData(static_cast<int>(patchSize), maxLOD, position, scale),
       m_verticesToRender(0),
       m_indicesToRender(0),
-  
+
       m_overrideDistanceThreshold(false),
       m_textureScale(1.0f),
       m_smoothFactor(0)
 {
-    
+
     material = new Material();
     m_oldCameraPosition = Vec3::Zero;
     m_oldCameraRotation = Vec3::Zero;
     m_cameraMovementDelta = 0.2f;
     m_cameraRotationDelta = 0.0010f;
     meshBuffer = new MeshBuffer();
- 
-}
-
-TerrainLod::~TerrainLod()
-{
-
-    delete meshBuffer;
-    delete material;
- 
-    if (m_terrainData.patches)
-        delete[] m_terrainData.patches;
 }
 
 void TerrainLod::SetPosition(const Vec3 &pos)
 {
     m_terrainData.position = pos;
     ApplyTransformation();
-    
 }
 
 void TerrainLod::SetScale(const Vec3 &scl)
@@ -409,20 +397,18 @@ void TerrainLod::SetScale(const Vec3 &scl)
     m_terrainData.scale = scl;
     ApplyTransformation();
     CalculateNormals();
-    
 }
 
 void TerrainLod::ApplyTransformation()
 {
-    
+
     // CalculateDistanceThresholds();
     CalculatePatchData();
 }
 
 void TerrainLod::PreRenderIndicesCalculations()
 {
-     
- 
+
     m_indicesToRender = 0;
     meshBuffer->ClearIndices();
 
@@ -447,7 +433,6 @@ void TerrainLod::PreRenderIndicesCalculations()
                     const u32 index12 = GetIndex(j, i, index, x, z + step);
                     const u32 index22 = GetIndex(j, i, index, x + step, z + step);
 
-          
                     meshBuffer->AddIndex(index22);
                     meshBuffer->AddIndex(index11);
                     meshBuffer->AddIndex(index12);
@@ -469,7 +454,7 @@ void TerrainLod::PreRenderIndicesCalculations()
         }
     }
     //    LogInfo("[TerrainLod] Total indices to render: %d", m_indicesToRender);
- 
+
     meshBuffer->Build();
 }
 
@@ -486,65 +471,9 @@ void TerrainLod::ApplyMaterial()
     }
 }
 
-u32 TerrainLod::GetIndex(int patchX, int patchZ, int patchIndex, u32 vX, u32 vZ) const
-{
-    // Ajustar para evitar cracks entre patches de diferentes LODs
-    const Patch &patch = m_terrainData.patches[patchIndex];
-
-    // Borda superior
-    if (vZ == 0 && patch.top && patch.currentLOD < patch.top->currentLOD)
-    {
-        u32 step = 1 << patch.top->currentLOD;
-        vX -= vX % step;
-    }
-    // Borda inferior
-    else if (vZ == static_cast<u32>(m_terrainData.calcPatchSize) &&
-             patch.bottom && patch.currentLOD < patch.bottom->currentLOD)
-    {
-        u32 step = 1 << patch.bottom->currentLOD;
-        vX -= vX % step;
-    }
-
-    // Borda esquerda
-    if (vX == 0 && patch.left && patch.currentLOD < patch.left->currentLOD)
-    {
-        u32 step = 1 << patch.left->currentLOD;
-        vZ -= vZ % step;
-    }
-    // Borda direita
-    else if (vX == static_cast<u32>(m_terrainData.calcPatchSize) &&
-             patch.right && patch.currentLOD < patch.right->currentLOD)
-    {
-        u32 step = 1 << patch.right->currentLOD;
-        vZ -= vZ % step;
-    }
-
-    if (vZ >= static_cast<u32>(m_terrainData.patchSize))
-        vZ = m_terrainData.calcPatchSize;
-    if (vX >= static_cast<u32>(m_terrainData.patchSize))
-        vX = m_terrainData.calcPatchSize;
-
-    return (vZ + (m_terrainData.calcPatchSize * patchZ)) * m_terrainData.size +
-           (vX + (m_terrainData.calcPatchSize * patchX));
-}
-
-void TerrainLod::Smooth(int smoothFactor)
-{
-}
-
 void TerrainLod::CalculateNormals()
 {
     meshBuffer->CalculateNormals(true);
-}
-
-void TerrainLod::CreatePatches()
-{
-    m_terrainData.patchCount = (m_terrainData.size - 1) / m_terrainData.calcPatchSize;
-
-    if (m_terrainData.patches)
-        delete[] m_terrainData.patches;
-
-    m_terrainData.patches = new Patch[m_terrainData.patchCount * m_terrainData.patchCount];
 }
 
 void TerrainLod::CalculatePatchData()
@@ -553,7 +482,7 @@ void TerrainLod::CalculatePatchData()
 
     if (meshBuffer->GetVertexCount() > 0)
     {
-        
+
         m_boundBox.reset(meshBuffer->GetVertexPosition(0));
     }
 
@@ -588,101 +517,6 @@ void TerrainLod::CalculatePatchData()
 
     m_terrainData.center = m_boundBox.getCenter();
 }
-void TerrainLod::CalculateDistanceThresholds(bool scaleChanged)
-{
-    if (!m_overrideDistanceThreshold)
-    {
-        m_terrainData.lodDistanceThreshold.clear();
-
-        // float size = m_terrainData.patchSize * m_terrainData.patchSize;
-
-        //  float patchWorldSize = m_terrainData.patchSize * Max(m_terrainData.scale.x, m_terrainData.scale.z);
-
-        const double size = (m_terrainData.patchSize * m_terrainData.patchSize); // * (m_terrainData.scale.x * m_terrainData.scale.z);
-        m_terrainData.lodDistanceThreshold.reserve(m_terrainData.maxLOD);
-
-        for (int i = 0; i < m_terrainData.maxLOD; ++i)
-        {
-            // LOD 0 = mais próximo (mais detalhe)
-            // LOD N = mais longe (menos detalhe)
-            double distance = size * ((i + 1 + i / 2) * (i + 1 + i / 2));
-
-            m_terrainData.lodDistanceThreshold[i] = static_cast<float>(distance);
-            m_terrainData.lodDistanceThreshold[i] *= 0.5f;
-
-            LogInfo("[TerrainLod] LOD %d  (distance: %.2f)", i, distance);
-        }
-    }
-}
-
- 
-
-
- 
-
-bool TerrainLod::PreRenderLODCalculations()
-{
-    // Frustum* frustum = camera->GetFrustum();
-
-    const Camera *camera = Driver::Instance().GetCamera();
-    const Frustum *frustum = Driver::Instance().GetFrustum();
-    // if (!frustum->intersectsAABB(m_boundBox))
-    //      return;
-
-    if (!camera || !frustum)
-    {
-        LogWarning("[TerrainLod] No camera or frustum available for LOD calculations.");
-        return false;
-    }
-
-    Vec3 cameraRotation = camera->getEulerAngles();
-    Vec3 cameraPosition = camera->getPosition();
-
-    Vec3 posDelta = cameraPosition - m_oldCameraPosition;
-    Vec3 rotDelta = cameraRotation - m_oldCameraRotation;
-    float length = posDelta.length();
-    float rotLength = std::abs(rotDelta.y);
-
-   // if ((length !=  0.0f) || (rotLength != 0.0f))
-   //     LogInfo("Camera  Delta Length: %.4f  Rotation Delta Y: %.4f", length, rotLength);
-
-    if ( length < m_cameraMovementDelta &&  rotLength < m_cameraRotationDelta)
-    {
-         return false;
-    }
-
-
-    m_oldCameraPosition = cameraPosition;
-    m_oldCameraRotation = cameraRotation;
-
-    const int count = m_terrainData.patchCount * m_terrainData.patchCount;
-
-    for (int j = 0; j < count; ++j)
-    {
-
-        if (frustum->intersectsAABB(m_terrainData.patches[j].boundBox))
-        {
-            float distanceSq = (cameraPosition - m_terrainData.patches[j].center).lengthSquared();
-
-            m_terrainData.patches[j].currentLOD = 0;
-            for (int i = m_terrainData.maxLOD - 1; i > 0; --i)
-            {
-                //     LogInfo("DistanceSq to patch %d: %f > %f", i, distanceSq, m_terrainData.lodDistanceThreshold[i]);
-                if (distanceSq >= m_terrainData.lodDistanceThreshold[i])
-                {
-                    m_terrainData.patches[j].currentLOD = i;
-                    break;
-                }
-            }
-        }
-        else
-        {
-            m_terrainData.patches[j].currentLOD = -1;
-        }
-    }
-
-    return true;
-}
 
 void TerrainLod::update(float dt)
 {
@@ -694,20 +528,6 @@ void TerrainLod::update(float dt)
     }
 }
 
-void TerrainLod::render()
-{
-    if (!meshBuffer )
-    {
-        return;
-        LogWarning("[TerrainLod] No buffer to render.");
-    }
-
-    
-
-    ApplyMaterial();
-    Driver::Instance().DrawMeshBuffer(meshBuffer, PrimitiveType::PT_TRIANGLES, m_indicesToRender);
-}
-
 void TerrainLod::debug(RenderBatch *batch)
 {
 
@@ -715,28 +535,248 @@ void TerrainLod::debug(RenderBatch *batch)
 
     for (int i = 0; i < count; ++i)
     {
-     
+
         if (m_terrainData.patches[i].currentLOD == 0)
             batch->SetColor(0, 255, 0); // Verde para LOD 0
         else if (m_terrainData.patches[i].currentLOD == 1)
             batch->SetColor(255, 255, 0); // Amarelo para LOD 1
         else if (m_terrainData.patches[i].currentLOD == 2)
             batch->SetColor(255, 165, 0); // Laranja para LOD 2
-        else if (m_terrainData.patches[i].currentLOD >= 3)
-            batch->SetColor(255, 0, 0); // Vermelho para LOD 3 ou mais
+        else if (m_terrainData.patches[i].currentLOD == 3)
+            batch->SetColor(128, 0, 128); // Roxo para LOD 3
+        else if (m_terrainData.patches[i].currentLOD >= 4)
+            batch->SetColor(255, 0, 0); // Vermelho para LOD 4 ou mais
         else
             batch->SetColor(100, 100, 100); // Cinza para não renderizado
 
         batch->Box(m_terrainData.patches[i].boundBox);
     }
-
-
 }
 
-float TerrainLod::GetHeight(float x, float z) const
+TerrainLod::~TerrainLod()
+{
+    if (meshBuffer)
+    {
+        delete meshBuffer;
+        meshBuffer = nullptr;
+    }
+
+    if (material)
+    {
+        delete material;
+        material = nullptr;
+    }
+
+    if (m_terrainData.patches)
+    {
+        delete[] m_terrainData.patches;
+        m_terrainData.patches = nullptr;
+    }
+}
+
+void TerrainLod::CreatePatches()
+{
+    m_terrainData.patchCount = (m_terrainData.size - 1) / m_terrainData.calcPatchSize;
+
+    if (m_terrainData.patchCount <= 0)
+    {
+        LogError("[TerrainLod] Invalid patch count: %d", m_terrainData.patchCount);
+        return;
+    }
+
+    if (m_terrainData.patches)
+    {
+        delete[] m_terrainData.patches;
+        m_terrainData.patches = nullptr;
+    }
+
+    const int totalPatches = m_terrainData.patchCount * m_terrainData.patchCount;
+    m_terrainData.patches = new Patch[totalPatches];
+
+    LogInfo("[TerrainLod] Created %d patches (%dx%d)",
+            totalPatches, m_terrainData.patchCount, m_terrainData.patchCount);
+}
+
+void TerrainLod::CalculateDistanceThresholds(bool scaleChanged)
 {
 
-    return 0.0f;
+    if (!m_overrideDistanceThreshold)
+    {
+        m_terrainData.lodDistanceThreshold.clear();
+        m_terrainData.lodDistanceThreshold.resize(m_terrainData.maxLOD);
+
+        const float normalizedPatchSize = static_cast<float>(m_terrainData.patchSize) /
+                                          static_cast<float>(m_terrainData.size - 1);
+
+        // Tamanho real em world space (considerando a escala X e Z)
+        const float patchWorldSizeX = normalizedPatchSize * m_terrainData.scale.x;
+        const float patchWorldSizeZ = normalizedPatchSize * m_terrainData.scale.z;
+
+       // const float patchWorldSize = std::max(patchWorldSizeX, patchWorldSizeZ);
+
+        const float patchDiagonal = std::sqrt(patchWorldSizeX * patchWorldSizeX +
+                                              patchWorldSizeZ * patchWorldSizeZ);
+
+        LogInfo("[TerrainLod] Patch world size: %.2f x %.2f (diagonal: %.2f)",
+                patchWorldSizeX, patchWorldSizeZ, patchDiagonal);
+
+        for (int i = 0; i < m_terrainData.maxLOD; ++i)
+        {
+            // LOD 0 = detalhe máximo (perto)
+            // LOD N = menos detalhe (longe)
+
+            // Fórmula baseada na diagonal do patch
+            // Cada LOD dobra a distância (progressão geométrica)
+            float distance = patchDiagonal * 1.0f * std::pow(2.0f, static_cast<float>(i));
+
+            m_terrainData.lodDistanceThreshold[i] = distance * distance;
+
+            LogInfo("[TerrainLod] LOD %d threshold: %.2f units (squared: %.2f)",
+                    i, distance, m_terrainData.lodDistanceThreshold[i]);
+        }
+    }
+}
+
+u32 TerrainLod::GetIndex(int patchX, int patchZ, int patchIndex, u32 vX, u32 vZ) const
+{
+    const Patch &patch = m_terrainData.patches[patchIndex];
+
+    // Ajustar vértices nas bordas para prevenir T-junctions
+    // Processar bordas verticais (esquerda/direita)
+    if (vX == 0 && patch.left && patch.currentLOD < patch.left->currentLOD)
+    {
+        u32 step = 1 << patch.left->currentLOD;
+        vZ = (vZ / step) * step; // Snap to coarser grid
+    }
+    else if (vX == static_cast<u32>(m_terrainData.calcPatchSize) &&
+             patch.right && patch.currentLOD < patch.right->currentLOD)
+    {
+        u32 step = 1 << patch.right->currentLOD;
+        vZ = (vZ / step) * step;
+    }
+
+    // Processar bordas horizontais (top/bottom)
+    if (vZ == 0 && patch.top && patch.currentLOD < patch.top->currentLOD)
+    {
+        u32 step = 1 << patch.top->currentLOD;
+        vX = (vX / step) * step;
+    }
+    else if (vZ == static_cast<u32>(m_terrainData.calcPatchSize) &&
+             patch.bottom && patch.currentLOD < patch.bottom->currentLOD)
+    {
+        u32 step = 1 << patch.bottom->currentLOD;
+        vX = (vX / step) * step;
+    }
+
+    // Clamp aos limites do patch
+    vX = std::min(vX, static_cast<u32>(m_terrainData.calcPatchSize));
+    vZ = std::min(vZ, static_cast<u32>(m_terrainData.calcPatchSize));
+
+    return (vZ + (m_terrainData.calcPatchSize * patchZ)) * m_terrainData.size +
+           (vX + (m_terrainData.calcPatchSize * patchX));
+}
+
+bool TerrainLod::PreRenderLODCalculations()
+{
+    const Camera *camera = Driver::Instance().GetCamera();
+    const Frustum *frustum = Driver::Instance().GetFrustum();
+
+    if (!camera || !frustum)
+    {
+        LogWarning("[TerrainLod] No camera or frustum available for LOD calculations.");
+        return false;
+    }
+
+    Vec3 cameraRotation = camera->getEulerAngles();
+    Vec3 cameraPosition = camera->getPosition();
+
+    // Calcular deltas
+    Vec3 posDelta = cameraPosition - m_oldCameraPosition;
+    Vec3 rotDelta = cameraRotation - m_oldCameraRotation;
+    float movementLength = posDelta.length();
+    float rotationLength = std::abs(rotDelta.y);
+
+    // Atualizar mesmo com movimento pequeno para suavizar transições
+    // Remover o early return muito restritivo
+    bool cameraMovedSignificantly = (movementLength >= m_cameraMovementDelta) ||
+                                    (rotationLength >= m_cameraRotationDelta);
+
+    m_oldCameraPosition = cameraPosition;
+    m_oldCameraRotation = cameraRotation;
+
+    bool lodChanged = false;
+    const int count = m_terrainData.patchCount * m_terrainData.patchCount;
+
+    for (int j = 0; j < count; ++j)
+    {
+        Patch &patch = m_terrainData.patches[j];
+        int previousLOD = patch.currentLOD;
+
+        if (frustum->intersectsAABB(patch.boundBox))
+        {
+            float distanceSq = (cameraPosition - patch.center).lengthSquared();
+
+            // Determinar LOD baseado em distância
+            int newLOD = 0;
+            for (int i = m_terrainData.maxLOD - 1; i >= 0; --i)
+            {
+                if (distanceSq >= m_terrainData.lodDistanceThreshold[i])
+                {
+                    newLOD = i;
+                    break;
+                }
+            }
+
+            // HISTERESE: adicionar uma margem para evitar flickering
+            // Apenas muda LOD se a distância mudou significativamente
+            const float hysteresisMargin = 0.15f; // 15% de margem
+
+            if (previousLOD != newLOD)
+            {
+                // Se está aumentando detalhe (LOD diminuindo)
+                if (newLOD < previousLOD)
+                {
+                    float threshold = m_terrainData.lodDistanceThreshold[newLOD];
+                    if (distanceSq < threshold * (1.0f - hysteresisMargin))
+                    {
+                        patch.currentLOD = newLOD;
+                        lodChanged = true;
+                    }
+                    else
+                    {
+                        patch.currentLOD = previousLOD; // Manter LOD anterior
+                    }
+                }
+                // Se está diminuindo detalhe (LOD aumentando)
+                else
+                {
+                    float threshold = m_terrainData.lodDistanceThreshold[previousLOD];
+                    if (distanceSq > threshold * (1.0f + hysteresisMargin))
+                    {
+                        patch.currentLOD = newLOD;
+                        lodChanged = true;
+                    }
+                    else
+                    {
+                        patch.currentLOD = previousLOD; // Manter LOD anterior
+                    }
+                }
+            }
+            else
+            {
+                patch.currentLOD = newLOD;
+            }
+        }
+        else
+        {
+            patch.currentLOD = -1; // Fora do frustum
+            if (previousLOD != -1)
+                lodChanged = true;
+        }
+    }
+
+    // Retornar true se LOD mudou ou câmera moveu significativamente
+    return lodChanged || cameraMovedSignificantly;
 }
 
 bool TerrainLod::LoadHeightMap(const std::string &filename,
@@ -752,7 +792,7 @@ bool TerrainLod::LoadHeightMap(const std::string &filename,
         return false;
     }
 
-    // Converter para grayscale se necessário
+    // Converter para grayscale
     Pixmap *grayscale = nullptr;
     const Pixmap *sourceMap = &heightmap;
 
@@ -779,6 +819,7 @@ bool TerrainLod::LoadHeightMap(const std::string &filename,
                    sourceMap->width, sourceMap->height);
     }
 
+    // Ajustar maxLOD baseado no tamanho do patch
     switch (m_terrainData.patchSize)
     {
     case PATCH_9:
@@ -798,22 +839,18 @@ bool TerrainLod::LoadHeightMap(const std::string &filename,
         break;
     }
 
-
-
+    // Criar vértices
     const float tdSize = 1.0f / (m_terrainData.size - 1);
 
     for (int z = 0; z < m_terrainData.size; ++z)
     {
         for (int x = 0; x < m_terrainData.size; ++x)
         {
-            // Ler altura do pixel
             int pixelIndex = z * sourceMap->width + x;
             u8 heightValue = sourceMap->pixels[pixelIndex * sourceMap->components];
 
-            // Normalizar 0-255 para 0.0-1.0 e aplicar escala
             float height = (heightValue / 255.0f) * heightScale;
 
-            // Coordenadas normalizadas
             float fx = x * tdSize;
             float fz = z * tdSize;
 
@@ -822,47 +859,43 @@ bool TerrainLod::LoadHeightMap(const std::string &filename,
             v.y = (v.y * m_terrainData.scale.y) + m_terrainData.position.y;
             v.z = (v.z * m_terrainData.scale.z) + m_terrainData.position.z;
 
-            // UVs para textura
             float tu = fx;
             float tv = fz;
-
 
             meshBuffer->AddVertex(v.x, v.y, v.z, 0, 1, 0, tu, tv);
         }
     }
 
-    // Cleanup
     if (grayscale)
     {
         delete grayscale;
+        grayscale = nullptr;
     }
 
     Smooth(smoothFactor);
     CalculateNormals();
 
-    // Processar terreno
-    // CalculateDistanceThresholds();
-    m_terrainData.lodDistanceThreshold.reserve(10);
-    m_terrainData.lodDistanceThreshold[0] = 60.0f;
-    m_terrainData.lodDistanceThreshold[1] = 120.0f;
-    m_terrainData.lodDistanceThreshold[2] = 240.0f;
-    m_terrainData.lodDistanceThreshold[3] = 480.0f;
-    m_terrainData.lodDistanceThreshold[4] = 960.0f;
+    CalculateDistanceThresholds(false);
+
+    // m_overrideDistanceThreshold = true;
+    // m_terrainData.lodDistanceThreshold.resize(m_terrainData.maxLOD);
+    // m_terrainData.lodDistanceThreshold[0] = 60.0f;   // 60^2
+    // m_terrainData.lodDistanceThreshold[1] = 120.0f;  // 120^2
+    // m_terrainData.lodDistanceThreshold[2] = 240.0f;  // 240^2
+    // m_terrainData.lodDistanceThreshold[3] = 480.0f; // 480^2
+    // m_terrainData.lodDistanceThreshold[4] = 960.0f; // 960^2
 
     CreatePatches();
     CalculatePatchData();
+
+     
 
     // Criar buffers
     int maxIndices = m_terrainData.patchCount * m_terrainData.patchCount *
                      m_terrainData.calcPatchSize * m_terrainData.calcPatchSize * 6;
 
-
-
     meshBuffer->CreateIndexBuffer(maxIndices, true);
     PreRenderIndicesCalculations();
-
- 
-
 
     const u32 endTime = SDL_GetTicks();
 
@@ -873,4 +906,594 @@ bool TerrainLod::LoadHeightMap(const std::string &filename,
             m_terrainData.patchCount * m_terrainData.patchCount);
 
     return true;
+}
+
+bool TerrainLod::ValidateTerrainData() const
+{
+    if (!meshBuffer)
+    {
+        LogError("[TerrainLod] MeshBuffer is null");
+        return false;
+    }
+
+    if (!m_terrainData.patches)
+    {
+        LogError("[TerrainLod] Patches array is null");
+        return false;
+    }
+
+    if (m_terrainData.patchCount <= 0)
+    {
+        LogError("[TerrainLod] Invalid patch count: %d", m_terrainData.patchCount);
+        return false;
+    }
+
+    if (m_terrainData.size <= 0)
+    {
+        LogError("[TerrainLod] Invalid terrain size: %d", m_terrainData.size);
+        return false;
+    }
+
+    if (meshBuffer->GetVertexCount() != m_terrainData.size * m_terrainData.size)
+    {
+        LogError("[TerrainLod] Vertex count mismatch: %d vs %d",
+                 meshBuffer->GetVertexCount(),
+                 m_terrainData.size * m_terrainData.size);
+        return false;
+    }
+
+    return true;
+}
+
+void TerrainLod::render()
+{
+    if (!ValidateTerrainData())
+    {
+        LogWarning("[TerrainLod] Cannot render: invalid terrain data");
+        return;
+    }
+
+    if (m_indicesToRender == 0)
+    {
+
+        return;
+    }
+
+    ApplyMaterial();
+    Driver::Instance().DrawMeshBuffer(meshBuffer, PrimitiveType::PT_TRIANGLES, m_indicesToRender);
+}
+
+float TerrainLod::GetHeight(float worldX, float worldZ) const
+{
+    if (!meshBuffer || meshBuffer->GetVertexCount() == 0)
+    {
+        LogWarning("[TerrainLod] Cannot get height: no mesh data");
+        return 0.0f;
+    }
+
+    // Converter coordenadas world para local (0-1)
+    float localX = (worldX - m_terrainData.position.x) / m_terrainData.scale.x;
+    float localZ = (worldZ - m_terrainData.position.z) / m_terrainData.scale.z;
+
+    // Clamp para limites do terreno
+    localX = std::max(0.0f, std::min(1.0f, localX));
+    localZ = std::max(0.0f, std::min(1.0f, localZ));
+
+    // Converter para índices do grid
+    float gridX = localX * (m_terrainData.size - 1);
+    float gridZ = localZ * (m_terrainData.size - 1);
+
+    // Índices inteiros do quad onde o ponto está
+    int ix = static_cast<int>(gridX);
+    int iz = static_cast<int>(gridZ);
+
+    // Clamp aos limites válidos
+    ix = std::min(ix, m_terrainData.size - 2);
+    iz = std::min(iz, m_terrainData.size - 2);
+
+    // Fração dentro do quad (0-1)
+    float fx = gridX - ix;
+    float fz = gridZ - iz;
+
+    // Obter os 4 vértices do quad
+    int index00 = iz * m_terrainData.size + ix;
+    int index10 = iz * m_terrainData.size + (ix + 1);
+    int index01 = (iz + 1) * m_terrainData.size + ix;
+    int index11 = (iz + 1) * m_terrainData.size + (ix + 1);
+
+    Vec3 v00 = meshBuffer->GetVertexPosition(index00);
+    Vec3 v10 = meshBuffer->GetVertexPosition(index10);
+    Vec3 v01 = meshBuffer->GetVertexPosition(index01);
+    Vec3 v11 = meshBuffer->GetVertexPosition(index11);
+
+    // Interpolação bilinear
+    // Dividir quad em 2 triângulos e interpolar no triângulo correto
+    float height;
+
+    if (fx + fz <= 1.0f)
+    {
+        // Triângulo inferior-esquerdo (v00, v10, v01)
+        height = v00.y + (v10.y - v00.y) * fx + (v01.y - v00.y) * fz;
+    }
+    else
+    {
+        // Triângulo superior-direito (v10, v11, v01)
+        height = v11.y + (v01.y - v11.y) * (1.0f - fx) + (v10.y - v11.y) * (1.0f - fz);
+    }
+
+    return height;
+}
+
+// Sobrecarga para Vec3
+float TerrainLod::GetHeight(const Vec3 &worldPos) const
+{
+    return GetHeight(worldPos.x, worldPos.z);
+}
+
+void TerrainLod::Smooth(int smoothFactor)
+{
+    if (smoothFactor <= 0 || !meshBuffer || meshBuffer->GetVertexCount() == 0)
+        return;
+
+    m_smoothFactor = smoothFactor;
+
+    // Buffer temporário para as alturas
+    std::vector<float> heights(m_terrainData.size * m_terrainData.size);
+
+    // Copiar alturas atuais
+    for (int i = 0; i < m_terrainData.size * m_terrainData.size; ++i)
+    {
+        heights[i] = meshBuffer->GetVertexPosition(i).y;
+    }
+
+    // Aplicar filtro de suavização várias vezes
+    for (int iteration = 0; iteration < smoothFactor; ++iteration)
+    {
+        std::vector<float> smoothed = heights;
+
+        for (int z = 1; z < m_terrainData.size - 1; ++z)
+        {
+            for (int x = 1; x < m_terrainData.size - 1; ++x)
+            {
+                int idx = z * m_terrainData.size + x;
+
+                // Filtro gaussiano 3x3 simplificado
+                float sum = 0.0f;
+                float weight = 0.0f;
+
+                // Centro (peso maior)
+                sum += heights[idx] * 4.0f;
+                weight += 4.0f;
+
+                // Adjacentes (peso médio)
+                sum += heights[idx - 1] * 2.0f;                  // Esquerda
+                sum += heights[idx + 1] * 2.0f;                  // Direita
+                sum += heights[idx - m_terrainData.size] * 2.0f; // Cima
+                sum += heights[idx + m_terrainData.size] * 2.0f; // Baixo
+                weight += 8.0f;
+
+                // Diagonais (peso menor)
+                sum += heights[idx - m_terrainData.size - 1]; // Top-left
+                sum += heights[idx - m_terrainData.size + 1]; // Top-right
+                sum += heights[idx + m_terrainData.size - 1]; // Bottom-left
+                sum += heights[idx + m_terrainData.size + 1]; // Bottom-right
+                weight += 4.0f;
+
+                smoothed[idx] = sum / weight;
+            }
+        }
+
+        heights = smoothed;
+    }
+ 
+    for (int z = 0; z < m_terrainData.size; ++z)
+    {
+        for (int x = 0; x < m_terrainData.size; ++x)
+        {
+            int idx = z * m_terrainData.size + x;
+            Vec3 pos = meshBuffer->GetVertexPosition(idx);
+            pos.y = heights[idx];
+            meshBuffer->SetVertexPosition(idx, pos);
+        }
+    }
+
+    LogInfo("[TerrainLod] Applied smoothing filter %d times", smoothFactor);
+}
+
+void TerrainLod::SmoothArea(float worldX, float worldZ, float radius, int iterations)
+{
+    if (!meshBuffer || meshBuffer->GetVertexCount() == 0)
+        return;
+
+    float localX = (worldX - m_terrainData.position.x) / m_terrainData.scale.x;
+    float localZ = (worldZ - m_terrainData.position.z) / m_terrainData.scale.z;
+
+    float centerGridX = localX * (m_terrainData.size - 1);
+    float centerGridZ = localZ * (m_terrainData.size - 1);
+
+    float radiusX = radius / m_terrainData.scale.x * (m_terrainData.size - 1);
+    float radiusZ = radius / m_terrainData.scale.z * (m_terrainData.size - 1);
+    float maxRadius = std::max(radiusX, radiusZ);
+
+    int minX = std::max(1, static_cast<int>(centerGridX - maxRadius));
+    int maxX = std::min(m_terrainData.size - 2, static_cast<int>(centerGridX + maxRadius));
+    int minZ = std::max(1, static_cast<int>(centerGridZ - maxRadius));
+    int maxZ = std::min(m_terrainData.size - 2, static_cast<int>(centerGridZ + maxRadius));
+ 
+    std::vector<float> heights(m_terrainData.size * m_terrainData.size);
+
+    for (int i = 0; i < m_terrainData.size * m_terrainData.size; ++i)
+    {
+        heights[i] = meshBuffer->GetVertexPosition(i).y;
+    }
+
+    for (int iter = 0; iter < iterations; ++iter)
+    {
+        std::vector<float> smoothed = heights;
+
+        for (int z = minZ; z <= maxZ; ++z)
+        {
+            for (int x = minX; x <= maxX; ++x)
+            {
+                float dx = (x - centerGridX) / radiusX;
+                float dz = (z - centerGridZ) / radiusZ;
+                float distSq = dx * dx + dz * dz;
+
+                if (distSq <= 1.0f)
+                {
+                    int idx = z * m_terrainData.size + x;
+
+                    // Filtro 3x3
+                    float sum = heights[idx] * 4.0f;
+                    float weight = 4.0f;
+
+                    sum += heights[idx - 1] * 2.0f;
+                    sum += heights[idx + 1] * 2.0f;
+                    sum += heights[idx - m_terrainData.size] * 2.0f;
+                    sum += heights[idx + m_terrainData.size] * 2.0f;
+                    weight += 8.0f;
+
+                    sum += heights[idx - m_terrainData.size - 1];
+                    sum += heights[idx - m_terrainData.size + 1];
+                    sum += heights[idx + m_terrainData.size - 1];
+                    sum += heights[idx + m_terrainData.size + 1];
+                    weight += 4.0f;
+
+                    // Blend baseado em distância
+                    float blendFactor = 1.0f - distSq;
+                    smoothed[idx] = heights[idx] + (sum / weight - heights[idx]) * blendFactor;
+                }
+            }
+        }
+
+        heights = smoothed;
+    }
+
+    // Aplicar alturas suavizadas
+    for (int z = minZ; z <= maxZ; ++z)
+    {
+        for (int x = minX; x <= maxX; ++x)
+        {
+            float dx = (x - centerGridX) / radiusX;
+            float dz = (z - centerGridZ) / radiusZ;
+            float distSq = dx * dx + dz * dz;
+
+            if (distSq <= 1.0f)
+            {
+                int idx = z * m_terrainData.size + x;
+                Vec3 pos = meshBuffer->GetVertexPosition(idx);
+                pos.y = heights[idx];
+                meshBuffer->SetVertexPosition(idx, pos);
+            }
+        }
+    }
+
+    CalculateNormals();
+    CalculatePatchData();
+}
+void TerrainLod::SetHeight(float worldX, float worldZ, float newHeight, float radius)
+{
+    if (!meshBuffer || meshBuffer->GetVertexCount() == 0)
+    {
+        LogWarning("[TerrainLod] Cannot set height: no mesh data");
+        return;
+    }
+
+    // Converter coordenadas world para local
+    float localX = (worldX - m_terrainData.position.x) / m_terrainData.scale.x;
+    float localZ = (worldZ - m_terrainData.position.z) / m_terrainData.scale.z;
+
+    // Converter para índices do grid
+    float centerGridX = localX * (m_terrainData.size - 1);
+    float centerGridZ = localZ * (m_terrainData.size - 1);
+
+    // Calcular raio em unidades de grid
+    float radiusX = radius / m_terrainData.scale.x * (m_terrainData.size - 1);
+    float radiusZ = radius / m_terrainData.scale.z * (m_terrainData.size - 1);
+    float maxRadius = std::max(radiusX, radiusZ);
+
+    // Área de influência
+    int minX = std::max(0, static_cast<int>(centerGridX - maxRadius));
+    int maxX = std::min(m_terrainData.size - 1, static_cast<int>(centerGridX + maxRadius));
+    int minZ = std::max(0, static_cast<int>(centerGridZ - maxRadius));
+    int maxZ = std::min(m_terrainData.size - 1, static_cast<int>(centerGridZ + maxRadius));
+
+    for (int z = minZ; z <= maxZ; ++z)
+    {
+        for (int x = minX; x <= maxX; ++x)
+        {
+            // Distância do centro
+            float dx = (x - centerGridX) / radiusX;
+            float dz = (z - centerGridZ) / radiusZ;
+            float distSq = dx * dx + dz * dz;
+
+            if (distSq <= 1.0f)
+            {
+                // Peso baseado em distância (suave falloff)
+                float weight = 1.0f - distSq; // Linear
+                // Para falloff mais suave: float weight = cos(distSq * M_PI * 0.5f);
+
+                int idx = z * m_terrainData.size + x;
+                Vec3 pos = meshBuffer->GetVertexPosition(idx);
+
+                // Interpolar entre altura atual e nova altura
+                float currentHeight = (pos.y - m_terrainData.position.y) / m_terrainData.scale.y;
+                float targetHeight = newHeight / m_terrainData.scale.y;
+                float blendedHeight = currentHeight + (targetHeight - currentHeight) * weight;
+
+                pos.y = (blendedHeight * m_terrainData.scale.y) + m_terrainData.position.y;
+                meshBuffer->SetVertexPosition(idx, pos);
+            }
+        }
+    }
+
+    CalculateNormals();
+    CalculatePatchData();
+}
+
+void TerrainLod::ModifyHeight(float worldX, float worldZ, float deltaHeight, float radius)
+{
+    if (!meshBuffer || meshBuffer->GetVertexCount() == 0)
+    {
+        LogWarning("[TerrainLod] Cannot modify height: no mesh data");
+        return;
+    }
+
+    float localX = (worldX - m_terrainData.position.x) / m_terrainData.scale.x;
+    float localZ = (worldZ - m_terrainData.position.z) / m_terrainData.scale.z;
+
+    float centerGridX = localX * (m_terrainData.size - 1);
+    float centerGridZ = localZ * (m_terrainData.size - 1);
+
+    float radiusX = radius / m_terrainData.scale.x * (m_terrainData.size - 1);
+    float radiusZ = radius / m_terrainData.scale.z * (m_terrainData.size - 1);
+    float maxRadius = std::max(radiusX, radiusZ);
+
+    int minX = std::max(0, static_cast<int>(centerGridX - maxRadius));
+    int maxX = std::min(m_terrainData.size - 1, static_cast<int>(centerGridX + maxRadius));
+    int minZ = std::max(0, static_cast<int>(centerGridZ - maxRadius));
+    int maxZ = std::min(m_terrainData.size - 1, static_cast<int>(centerGridZ + maxRadius));
+
+    for (int z = minZ; z <= maxZ; ++z)
+    {
+        for (int x = minX; x <= maxX; ++x)
+        {
+            float dx = (x - centerGridX) / radiusX;
+            float dz = (z - centerGridZ) / radiusZ;
+            float distSq = dx * dx + dz * dz;
+
+            if (distSq <= 1.0f)
+            {
+                // Falloff suave usando cosine
+                float weight = std::cos(distSq * 3.14159f * 0.5f);
+
+                int idx = z * m_terrainData.size + x;
+                Vec3 pos = meshBuffer->GetVertexPosition(idx);
+
+                // Aplicar delta com weight
+                pos.y += (deltaHeight * weight * m_terrainData.scale.y);
+
+                meshBuffer->SetVertexPosition(idx, pos);
+            }
+        }
+    }
+
+    CalculateNormals();
+    CalculatePatchData();
+}
+
+void TerrainLod::Flatten(float worldX, float worldZ, float targetHeight, float radius, float strength)
+{
+    if (!meshBuffer || meshBuffer->GetVertexCount() == 0)
+        return;
+
+    float localX = (worldX - m_terrainData.position.x) / m_terrainData.scale.x;
+    float localZ = (worldZ - m_terrainData.position.z) / m_terrainData.scale.z;
+
+    float centerGridX = localX * (m_terrainData.size - 1);
+    float centerGridZ = localZ * (m_terrainData.size - 1);
+
+    float radiusX = radius / m_terrainData.scale.x * (m_terrainData.size - 1);
+    float radiusZ = radius / m_terrainData.scale.z * (m_terrainData.size - 1);
+    float maxRadius = std::max(radiusX, radiusZ);
+
+    int minX = std::max(0, static_cast<int>(centerGridX - maxRadius));
+    int maxX = std::min(m_terrainData.size - 1, static_cast<int>(centerGridX + maxRadius));
+    int minZ = std::max(0, static_cast<int>(centerGridZ - maxRadius));
+    int maxZ = std::min(m_terrainData.size - 1, static_cast<int>(centerGridZ + maxRadius));
+
+    for (int z = minZ; z <= maxZ; ++z)
+    {
+        for (int x = minX; x <= maxX; ++x)
+        {
+            float dx = (x - centerGridX) / radiusX;
+            float dz = (z - centerGridZ) / radiusZ;
+            float distSq = dx * dx + dz * dz;
+
+            if (distSq <= 1.0f)
+            {
+                float weight = (1.0f - distSq) * strength;
+
+                int idx = z * m_terrainData.size + x;
+                Vec3 pos = meshBuffer->GetVertexPosition(idx);
+
+                float currentHeight = (pos.y - m_terrainData.position.y) / m_terrainData.scale.y;
+                float normalizedTarget = targetHeight / m_terrainData.scale.y;
+                float newHeight = currentHeight + (normalizedTarget - currentHeight) * weight;
+
+                pos.y = (newHeight * m_terrainData.scale.y) + m_terrainData.position.y;
+                meshBuffer->SetVertexPosition(idx, pos);
+            }
+        }
+    }
+
+    CalculateNormals();
+    CalculatePatchData();
+}
+
+bool RayIntersectTriangle(const Vec3 &rayOrigin, const Vec3 &rayDir,
+                          const Vec3 &v0, const Vec3 &v1, const Vec3 &v2,
+                          float &t, float &u, float &v)
+{
+    const float EPSILON = 0.0000001f;
+
+    Vec3 edge1 = v1 - v0;
+    Vec3 edge2 = v2 - v0;
+    Vec3 h = rayDir.cross(edge2);
+    float a = edge1.dot(h);
+
+    if (a > -EPSILON && a < EPSILON)
+        return false; // Ray paralelo ao triângulo
+
+    float f = 1.0f / a;
+    Vec3 s = rayOrigin - v0;
+    u = f * s.dot(h);
+
+    if (u < 0.0f || u > 1.0f)
+        return false;
+
+    Vec3 q = s.cross(edge1);
+    v = f * rayDir.dot(q);
+
+    if (v < 0.0f || u + v > 1.0f)
+        return false;
+
+    t = f * edge2.dot(q);
+
+    return t > EPSILON;
+}
+
+TerrainRaycastHit TerrainLod::Raycast(const Ray &ray, float maxDistance) const
+{
+    TerrainRaycastHit result;
+
+    if (!meshBuffer || meshBuffer->GetVertexCount() == 0)
+    {
+        LogWarning("[TerrainLod] Cannot raycast: no mesh data");
+        return result;
+    }
+
+    // Primeiro verificar se o ray intersecta a bounding box do terreno
+    float tMin, tMax;
+    if (!ray.intersectAABB(getBoundingBox(), tMin, tMax))
+    {
+        return result;
+    }
+
+    float closestDistance = maxDistance;
+ 
+
+    // Testar todos os patches visíveis
+    const int patchCount = m_terrainData.patchCount * m_terrainData.patchCount;
+
+    for (int patchIdx = 0; patchIdx < patchCount; ++patchIdx)
+    {
+        const Patch &patch = m_terrainData.patches[patchIdx];
+
+        if (patch.currentLOD < 0)
+            continue;
+
+        if (!ray.intersectAABB(patch.boundBox, tMin, tMax))
+            continue;
+
+        int patchZ = patchIdx / m_terrainData.patchCount;
+        int patchX = patchIdx % m_terrainData.patchCount;
+
+        int step = 1 << patch.currentLOD; // LOD step
+
+        int xStart = patchX * m_terrainData.calcPatchSize;
+        int zStart = patchZ * m_terrainData.calcPatchSize;
+
+        for (int z = 0; z < m_terrainData.calcPatchSize; z += step)
+        {
+            for (int x = 0; x < m_terrainData.calcPatchSize; x += step)
+            {
+                int gx = xStart + x;
+                int gz = zStart + z;
+
+                // Garantir que não excede limites
+                if (gx + step >= m_terrainData.size || gz + step >= m_terrainData.size)
+                    continue;
+
+                // Índices dos 4 vértices do quad
+                int idx00 = gz * m_terrainData.size + gx;
+                int idx10 = gz * m_terrainData.size + (gx + step);
+                int idx01 = (gz + step) * m_terrainData.size + gx;
+                int idx11 = (gz + step) * m_terrainData.size + (gx + step);
+
+                Vec3 v00 = meshBuffer->GetVertexPosition(idx00);
+                Vec3 v10 = meshBuffer->GetVertexPosition(idx10);
+                Vec3 v01 = meshBuffer->GetVertexPosition(idx01);
+                Vec3 v11 = meshBuffer->GetVertexPosition(idx11);
+
+                float t, u, v;
+
+                // Triângulo 1: (v00, v10, v01)
+                if (RayIntersectTriangle(ray.origin, ray.direction, v00, v10, v01, t, u, v))
+                {
+                    if (t < closestDistance && t > 0.0f)
+                    {
+                        closestDistance = t;
+                        result.hit = true;
+                        result.position = ray.origin + ray.direction * t;
+                        result.distance = t;
+                        result.gridX = gx;
+                        result.gridZ = gz;
+
+                        // Calcular normal do triângulo
+                        Vec3 edge1 = v10 - v00;
+                        Vec3 edge2 = v01 - v00;
+                        result.normal = edge1.cross(edge2);
+                        result.normal.normalize();
+
+       
+                    }
+                }
+
+                // Triângulo 2: (v10, v11, v01)
+                if (RayIntersectTriangle(ray.origin, ray.direction, v10, v11, v01, t, u, v))
+                {
+                    if (t < closestDistance && t > 0.0f)
+                    {
+                        closestDistance = t;
+                        result.hit = true;
+                        result.position = ray.origin + ray.direction * t;
+                        result.distance = t;
+                        result.gridX = gx;
+                        result.gridZ = gz;
+
+                        // Calcular normal do triângulo
+                        Vec3 edge1 = v11 - v10;
+                        Vec3 edge2 = v01 - v10;
+                        result.normal = edge1.cross(edge2);
+                        result.normal.normalize();
+
+              
+                    }
+                }
+            }
+        }
+    }
+
+    return result;
 }

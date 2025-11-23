@@ -3,11 +3,13 @@
 #include "Mesh.hpp"
 #include "Texture.hpp"
 #include "Stream.hpp"
+#include "Animation.hpp"
 
 
-Animator::Animator(Mesh *mesh)
+Animator::Animator( )
 {
-    this->m_mesh = mesh;
+    this->m_mesh = nullptr;
+    this->m_active = true;
 }
 
 Animator::~Animator()
@@ -19,8 +21,34 @@ Animator::~Animator()
     m_mesh = nullptr;
 }
 
-void Animator::Update(float deltaTime)
+void Animator::attach()
 {
+     LogInfo("[Animator] attached to %s", m_owner->getName().c_str());
+
+     if (!m_owner->hasComponent<MeshRenderer>())
+     {
+         LogError("[Animator] %s has no MeshRenderer component", m_owner->getName().c_str());
+         m_active = false;
+         return;
+     }
+
+    MeshRenderer *meshRenderer = m_owner->getComponent<MeshRenderer>();
+    m_mesh = meshRenderer->getMesh();
+
+
+    
+ 
+}
+void Animator::render()
+{
+    
+}
+
+
+void Animator::update(float deltaTime)
+{
+    if (m_mesh == nullptr || layers.empty() || !m_active)
+        return;
     for (size_t i = 0; i < layers.size(); i++)
     {
         layers[i]->Update(deltaTime);

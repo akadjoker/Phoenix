@@ -132,21 +132,16 @@ void Scene::Debug(RenderBatch *batch)
 
     for (u32 i = 0; i < m_objects.size(); i++)
     {
-       // if (m_objects[i]->isShowBoxes())
-          //  batch->Box(m_objects[i]->getTransformedBoundingBox());
+        // if (m_objects[i]->isShowBoxes())
+        //  batch->Box(m_objects[i]->getTransformedBoundingBox());
     }
 
     for (u32 i = 0; i < m_objects.size(); i++)
     {
-      //  m_objects[i]->debug(batch);
+        //  m_objects[i]->debug(batch);
         if (m_objects[i]->isShowBoxes())
             batch->Box(m_objects[i]->getTransformedBoundingBox());
     }
-
-
-
-
-
 }
 
 Node3D *Scene::createNode3D(const std::string &name, Node3D *parent)
@@ -160,7 +155,6 @@ Node3D *Scene::createNode3D(const std::string &name, Node3D *parent)
     m_needRebuildLists = true;
     return node;
 }
-
 
 Terrain *Scene::createTerrain(const std::string &name, const std::string &heightmapPath, float scaleX, float scaleY, float scaleZ, float texScaleU, float texScaleV)
 {
@@ -176,11 +170,11 @@ Terrain *Scene::createTerrain(const std::string &name, const std::string &height
     return node;
 }
 
-TerrainLod *Scene::createTerrainLod(const std::string &name, const std::string &heightmapPath,int maxLOD, PatchSize patchSize, const Vec3 &position,   const Vec3 &scale,float heightScale ,int smoothFactor)
+TerrainLod *Scene::createTerrainLod(const std::string &name, const std::string &heightmapPath, int maxLOD, PatchSize patchSize, const Vec3 &position, const Vec3 &scale, float heightScale, int smoothFactor)
 {
-    TerrainLod *node = new TerrainLod(name, maxLOD, patchSize, position,   scale);
+    TerrainLod *node = new TerrainLod(name, maxLOD, patchSize, position, scale);
     node->setRenderType(RenderType::Terrain);
-    node->LoadHeightMap( heightmapPath);  
+    node->LoadHeightMap(heightmapPath);
     m_objects.push_back(node);
     m_needRebuildLists = true;
     return node;
@@ -254,7 +248,7 @@ bool Scene::Init()
 
 bool Scene::isVisible(Node3D *node)
 {
-        return (m_frustum->intersectsAABB(node->getTransformedBoundingBox()) && node->isActive());
+    return (m_frustum->intersectsAABB(node->getTransformedBoundingBox()) && node->isActive());
 }
 
 void Scene::renderAll(Shader *shader)
@@ -302,7 +296,7 @@ void Scene::rebuildRenderLists()
     m_total = m_objects.size();
     m_visible = 0;
 
-    // Clear lists
+  
     m_render_solids.clear();
     m_render_trasparent.clear();
     m_render_special.clear();
@@ -312,178 +306,132 @@ void Scene::rebuildRenderLists()
     m_render_waters.clear();
     m_render_terrains.clear();
 
- 
-
     // Cull and sort
     for (Node3D *object : m_objects)
     {
+        if (!object->isActive())
+            continue;
 
-        if (object->isActive() && object->getRenderType() == RenderType::Sky)
+        RenderType type = object->getRenderType();
+
+        // Sky, Water e Mirror não fazem frustum culling
+        bool skipCulling = (type == RenderType::Sky ||
+                            type == RenderType::Water ||
+                            type == RenderType::Mirror);
+
+        if (!skipCulling && !m_frustum->intersectsAABB(object->getTransformedBoundingBox()))
+            continue;
+
+        m_visible++;
+
+        switch (type)
         {
+        case RenderType::Sky:
             m_render_skyes.push_back(object);
-            m_visible++;
-        }
-        else if (isVisible(object) && object->getRenderType() == RenderType::Solid)
-        {
-            m_render_solids.push_back(object);
-            m_visible++;
-        }
-        else if (isVisible(object) && object->getRenderType() == RenderType::Terrain)
-        {
-
+            break;
+        case RenderType::Terrain:
             m_render_terrains.push_back(object);
-            m_visible++;
-        }
-        else if (isVisible(object) && object->getRenderType() == RenderType::Trasparent)
-        {
-            m_render_trasparent.push_back(object);
-            m_visible++;
-        }
-        else if (isVisible(object) && object->getRenderType() == RenderType::Special)
-        {
-            m_render_special.push_back(object);
-            m_visible++;
-        }
-
-        else if (isVisible(object) && object->getRenderType() == RenderType::Light)
-        {
+            break;
+        case RenderType::Solid:
+            m_render_solids.push_back(object);
+            break;
+        case RenderType::Light:
             m_render_lights.push_back(object);
-            m_visible++;
-        }
-        else if (object->isActive() && object->getRenderType() == RenderType::Water)
-        {
+            break;
+        case RenderType::Trasparent:
+            m_render_trasparent.push_back(object);
+            break;
+        case RenderType::Special:
+            m_render_special.push_back(object);
+            break;
+        case RenderType::Water:
             m_render_waters.push_back(object);
-            m_visible++;
-        }
-        else if (object->isActive() && object->getRenderType() == RenderType::Mirror)
-        {
+            break;
+        case RenderType::Mirror:
             m_render_mirrors.push_back(object);
-            m_visible++;
+            break;
         }
     }
 
-    // // Sort transparent back-to-front
+    // // Sort transparent back-to-front (IMPORTANTE para alpha blending correto)
     // std::sort(m_render_trasparent.begin(), m_render_trasparent.end(),
-    //     [this](Node3D* a, Node3D* b) {
-    //         float distA = (a->getPosition() - camWorldPos).lengthSquared();
-    //         float distB = (b->getPosition() - camWorldPos).lengthSquared();
-    //         return distA > distB;  // Back to front
-    //     });
+    //           [this](Node3D *a, Node3D *b)
+    //           {
+    //               float distA = (a->getPosition() - camWorldPos).lengthSquared();
+    //               float distB = (b->getPosition() - camWorldPos).lengthSquared();
+    //               return distA > distB; // Back to front
+    //           });
 
-    // // Sort solid front-to-back (optional, for depth optimization)
+    // // Sort solid front-to-back (reduz overdraw e melhora early-z)
     // std::sort(m_render_solids.begin(), m_render_solids.end(),
-    //     [this](Node3D* a, Node3D* b) {
-    //         float distA = (a->getPosition() - camWorldPos).lengthSquared();
-    //         float distB = (b->getPosition() - camWorldPos).lengthSquared();
-    //         return distA < distB;  // Front to back
-    //     });
+    //           [this](Node3D *a, Node3D *b)
+    //           {
+    //               float distA = (a->getPosition() - camWorldPos).lengthSquared();
+    //               float distB = (b->getPosition() - camWorldPos).lengthSquared();
+    //               return distA < distB; // Front to back
+    //           });
 
     m_needRebuildLists = false;
 }
 
 void Scene::renderPass(Shader *shader, RenderType renderPass)
 {
-
+ 
     rebuildRenderLists();
 
-    if (renderPass == RenderType::Sky)
+    const std::vector<Node3D *> *renderList = nullptr;
+    bool useSpecialDepth = false;
+
+    // Seleciona a lista correta
+    switch (renderPass)
     {
+    case RenderType::Sky:
+        renderList = &m_render_skyes;
+        useSpecialDepth = true;
+        break;
+    case RenderType::Terrain:
+        renderList = &m_render_terrains;
+        break;
+    case RenderType::Light:
+        renderList = &m_render_lights;
+        break;
+    case RenderType::Solid:
+        renderList = &m_render_solids;
+        break;
+    case RenderType::Trasparent:
+        renderList = &m_render_trasparent;
+        break;
+    case RenderType::Special:
+        renderList = &m_render_special;
+        break;
+    case RenderType::Water:
+        renderList = &m_render_waters;
+        break;
+    case RenderType::Mirror:
+        renderList = &m_render_mirrors;
+        break;
+    default:
+        return;
+    }
+
+    if (!renderList || renderList->empty())
+        return;
+
+    // Sky precisa de depth func especial
+    if (useSpecialDepth)
         glDepthFunc(GL_LEQUAL);
-        
-        for (Node3D *object : m_render_skyes)
-        {
-            if (!object->isActive())
-            continue;
-            const Mat4 model = object->getWorldTransform();
-            shader->SetUniformMat4("model", model.m);
-            object->render();
-        }
+
+ 
+    for (Node3D *object : *renderList)
+    {
+        const Mat4 model = object->getWorldTransform();
+        shader->SetUniformMat4("model", model.m);
+        object->render();
+    }
+
+    // Restaura depth func
+    if (useSpecialDepth)
         glDepthFunc(GL_LESS);
-    }
-
-    if (renderPass == RenderType::Terrain)
-    {
-        for (Node3D *object : m_render_terrains)
-        {
-            if (!object->isActive())
-                continue;
-            const Mat4 model = object->getWorldTransform();
-            shader->SetUniformMat4("model", model.m);
-            object->render();
-        }
-    }
-
-    if (renderPass == RenderType::Light)
-    {
-        for (Node3D *object : m_render_lights)
-        {
-            if (!object->isActive())
-                continue;
-            const Mat4 model = object->getWorldTransform();
-            shader->SetUniformMat4("model", model.m);
-            object->render();
-        }
-    }
-
-    if (renderPass == RenderType::Solid)
-    {
-        for (Node3D *object : m_render_solids)
-        {
-            if (!object->isActive())
-                continue;
-            const Mat4 model = object->getWorldTransform();
-            shader->SetUniformMat4("model", model.m);
-            object->render();
-        }
-    }
-
-    if (renderPass == RenderType::Trasparent)
-    {
-        for (Node3D *object : m_render_trasparent)
-        {
-            if (!object->isActive())
-                continue;
-            const Mat4 model = object->getWorldTransform();
-            shader->SetUniformMat4("model", model.m);
-            object->render();
-        }
-    }
-
-    if (renderPass == RenderType::Special)
-    {
-        for (Node3D *object : m_render_special)
-        {
-            if (!object->isActive())
-                continue;
-            const Mat4 model = object->getWorldTransform();
-            shader->SetUniformMat4("model", model.m);
-            object->render();
-        }
-    }
-
-    if (renderPass == RenderType::Water)
-    {
-        for (Node3D *object : m_render_waters)
-        {
-            if (!object->isActive())
-                continue;
-            const Mat4 model = object->getWorldTransform();
-            shader->SetUniformMat4("model", model.m);
-            object->render();
-        }
-    }
-
-    if (renderPass == RenderType::Mirror)
-    {
-        for (Node3D *object : m_render_mirrors)
-        {
-            if (!object->isActive())
-                continue;
-            const Mat4 model = object->getWorldTransform();
-            shader->SetUniformMat4("model", model.m);
-            object->render();
-        }
-    }
 }
 
 void Scene::Render()
@@ -506,50 +454,23 @@ void Scene::Update(float dt)
         ActiveCamera->update(dt);
     }
 
-    // TODO  sort trasnsparent and lights by distance from camera, solid sort by texture index
+    const std::vector<Node3D *> *updateLists[] =
+        {
+            &m_render_terrains,
+            &m_render_lights,
+            &m_render_skyes,
+            &m_render_solids,
+            &m_render_trasparent,
+            &m_render_special,
+            &m_render_waters,
+            &m_render_mirrors};
 
-    // LogInfo("Objects: %i visible / %i total", visible, total);
-
-    for (Node3D *object : m_render_terrains)
+    for (const auto *list : updateLists)
     {
-
-        object->update(dt);
-    }
-
-    for (Node3D *object : m_render_lights)
-    {
-
-        object->update(dt);
-    }
-
-    for (Node3D *object : m_render_skyes)
-    {
-        object->update(dt);
-    }
-
-    for (Node3D *object : m_render_solids)
-    {
-        object->update(dt);
-    }
-
-    for (Node3D *object : m_render_trasparent)
-    {
-        object->update(dt);
-    }
-
-    for (Node3D *object : m_render_special)
-    {
-        object->update(dt);
-    }
-
-    for (Node3D *object : m_render_waters)
-    {
-        object->update(dt);
-    }
-
-    for (Node3D *object : m_render_mirrors)
-    {
-        object->update(dt);
+        for (Node3D *object : *list)
+        {
+            object->update(dt);
+        }
     }
 }
 
@@ -653,8 +574,6 @@ static bool StartsWith(const std::string &str, const std::string &prefix)
     return str.size() >= prefix.size() &&
            str.compare(0, prefix.size(), prefix) == 0;
 }
-
-
 
 std::string SceneParser::GetNextLine()
 {
@@ -800,10 +719,6 @@ bool SceneParser::ParseProperty(const std::string &line, std::string &key, std::
     return true;
 }
 
-
-
-
-
 bool SceneParser::ParseObjects(Scene &scene)
 {
     std::string line = GetNextLine();
@@ -837,7 +752,7 @@ bool SceneParser::ParseObjects(Scene &scene)
             Serialize obj;
             if (!ParseObject(obj))
                 return false;
-            //LogInfo("Object: %s", obj.GetString("name").c_str());
+            // LogInfo("Object: %s", obj.GetString("name").c_str());
             scene.OnSerialize(obj);
         }
         else
@@ -849,8 +764,7 @@ bool SceneParser::ParseObjects(Scene &scene)
     return true;
 }
 
- 
-static bool TryParseBool(const std::string& v, bool& out)
+static bool TryParseBool(const std::string &v, bool &out)
 {
     if (v == "true" || v == "1")
     {
@@ -865,11 +779,12 @@ static bool TryParseBool(const std::string& v, bool& out)
     return false;
 }
 
-static bool TryParseInt(const std::string& v, int& out)
+static bool TryParseInt(const std::string &v, int &out)
 {
-    if (v.empty()) return false;
+    if (v.empty())
+        return false;
 
-    char* endPtr = nullptr;
+    char *endPtr = nullptr;
     long val = std::strtol(v.c_str(), &endPtr, 10);
 
     if (endPtr == v.c_str() || *endPtr != '\0')
@@ -879,11 +794,12 @@ static bool TryParseInt(const std::string& v, int& out)
     return true;
 }
 
-static bool TryParseFloat(const std::string& v, float& out)
+static bool TryParseFloat(const std::string &v, float &out)
 {
-    if (v.empty()) return false;
+    if (v.empty())
+        return false;
 
-    char* endPtr = nullptr;
+    char *endPtr = nullptr;
     float val = std::strtof(v.c_str(), &endPtr);
 
     if (endPtr == v.c_str() || *endPtr != '\0')
@@ -893,8 +809,7 @@ static bool TryParseFloat(const std::string& v, float& out)
     return true;
 }
 
-
-bool SceneParser::ParseObject(Serialize& obj)
+bool SceneParser::ParseObject(Serialize &obj)
 {
     // "object"
     std::string line = GetNextLine();
@@ -903,7 +818,7 @@ bool SceneParser::ParseObject(Serialize& obj)
         SetError("Expected 'object' keyword");
         return false;
     }
-    
+
     // "{"
     line = GetNextLine();
     if (Trim(line) != "{")
@@ -911,13 +826,13 @@ bool SceneParser::ParseObject(Serialize& obj)
         SetError("Expected '{' after 'object'");
         return false;
     }
-    
+
     while (HasMoreLines())
     {
         SkipEmptyLines();
         std::string peek = PeekNextLine();
         std::string trimmed = Trim(peek);
-        
+
         if (trimmed == "}")
         {
             GetNextLine();
@@ -927,7 +842,7 @@ bool SceneParser::ParseObject(Serialize& obj)
         std::string key, value;
         if (ParseProperty(peek, key, value))
         {
-            GetNextLine(); 
+            GetNextLine();
 
             auto parts = Split(value, ' ');
             const size_t count = parts.size();
@@ -935,14 +850,20 @@ bool SceneParser::ParseObject(Serialize& obj)
             // 1 token  bool / int / float / string
             if (count == 1)
             {
-                const std::string& v = parts[0];
+                const std::string &v = parts[0];
 
-                bool b; int i; float f;
+                bool b;
+                int i;
+                float f;
 
-                if (TryParseBool(v, b))      obj.SetBool(key, b);
-                else if (TryParseInt(v, i))  obj.SetInt(key, i);
-                else if (TryParseFloat(v, f))obj.SetFloat(key, f);
-                else                         obj.SetString(key, v);
+                if (TryParseBool(v, b))
+                    obj.SetBool(key, b);
+                else if (TryParseInt(v, i))
+                    obj.SetInt(key, i);
+                else if (TryParseFloat(v, f))
+                    obj.SetFloat(key, f);
+                else
+                    obj.SetString(key, v);
             }
             // 2 tokens  Vec2
             else if (count == 2)
@@ -977,7 +898,7 @@ bool SceneParser::ParseObject(Serialize& obj)
                 }
                 obj.SetVec4(key, v);
             }
-            // Mais que 4 valores  string 
+            // Mais que 4 valores  string
             else
             {
                 obj.SetString(key, value);
@@ -991,8 +912,6 @@ bool SceneParser::ParseObject(Serialize& obj)
 
     return true;
 }
-
-
 
 static std::string Vector4ToString(const Vec4 &vec)
 {
@@ -1013,8 +932,6 @@ static std::string Vector2ToString(const Vec2 &vec)
     oss << vec.x << " " << vec.y;
     return oss.str();
 }
-
- 
 
 static void WriteIndent(std::string &output, int level)
 {
@@ -1115,8 +1032,8 @@ std::string SceneParser::ToString(const Scene &scene)
         for (auto *obj : scene.m_objects)
         {
             Serialize s;
-            obj->serialize(s);                      
-            WriteObjectFromSerialize(output, 2, s);  
+            obj->serialize(s);
+            WriteObjectFromSerialize(output, 2, s);
         }
 
         WriteIndent(output, 1);

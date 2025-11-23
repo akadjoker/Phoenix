@@ -1,4 +1,4 @@
-project(rtrender)
+project(animation)
 cmake_policy(SET CMP0072 NEW)
 
 
@@ -26,12 +26,12 @@ add_compile_options(
 
 
 file(GLOB SOURCES "src/*.cpp")
-add_executable(rtrender   ${SOURCES})
+add_executable(animation   ${SOURCES})
 
 if (WIN32)
-    target_include_directories(rtrender PUBLIC "${LIBS_DIR}/include" include src)
+    target_include_directories(animation PUBLIC "${LIBS_DIR}/include" include src)
 else() 
-    target_include_directories(rtrender PUBLIC  include src)
+    target_include_directories(animation PUBLIC  include src)
 endif()
 
 
@@ -39,25 +39,25 @@ endif()
 if(CMAKE_BUILD_TYPE MATCHES Debug)
 
     if (UNIX)
-        target_compile_options(rtrender PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g  -D_DEBUG )
-        target_link_options(rtrender PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g  -D_DEBUG) 
+        target_compile_options(animation PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g  -D_DEBUG )
+        target_link_options(animation PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g  -D_DEBUG) 
     endif()
 
 
 elseif(CMAKE_BUILD_TYPE MATCHES Release)
-    target_compile_options(rtrender PRIVATE -O3   -DNDEBUG )
-    target_link_options(rtrender PRIVATE -O3   -DNDEBUG )
+    target_compile_options(animation PRIVATE -O3   -DNDEBUG )
+    target_link_options(animation PRIVATE -O3   -DNDEBUG )
 endif()
 
 
 
 if (WIN32)
-    target_link_libraries(rtrender core "${LIBS_DIR}/lib/x64/SDL2rtrender.lib" "${LIBS_DIR}/lib/x64/SDL2.lib"  Winmm.lib opengl32.lib)
+    target_link_libraries(animation core "${LIBS_DIR}/lib/x64/SDL2animation.lib" "${LIBS_DIR}/lib/x64/SDL2.lib"  Winmm.lib opengl32.lib)
 endif()
 
 
 if (UNIX)
-    target_link_libraries(rtrender core  m SDL2 GL)
+    target_link_libraries(animation core  m SDL2 GL)
 endif()
 
 #message(STATUS "SDL2 Library Dir: ${LIB_DIR}/")

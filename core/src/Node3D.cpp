@@ -300,6 +300,14 @@ void Node3D::setScale(const Vec3& scale)
     markDirty();
 }
 
+void Node3D::setScale(float x, float y, float z)
+{
+    m_localScale.x = x;
+    m_localScale.y = y;
+    m_localScale.z = z;
+    markDirty();
+}
+
 Vec3 Node3D::getScale(TransformSpace space) const
 {
     switch (space)

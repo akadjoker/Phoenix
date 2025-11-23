@@ -9,7 +9,7 @@ add_subdirectory(water)
 add_subdirectory(terrain)
 add_subdirectory(terrains)
 add_subdirectory(test_gui)
- 
+add_subdirectory(animation)
 add_subdirectory(effects)
 
 add_subdirectory(exporter)

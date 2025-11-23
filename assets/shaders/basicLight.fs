@@ -10,9 +10,19 @@ in vec2 TexCoords;
 uniform sampler2D diffuse;
 uniform vec3 lightPos;
 uniform vec3 viewPos;
-
+uniform vec4 clipPlane;
+uniform bool useClipPlane;
 void main()
-{           
+{         
+
+    if(useClipPlane)
+    {
+     if (dot(vec4(FragPos, 1.0), clipPlane) < 0.0)
+     {
+       discard;
+     }
+    }
+
     vec3 color = texture(diffuse, TexCoords).rgb;
     vec3 normal = normalize(Normal);
     vec3 lightColor = vec3(1.0);

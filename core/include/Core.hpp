@@ -23,6 +23,7 @@
 #include "Camera.hpp"
 #include "Component.hpp"
 #include "Components.hpp"
+#include "Animation.hpp"
 #include "Scene.hpp"
 #include "GameObject.hpp"
 #include "Frustum.hpp"

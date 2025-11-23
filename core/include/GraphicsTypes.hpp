@@ -234,3 +234,33 @@ struct VertexSkin
     u8 boneIDs[4];
     float weights[4];
 };
+
+
+constexpr u32 MESH_MAGIC = 0x4D455348; // "MESH"
+constexpr u32 MESH_VERSION = 100;      // 1.00
+
+constexpr u32 BUFFER_FLAG_SKINNED = 1 << 0;  // Tem skinning data
+constexpr u32 BUFFER_FLAG_TANGENTS = 1 << 1; // Tem tangents
+constexpr u32 BUFFER_FLAG_COLORS = 1 << 2;   // Tem vertex colors
+
+constexpr u32 CHUNK_MATS = 0x4D415453; // "MATS" - Materials
+constexpr u32 CHUNK_BUFF = 0x42554646; // "BUFF" - Buffer
+constexpr u32 CHUNK_VRTS = 0x56525453; // "VRTS" - Vertices
+constexpr u32 CHUNK_IDXS = 0x49445853; // "IDXS" - Indices
+constexpr u32 CHUNK_SKEL = 0x534B454C; // "SKEL" - Skeleton
+constexpr u32 CHUNK_SKIN = 0x534B494E; // "SKIN" - Skinning data
+constexpr u32 CHUNK_ANIM = 0x414E494D; // "ANIM" - Reserved
+
+constexpr u32 ANIM_MAGIC = 0x414E494D; // "ANIM"
+constexpr u32 ANIM_VERSION = 100;      // v1.00
+
+// Chunk IDs
+constexpr u32 ANIM_CHUNK_INFO = 0x494E464F; // "INFO" - Animation info
+constexpr u32 ANIM_CHUNK_CHAN = 0x4348414E; // "CHAN" - Channel (per bone)
+constexpr u32 ANIM_CHUNK_KEYS = 0x4B455953; // "KEYS" - Keyframes
+
+struct ChunkHeader
+{
+    u32 id;
+    u32 length;
+};

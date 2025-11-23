@@ -13,6 +13,21 @@ class Terrain;
 class MeshBuffer;
 class TerrainRenderer;
 
+
+
+struct TerrainRaycastHit
+{
+    bool hit;
+    Vec3 position;
+    Vec3 normal;
+    float distance;
+    int gridX;
+    int gridZ;
+    
+    TerrainRaycastHit() : hit(false), position(Vec3::Zero), normal(Vec3(0,1,0)), 
+                          distance(0.0f), gridX(-1), gridZ(-1) {}
+};
+
 class Terrain : public Node3D
 {
 
@@ -148,7 +163,7 @@ public:
     void SetLODOfPatch(int patchX, int patchZ, int lod);
     int GetCurrentLODOfPatches(std::vector<int> &lods) const;
 
-    float GetHeight(float x, float z) const;
+ 
     void ScaleTexture(float scale1 = 1.0f, float scale2 = 0.0f);
  
     BoundingBox GetBoundingBox(int patchX, int patchZ) const;
@@ -160,17 +175,36 @@ public:
  
     Material *GetMaterial() const { return material; }
 
+
+      float GetHeight(float worldX, float worldZ) const;
+    float GetHeight(const Vec3& worldPos) const;
+    
+    void SetHeight(float worldX, float worldZ, float newHeight, float radius);
+    void ModifyHeight(float worldX, float worldZ, float deltaHeight, float radius);
+    void Flatten(float worldX, float worldZ, float targetHeight, float radius, float strength = 0.5f);
+    void Smooth(int smoothFactor); 
+    void SmoothArea(float worldX, float worldZ, float radius, int iterations = 1);
+    
+       TerrainRaycastHit Raycast(const Ray& ray, float maxDistance = 1000.0f) const;
+    TerrainRaycastHit RaycastFromCamera(float maxDistance = 1000.0f) const;
+    TerrainRaycastHit RaycastFromMouse(int mouseX, int mouseY, 
+                                       int screenWidth, int screenHeight,
+                                       float maxDistance = 1000.0f) const;
+    
+    bool IsPositionInBounds(float worldX, float worldZ) const;
+    Vec3 GetNormalAt(float worldX, float worldZ) const;
+
 private:
     void ApplyTransformation();
     bool PreRenderLODCalculations( );
     void PreRenderIndicesCalculations();
     void ApplyMaterial();
 
-    void Update();
+    bool ValidateTerrainData() const;
 
     u32 GetIndex(int patchX, int patchZ, int patchIndex, u32 vX, u32 vZ) const;
 
-    void Smooth(int smoothFactor);
+ 
     void CalculateNormals();
     void CreatePatches();
     void CalculatePatchData();

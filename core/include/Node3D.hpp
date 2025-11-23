@@ -81,6 +81,7 @@ public:
     virtual void setPosition(float x, float y, float z, TransformSpace space = TransformSpace::Local);
     virtual void setRotation(const Quat &rot, TransformSpace space = TransformSpace::Local);
     void setScale(const Vec3 &scale);
+    void setScale(float x, float y, float z);
     void setEulerAngles(const Vec3 &euler);
     void setEulerAnglesDeg(const Vec3 &eulerDeg);
 

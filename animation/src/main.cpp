@@ -9,57 +9,56 @@ class MainScene : public Scene
 {
     Shader *sceneShader;
     Camera *camera;
- 
+
     FreeCameraComponent *cameraMove;
-    
+
     float mouseSensitivity{0.8f};
-    float roll=3.0;
+    float roll = 3.0;
+ 
+    Animator *animator;
+ 
 
 public:
     void OnRender() override
     {
 
-
         Device &device = Device::Instance();
         Driver &driver = Driver::Instance();
         Vec3 lightPos(-2.0f, 8.0f, -4.0f);
- 
-        driver.SetViewPort(0,0,device.GetWidth(),device.GetHeight());
-        camera->setAspectRatio(device.GetWidth()/device.GetHeight());
+
+        driver.SetViewPort(0, 0, device.GetWidth(), device.GetHeight());
+        camera->setAspectRatio(device.GetWidth() / device.GetHeight());
         SetCamera(camera);
         const Mat4 view = getViewMatrix();
         const Mat4 proj = getProjectionMatrix();
         const Vec3 cameraPos = camera->getPosition();
-
 
         sceneShader->Bind();
         sceneShader->SetUniformMat4("projection", proj.m);
         sceneShader->SetUniformMat4("view", view.m);
         sceneShader->SetUniform("lightPos", lightPos.x, lightPos.y, lightPos.z);
         sceneShader->SetUniform("viewPos", cameraPos.x, cameraPos.y, cameraPos.z);
- 
+
         renderPass(sceneShader, RenderType::Solid);
 
-       // renderAll(sceneShader);
-   
+        // Mat4  model = Mat4::Translation(Vec3(-2.0f, 0.5f, 0.0f)) * Mat4::Scale(Vec3(0.1f));
+        // sceneShader->SetUniformMat4("model", model.m);
+        // driver.DrawMesh(meshModel);
 
-        
+        // model = Mat4::Translation(Vec3(0.0f, 0.5f, 0.0f)) * Mat4::Scale(Vec3(0.01f));
+        // sceneShader->SetUniformMat4("model", model.m);
+        // driver.DrawMesh(soldier);
 
-
-
-
+        // renderAll(sceneShader);
     }
     bool OnCreate() override
     {
 
         Utils::ChangeDirectory("../");
         sceneShader = ShaderManager::Instance().Load("scene", "assets/shaders/basicLight.ps", "assets/shaders/basicLight.fs");
-           
 
         if (!sceneShader)
             return false;
-
- 
 
         camera = createCamera("CameraFree");
         cameraMove = camera->addComponent<FreeCameraComponent>();
@@ -72,8 +71,6 @@ public:
         camera->setFarPlane(1000.0f);
         camera->setPosition(0.0f, 0.5f, 10.0f);
 
-         
-
         TextureManager::Instance().SetLoadPath("assets/");
         TextureManager::Instance().Add("wall.jpg", true);
         TextureManager::Instance().Add("marm.jpg", true);
@@ -81,8 +78,8 @@ public:
         Mesh *mesh = MeshManager::Instance().CreatePlane("Plane", 10, 10);
         mesh->AddMaterial("wall")->SetTexture(0, TextureManager::Instance().Get("marm"));
 
-     //   GameObject *plane = createGameObject("Plane");
-      //  plane->addComponent<MeshRenderer>(mesh);
+        //   GameObject *plane = createGameObject("Plane");
+        //  plane->addComponent<MeshRenderer>(mesh);
 
         mesh = MeshManager::Instance().CreateCube("Cube", 1);
         mesh->AddMaterial("wall")->SetTexture(0, TextureManager::Instance().Get("wall"));
@@ -101,56 +98,125 @@ public:
             GameObject *cube = createGameObject("Cube");
             cube->addComponent<MeshRenderer>(mesh);
             cube->setPosition(cubePositions[i]);
-           
+
             //   Rotator* rotator = cube->addComponent<Rotator>();
             //    rotator->setRotationSpeed(Vec3(0, 90, 20));  // 90°/s on Y axis
         }
 
+        TextureManager::Instance().Add("sinbad/sinbad_body.tga", false);
+        TextureManager::Instance().Add("sinbad/sinbad_clothes.tga", false);
+        TextureManager::Instance().Add("sinbad/sinbad_sword.tga", false);
+
+        Mesh * meshModel = MeshManager::Instance().Load("sinbad", "assets/sinbad/sinbad.h3d");
+
+        if (meshModel)
+        {
+            Material *material = meshModel->AddMaterial("body");
+            material->SetTexture(0, TextureManager::Instance().Get("sinbad_body"));
+            material = meshModel->AddMaterial("clothes");
+            material->SetTexture(0, TextureManager::Instance().Get("sinbad_clothes"));
+            material = meshModel->AddMaterial("sword");
+            material->SetTexture(0, TextureManager::Instance().Get("sinbad_sword"));
+
+            meshModel->SetBufferMaterial(0, 1);
+            meshModel->SetBufferMaterial(1, 1);
+            meshModel->SetBufferMaterial(2, 2);
+            meshModel->SetBufferMaterial(3, 1);
+            meshModel->SetBufferMaterial(4, 3);
+            meshModel->SetBufferMaterial(5, 2);
+            meshModel->SetBufferMaterial(6, 2);
+
+            GameObject *sinbad = createGameObject("Sinbad");
+            sinbad->addComponent<MeshRenderer>(meshModel);
+            Animator* animator = sinbad->addComponent<Animator>();
+            sinbad->setPosition(1, 0, 0);
+            sinbad->setScale(0.5f, 0.5f, 0.5f);
+
+            
+            AnimationLayer *torsoLayer = animator->AddLayer();
+            torsoLayer->LoadAnimation("topRun", "assets/sinbad/sinbad_RunTop.anim");
+            torsoLayer->Play("topRun", PlayMode::Loop);
+    
+            AnimationLayer *legsLayer = animator->AddLayer();
+            legsLayer->LoadAnimation("legsRun", "assets/sinbad/sinbad_RunBase.anim");
+            legsLayer->Play("legsRun", PlayMode::Loop);
+        }
+
+        TextureManager::Instance().Add("ranger/face.jpg", false);
+        TextureManager::Instance().Add("ranger/air.jpg", false);
+        TextureManager::Instance().Add("ranger/body.jpg", false);
+        TextureManager::Instance().Add("ranger/colt.jpg", false);
         
 
-       
+        Mesh *soldierMesh = MeshManager::Instance().Load("ranger", "assets/ranger/ranger.h3d");
+        if (soldierMesh)
+        {
+            // Material *material = soldierMesh->AddMaterial("body");
+            // material->SetTexture(0, TextureManager::Instance().Get("face"));
+            // material = soldierMesh->AddMaterial("clothes");
+            // material->SetTexture(0, TextureManager::Instance().Get("body"));
+            // material = soldierMesh->AddMaterial("colt");
+            // material->SetTexture(0, TextureManager::Instance().Get("colt"));
+
+          LogInfo("Material count: %d",  soldierMesh->GetMaterialCount());
+
+            GameObject *soldier = createGameObject("Soldier");
+            soldier->setPosition(-2, 0, 0);
+            soldier->setScale(0.01f, 0.01f, 0.01f);
+            soldier->addComponent<MeshRenderer>(soldierMesh);
+
+            Animator *soldierAnimator = soldier->addComponent<Animator>();
+  
+            
+           
+            AnimationLayer *torsoLayer  = soldierAnimator->AddLayer();
+            torsoLayer->LoadAnimation("topRun", "assets/ranger/ranger_Hips_Idle_Pose.anim");
+            torsoLayer->Play("topRun", PlayMode::Loop);
+    
+            AnimationLayer *legsLayer = soldierAnimator->AddLayer();
+            legsLayer->LoadAnimation("legsRun", "assets/ranger/ranger_Hips_Idle_Pose.anim");
+            legsLayer->Play("legsRun", PlayMode::Loop); 
+        }
+
+  
 
         return true;
     }
     void OnDestroy() override
     {
+        
     }
     void OnUpdate(float dt) override
     {
         const float SPEED = 1.0f;
 
+        Vec3 moveInput(0, 0, 0);
 
-         Vec3 moveInput(0, 0, 0);
-    
-    if (Input::IsKeyDown(KEY_W)) moveInput.z += SPEED;  // Forward
-    if (Input::IsKeyDown(KEY_S)) moveInput.z -= SPEED;  // Backward
-    if (Input::IsKeyDown(KEY_A)) moveInput.x -= SPEED;  // Left
-    if (Input::IsKeyDown(KEY_D)) moveInput.x += SPEED;  // Right
-    if (Input::IsKeyDown(KEY_Q)) moveInput.y -= SPEED;  // Down
-    if (Input::IsKeyDown(KEY_E)) moveInput.y += SPEED;  // Up
+        if (Input::IsKeyDown(KEY_W))
+            moveInput.z += SPEED; // Forward
+        if (Input::IsKeyDown(KEY_S))
+            moveInput.z -= SPEED; // Backward
+        if (Input::IsKeyDown(KEY_A))
+            moveInput.x -= SPEED; // Left
+        if (Input::IsKeyDown(KEY_D))
+            moveInput.x += SPEED; // Right
+        if (Input::IsKeyDown(KEY_Q))
+            moveInput.y -= SPEED; // Down
+        if (Input::IsKeyDown(KEY_E))
+            moveInput.y += SPEED; // Up
 
- 
-
-    
-    
-    cameraMove->setMoveInput(moveInput);
-
-
+        cameraMove->setMoveInput(moveInput);
+       // animator->Update(dt);
+      //  soldierAnimator->Update(dt);
 
     }
     void OnResize(u32 w, u32 h) override
     {
-          camera->setAspectRatio((float)w / (float)h);
-       
-        
+        camera->setAspectRatio((float)w / (float)h);
     }
     Camera *getCamera() { return camera; }
-    FreeCameraComponent *getCameraControl(){return cameraMove;};
+    FreeCameraComponent *getCameraControl() { return cameraMove; };
 };
-
-
- 
- 
 
 int main()
 {
@@ -174,8 +240,6 @@ int main()
 
     GUI gui;
     gui.Init(&batch, &font);
-
- 
 
     MainScene scene;
     if (!scene.Init())
@@ -255,7 +319,6 @@ int main()
         {
             Vec2 mouseDelta = Input::GetMouseDelta();
             scene.getCameraControl()->setRotationInput(mouseDelta);
- 
         }
 
         batch.Render();
@@ -268,7 +331,5 @@ int main()
     batch.Release();
     device.Close();
 
-
- 
     return 0;
 }

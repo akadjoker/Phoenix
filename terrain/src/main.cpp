@@ -57,6 +57,7 @@ class MainScene : public Scene
     bool openInspector = false;
 
 public:
+
     void OnRender() override
     {
         Driver &driver = Driver::Instance();
@@ -132,7 +133,7 @@ public:
             reflectionRT->Bind();
             driver.SetClearColor(0.2f, 0.3f, 0.4f, 1.0f);
             driver.Clear(CLEAR_COLOR | CLEAR_DEPTH);
-            //  driver.SetViewPort(0, 0, 1024, 1024);
+        
 
             float waterPlaneY = 0.0f;
 
@@ -195,9 +196,9 @@ public:
             skyShader->SetUniformMat4("projection", proj.m);
             skyShader->SetUniformMat4("view", view.m);
             skyShader->SetUniform("skybox", 0);
-            glDepthFunc(GL_LEQUAL);
+    
             renderPass(skyShader, RenderType::Sky);
-            glDepthFunc(GL_LESS);
+         
 
             reflectionRT->Unbind();
 
@@ -295,8 +296,7 @@ public:
             driver.SetDepthWrite(false);
             driver.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
   
-    
-            renderPass(waterShader, RenderType::Water);
+       renderPass(waterShader, RenderType::Water);
             
 
             driver.SetBlendEnable(false);
@@ -307,9 +307,9 @@ public:
             skyShader->SetUniformMat4("projection", proj.m);
             skyShader->SetUniformMat4("view", view.m);
             skyShader->SetUniform("skybox", 0);
-            glDepthFunc(GL_LEQUAL);
+          
             renderPass(skyShader, RenderType::Sky);
-            glDepthFunc(GL_LESS);
+             
         }
 
         if (Input::IsMousePressed(MouseButton::RIGHT))
@@ -396,6 +396,8 @@ public:
 
    
         waterCamera->copyFrom(camera);
+
+      
 
         terrain = createTerrain("terrain", "assets/terrain-heightmap.png",   
                            1.1f,   // scaleX

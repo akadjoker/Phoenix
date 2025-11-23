@@ -843,7 +843,7 @@ Texture *TextureManager::Load(const std::string &path, bool generateMipmaps)
  
     Texture *texture = new Texture();
     texture->SetGenerateMipmaps(generateMipmaps);
-    texture->SetName(Utils::GetFileName(path.c_str()));
+    texture->SetName(Utils::GetFileName(name.c_str()));
     texture->SetAnisotropy(8.0f);
 
     if (!texture->LoadFromFile(path.c_str()))
@@ -853,7 +853,7 @@ Texture *TextureManager::Load(const std::string &path, bool generateMipmaps)
         return nullptr;
     }
     m_textures[name] = texture;
-    LogInfo("[TextureManager] Loaded: %s", name.c_str());
+    LogInfo("[TextureManager] Loaded: %s", path.c_str());
     return texture;
 }
 
