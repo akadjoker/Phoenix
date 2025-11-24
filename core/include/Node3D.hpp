@@ -49,11 +49,12 @@ protected:
     Node3D *m_parent;
     u32 m_flags;
     std::vector<Node3D *> m_children;
+    std::vector<Node3D *> m_joints;
 
  
 
-    void updateLocalTransform() const;
-    void updateWorldTransform() const;
+    virtual void updateLocalTransform() const;
+    virtual void updateWorldTransform() const;
     void markDirty();
     void markWorldDirty();
 
@@ -71,6 +72,12 @@ public:
     Node3D(const std::string &name = "Node3D");
     virtual ~Node3D();
 
+
+    Node3D *addJoint(const std::string &name);
+
+    Node3D *getJoint(const std::string &name) const;
+    Node3D *getJoint(u32 index) const;
+
     virtual void serialize(Serialize &serialize) override;
     virtual void deserialize(const Serialize &in) override;
 
@@ -82,6 +89,7 @@ public:
     virtual void setRotation(const Quat &rot, TransformSpace space = TransformSpace::Local);
     void setScale(const Vec3 &scale);
     void setScale(float x, float y, float z);
+    void setScale(float value);
     void setEulerAngles(const Vec3 &euler);
     void setEulerAnglesDeg(const Vec3 &eulerDeg);
 
@@ -122,8 +130,8 @@ public:
     void rotateZDeg(float angleDeg, TransformSpace space = TransformSpace::Local);
 
     // Matrizes
-    const Mat4 &getLocalTransform() const;
-    const Mat4 &getWorldTransform() const;
+    virtual const Mat4 &getLocalTransform() const;
+    virtual const Mat4 &getWorldTransform() const;
 
     virtual void update(float deltaTime) override {};
     virtual void render() override {}

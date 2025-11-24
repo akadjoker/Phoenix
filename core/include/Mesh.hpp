@@ -3,6 +3,7 @@
 #include "GraphicsTypes.hpp"
 #include "LoadTypes.hpp"
 #include "Node.hpp"
+#include "Node3D.hpp"
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -24,25 +25,43 @@ class MeshLoader;
 class Animator;
 class Pixmap;
 class Terrain;
- 
 
 const u32 MAX_TEXTURES = 6;
 
-
-struct Bone
+class Bone  
 {
-    std::string name;
+private:
     bool hasAnimation;
     s32 parentIndex; // -1 = root
-    Mat4 transform;
+    std::string name;
+    mutable Mat4 transform;
+    mutable Mat4 global;
     Mat4 localPose;
     Mat4 inverseBindPose;
+
+    Vec3 position;
+    Quat rotation;
+ 
     Bone *parent{nullptr};
+    friend class Mesh;
+    friend class MeshBuffer;
+    friend class MeshWriter;
+    friend class MeshLoader;
+    friend class MeshReader;
+    Node3D *node{nullptr};
+ 
 
-    Bone();
+public:
+    Bone(const std::string &name);
 
-    Mat4 GetGlobalTransform() const;
-    Mat4 GetLocalTransform() const;
+     const Mat4 &GetGlobalTransform() const;
+     const Mat4 &GetLocalTransform() const;
+     
+     s32 GetParentIndex() const { return parentIndex; }
+
+     const std::string& GetName() const { return name; } 
+     void SetNode(Node3D *node) { this->node = node; }
+ 
 };
 
 class Material
@@ -92,8 +111,7 @@ private:
 
     bool m_DynamicVertexBuffer = false;
     bool m_DynamicIndexBuffer = false;
- 
- 
+
     u32 m_material{0};
     friend class Mesh;
     friend class MeshManager;
@@ -106,20 +124,18 @@ public:
     MeshBuffer(const std::string &name = "MeshBuffer");
     ~MeshBuffer();
 
-
     void SetDynamicVertexBuffer(bool dynamic) { m_DynamicVertexBuffer = dynamic; }
     void SetDynamicIndexBuffer(bool dynamic) { m_DynamicIndexBuffer = dynamic; }
- 
 
-    VertexBuffer* CreateVertexBuffer(u32 vertexCount, bool dynamic = false);
-    IndexBuffer* CreateIndexBuffer(u32 indexCount, bool dynamic = false);
+    VertexBuffer *CreateVertexBuffer(u32 vertexCount, bool dynamic = false);
+    IndexBuffer *CreateIndexBuffer(u32 indexCount, bool dynamic = false);
 
-    VertexArray* GetBuffer() const { return buffer; }
-    VertexBuffer* GetVertexBuffer() const { return vb; }
-    IndexBuffer* GetIndexBuffer() const { return ib; }
+    VertexArray *GetBuffer() const { return buffer; }
+    VertexBuffer *GetVertexBuffer() const { return vb; }
+    IndexBuffer *GetIndexBuffer() const { return ib; }
 
     void Clear();
-    
+
     void ClearVertices();
     void ClearIndices();
 
@@ -191,43 +207,39 @@ public:
     Vec3 GetVertexPosition(u32 index) const;
     void SetVertexPosition(u32 index, const Vec3 &position);
 
-    Vertex& GetVertex(u32 index);
+    Vertex &GetVertex(u32 index);
     Vertex GetVertex(u32 index) const;
     void SetVertex(u32 index, const Vertex &vertex);
 };
-
-
-
 
 class Visual : public Spatial
 {
 
 protected:
     std::vector<Material *> materials;
-   
 
     friend class MeshBuffer;
     friend class MeshManager;
     friend class Driver;
     friend class MeshReader;
+
 public:
     Visual(const std::string &name = "Visual");
     ~Visual();
     Material *AddMaterial(const std::string &name);
     Material *GetMaterial(u32 index) const { return materials[index]; }
     void SetTexture(u32 layer, Texture *texture);
+    void SetMaterialTexture(u32 material, u32 layer, Texture *texture);
     u32 GetMaterialCount() const { return materials.size(); }
 
-    
     const BoundingBox &GetBoundingBox() const { return m_boundBox; }
     BoundingBox &GetBoundingBox() { return m_boundBox; }
-    
-    
+
     virtual void Clear() {};
     virtual void Build() {};
     virtual void Render() {};
     virtual void CalculateBoundingBox() {};
-    virtual void Debug(RenderBatch *batch) {(void) batch;};
+    virtual void Debug(RenderBatch *batch) { (void)batch; };
 };
 
 class Mesh : public Visual
@@ -242,18 +254,25 @@ public:
     void CalculateBoundingBox() override;
     void Debug(RenderBatch *batch) override;
 
-
     MeshBuffer *AddBuffer(u32 material = 0);
+
+    bool AppendBuffer(MeshBuffer *buffer);
+    bool AppendMaterial(Material *material);
+
     void CalculateNormals();
 
-    
-    
+    MeshBuffer *DropBuffer(u32 index);
+    Material *DropMaterial(u32 index);
+
+    bool RemoveBuffer(u32 index);
+    bool RemoveMaterial(u32 index);
+    void RemoveMaterials();
+
     size_t GetBufferCount() const { return buffers.size(); }
     MeshBuffer *GetBuffer(size_t index) const { return buffers[index]; }
-    
+
     bool SetMaterial(u32 material);
     bool SetBufferMaterial(u32 index, u32 material);
-
 
     void OptimizeBuffers();
 
@@ -262,13 +281,12 @@ public:
     u32 GetBoneCount() const { return m_bones.size(); }
     Bone *GetBone(u32 index) const;
     Bone *AddBone(const std::string &name);
+    bool SetBoneParent(const std::string &name, Node3D *parent);
 
     std::vector<Bone *> &GetBones() { return m_bones; }
     const std::vector<Bone *> &GetBones() const { return m_bones; }
 
     void UpdateSkinning();
-
-
 
     void CalculateBoneMatrices();
     const std::vector<Mat4> &GetBoneMatrices() const { return m_boneMatrices; }
@@ -282,12 +300,10 @@ public:
     void SetBoneStatic(u32 index);
     void ResetBones();
 
-
 private:
     std::vector<Bone *> m_bones;
     std::vector<Mat4> m_boneMatrices;
     std::vector<MeshBuffer *> buffers;
-   
 
     friend class MeshBuffer;
     friend class MeshManager;
@@ -472,8 +488,6 @@ private:
     void ReadSkinChunk(MeshBuffer *buffer, const ChunkHeader &header);
 };
 
-
-
 class MeshManager
 {
 public:
@@ -482,9 +496,6 @@ public:
     Mesh *Get(const std::string &name);
     void Add(const std::string &name, Mesh *mesh);
     bool Exists(const std::string &name) const;
-
-
-    
 
     Mesh *Create(const std::string &name);
 
@@ -519,9 +530,6 @@ public:
         int detailX = 128, int detailY = 128,
         float tilesU = 1.0f, float tilesV = 1.0f);
 
-    
-
-  
     void UnloadAll();
 
     Mesh *Load(const std::string &name, const std::string &filename);
@@ -536,7 +544,6 @@ public:
 
 private:
     std::unordered_map<std::string, Mesh *> m_meshes;
-   
+
     std::vector<MeshLoader *> m_loaders;
 };
-

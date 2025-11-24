@@ -2,6 +2,34 @@
 #include "Node3D.hpp"
  #include "Mesh.hpp"
 
+Node3D *Node3D::addJoint(const std::string &name)
+{
+    Node3D* joint = new Node3D(name);
+    m_joints.push_back(joint);
+    return joint;
+}
+
+Node3D *Node3D::getJoint(const std::string &name) const
+{
+    for (Node3D *joint : m_joints)
+    {
+        if (joint->getName() == name)
+        {
+            return joint;
+        }
+    }
+    return nullptr;
+}
+
+Node3D *Node3D::getJoint(u32 index) const
+{
+    if (index < m_joints.size())
+    {
+        return m_joints[index];
+    }
+    return nullptr;
+}
+
 void Node3D::serialize(Serialize &serialize)
 {
     Node::serialize(serialize);
@@ -47,6 +75,14 @@ Node3D::~Node3D()
     {
         child->m_parent = nullptr;
     }
+
+    for (Node3D* joint : m_joints)
+    {
+        delete joint;
+    }
+
+    m_children.clear();
+    m_joints.clear();
     
  
     if (m_parent)
@@ -136,7 +172,10 @@ void Node3D::updateWorldTransform() const
         updateLocalTransform();
     
     if (m_parent)
+    {
+       
         m_worldTransform = m_parent->getWorldTransform() * m_localTransform;
+    }
     else
         m_worldTransform = m_localTransform;
     
@@ -305,6 +344,14 @@ void Node3D::setScale(float x, float y, float z)
     m_localScale.x = x;
     m_localScale.y = y;
     m_localScale.z = z;
+    markDirty();
+}
+
+void Node3D::setScale(float value)
+{
+    m_localScale.x = value;
+    m_localScale.y = value;
+    m_localScale.z = value;
     markDirty();
 }
 

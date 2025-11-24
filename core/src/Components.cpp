@@ -31,12 +31,38 @@ void MeshRenderer::attach()
 
     m_owner->m_boundBox.expand(mesh->getBoundingBox());
 
-    //  LogInfo("[MeshRenderer] Bounding mesh Box: %f %f %f", mesh->GetBoundingBox().min.x, mesh->GetBoundingBox().min.y, mesh->GetBoundingBox().min.z);
-    //  LogInfo("[MeshRenderer] Bounding mesh Box: %f %f %f", mesh->GetBoundingBox().max.x, mesh->GetBoundingBox().max.y, mesh->GetBoundingBox().max.z);
+    // if (mesh && mesh->HasSkeleton())
+    // {
+    //     auto& bones = mesh->GetBones();
+    //     for( u32 i = 0; i < bones.size(); i++)
+    //     {
+    //         Bone* bone = bones[i];
+    //         Node3D *joint = m_owner->addJoint(bone->GetName());
+    //         bone->SetNode(joint);
 
-    //  LogInfo("[MeshRenderer] Bounding Box: %f %f %f", m_owner->getBoundingBox().min.x, m_owner->getBoundingBox().min.y, m_owner->getBoundingBox().min.z);
-    //  LogInfo("[MeshRenderer] Bounding Box: %f %f %f", m_owner->getBoundingBox().max.x, m_owner->getBoundingBox().max.y, m_owner->getBoundingBox().max.z);
+    //         if (bone->GetParentIndex() == -1)
+    //         {
+                
+    //             LogWarning("[MeshRenderer] Bone %s has no parent", bone->GetName().c_str());
+                
+    //             joint->setParent(m_owner);
+    //         }
+    //        //   joint->setParent(m_owner);
+            
+    //     }
+    //      for( u32 i = 0; i < bones.size(); i++)
+    //     {
+    //         Bone* bone = bones[i];
+    //         Node3D *joint = m_owner->getJoint(bone->GetName());
+    //         if (bone->GetParentIndex() != -1)
+    //         {
+    //             Node3D *parent = m_owner->getJoint(bone->GetParentIndex());
+    //             joint->setParent(parent);
+    //         }
+    //     }
+    // }
 }
+
 
 void Rotator::update(float deltaTime)
 {

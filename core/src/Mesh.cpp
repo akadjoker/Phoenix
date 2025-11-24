@@ -2,6 +2,7 @@
 #include "Vertex.hpp"
 #include "Driver.hpp"
 #include "Mesh.hpp"
+
 #include "Texture.hpp"
 #include "Stream.hpp"
 #include "Batch.hpp"
@@ -33,7 +34,7 @@ Texture *Material::GetTexture(u32 index) const
     return nullptr;
 }
 
-MeshBuffer::MeshBuffer( const std::string &name) : Spatial(name)
+MeshBuffer::MeshBuffer(const std::string &name) : Spatial(name)
 {
     buffer = new VertexArray();
     vb = nullptr;
@@ -140,7 +141,7 @@ void MeshBuffer::Build()
 
     if (!vb)
     {
-        vb =buffer->AddVertexBuffer(sizeof(Vertex),   vertices.size(), m_DynamicVertexBuffer);
+        vb = buffer->AddVertexBuffer(sizeof(Vertex), vertices.size(), m_DynamicVertexBuffer);
 
         auto *decl = buffer->GetVertexDeclaration();
 
@@ -251,7 +252,7 @@ void MeshBuffer::UpdateSkinning(Mesh *mesh)
 
     if (!m_isSkinned || mesh->m_boneMatrices.empty() || vertices.empty() || m_skinData.empty())
     {
-       // LogWarning("Mesh not skinned or malformed!");
+        // LogWarning("Mesh not skinned or malformed!");
         return;
     }
 
@@ -434,7 +435,7 @@ void MeshBuffer::RemoveDuplicateVertices(float threshold)
 
             if (distSq > threshold * threshold)
                 return false;
- 
+
             float dnx = a.nx - b.nx;
             float dny = a.ny - b.ny;
             float dnz = a.nz - b.nz;
@@ -458,7 +459,6 @@ void MeshBuffer::RemoveDuplicateVertices(float threshold)
     {
         const Vertex &v = vertices[i];
 
- 
         bool found = false;
         for (size_t j = 0; j < uniqueVertices.size(); ++j)
         {
@@ -506,7 +506,6 @@ void MeshBuffer::Optimize()
         int bestTriangle = -1;
         int bestScore = -1;
 
-  
         for (size_t i = 0; i < indices.size() / 3; ++i)
         {
             if (emitted[i])
@@ -517,7 +516,7 @@ void MeshBuffer::Optimize()
             u32 i2 = indices[i * 3 + 2];
 
             int score = 0;
- 
+
             if (lastUsed[i0] >= 0 && (currentTime - lastUsed[i0]) < (int)cacheSize)
                 score += 10;
             if (lastUsed[i1] >= 0 && (currentTime - lastUsed[i1]) < (int)cacheSize)
@@ -531,7 +530,7 @@ void MeshBuffer::Optimize()
                 bestTriangle = (int)i;
             }
         }
- 
+
         if (bestTriangle < 0)
         {
             for (size_t i = 0; i < indices.size() / 3; ++i)
@@ -544,7 +543,6 @@ void MeshBuffer::Optimize()
             }
         }
 
- 
         if (bestTriangle >= 0)
         {
             u32 i0 = indices[bestTriangle * 3 + 0];
@@ -676,7 +674,7 @@ void MeshBuffer::Reverse()
     {
         std::swap(indices[i + 1], indices[i + 2]);
     }
- 
+
     m_idirty = true;
 }
 
@@ -1056,6 +1054,26 @@ MeshBuffer *Mesh::AddBuffer(u32 material)
     return buffer;
 }
 
+bool Mesh::AppendBuffer(MeshBuffer *buffer)
+{
+    if (!buffer)
+    {
+        return false;
+    }
+    buffers.push_back(buffer);
+    return true;
+}
+
+bool Mesh::AppendMaterial(Material *material)
+{
+    if (!material)
+    {
+        return false;
+    }
+    materials.push_back(material);
+    return true;
+}
+
 void Mesh::Render()
 {
     for (MeshBuffer *buffer : buffers)
@@ -1090,9 +1108,67 @@ void Mesh::CalculateNormals()
     }
 }
 
+MeshBuffer *Mesh::DropBuffer(u32 index)
+{
+    if (index >= buffers.size())
+    {
+        LogWarning("[Mesh] Invalid mesh buffer index: %d", index);
+        return nullptr;
+    }
+    MeshBuffer *buffer = buffers[index];
+    buffers.erase(buffers.begin() + index);
+    return buffer;
+}
 
+Material *Mesh::DropMaterial(u32 index)
+{
+    if (index >= materials.size())
+    {
+        LogWarning("[Mesh] Invalid material index: %d", index);
+        return nullptr;
+    }
+    Material *material = materials[index];
+    materials.erase(materials.begin() + index);
+    return material;
+}
 
-Mesh::Mesh(const std::string &name):Visual(name)
+bool Mesh::RemoveBuffer(u32 index)
+{
+    if (index >= buffers.size())
+    {
+        LogWarning("[Mesh] Invalid mesh buffer index: %d", index);
+        return false;
+    }
+    MeshBuffer *buffer = buffers[index];
+    buffers.erase(buffers.begin() + index);
+
+    delete buffer;
+    return true;
+}
+
+bool Mesh::RemoveMaterial(u32 index)
+{
+    if (index >= materials.size())
+    {
+        LogWarning("[Mesh] Invalid material index: %d", index);
+        return false;
+    }
+    Material *material = materials[index];
+    materials.erase(materials.begin() + index);
+    delete material;
+    return true;
+}
+
+void Mesh::RemoveMaterials()
+{
+    for (Material *material : materials)
+    {
+        delete material;
+    }
+    materials.clear();
+}
+
+Mesh::Mesh(const std::string &name) : Visual(name)
 {
 }
 
@@ -1206,11 +1282,23 @@ Bone *Mesh::GetBone(u32 index) const
 
 Bone *Mesh::AddBone(const std::string &name)
 {
-    Bone *bone = new Bone();
-    bone->name = name;
+    Bone *bone = new Bone(name);
 
     m_bones.push_back(bone);
     return bone;
+}
+
+bool Mesh::SetBoneParent(const std::string &name, Node3D *parent)
+{
+    for (Bone *bone : m_bones)
+    {
+        if (bone->GetName() == name)
+        {
+           // bone->parent = static_cast<Bone *>(parent);
+            return true;
+        }
+    }
+    return false;
 }
 
 void Mesh::UpdateSkinning()
@@ -1273,10 +1361,21 @@ void Mesh::CalculateBoneMatrices()
         else
         {
             bone->parent = nullptr;
-            // LogInfo("Bone[%d] %s → ROOT (no parent)", i, bone->name.c_str());
+            //   LogInfo("Bone[%d] %s → ROOT (no parent)", i, bone->getName().c_str());
         }
     }
     m_boneMatrices.resize(m_bones.size());
+}
+
+Bone *Mesh::FindBone(const std::string &name)
+{
+    for (Bone *bone : m_bones)
+    {
+        if (bone->GetName() == name)
+            return bone;
+    }
+    LogWarning("Bone %s not found", name.c_str());
+    return nullptr;
 }
 
 void PrintMatrix(const Mat4 &mat)
@@ -1291,28 +1390,44 @@ void PrintMatrix(const Mat4 &mat)
     }
 }
 
-Bone::Bone()
+Bone::Bone(const std::string &name) 
 {
+    this->name = name;
+    transform = Mat4::Identity();
+    global = Mat4::Identity();
     localPose = Mat4::Identity();
     inverseBindPose = Mat4::Identity();
     hasAnimation = false;
-    parent = nullptr;
     parentIndex = -1;
 }
 
-Mat4 Bone::GetGlobalTransform() const
+ 
+  const Mat4 &Bone::GetGlobalTransform() const
 {
 
     if (parent != nullptr)
-        return parent->GetGlobalTransform() * GetLocalTransform();
-    else
-        return GetLocalTransform();
+    {
+        global =  parent->GetGlobalTransform() * GetLocalTransform();
+    }else 
+    {
+        global = GetLocalTransform();
+    }
+
+    return global;
 }
 
-Mat4 Bone::GetLocalTransform() const
+const Mat4 &Bone::GetLocalTransform() const
 {
-    Mat4 mat = (hasAnimation ? transform : localPose);
-    return mat;
+    if (hasAnimation)
+    {
+      return    transform;
+    } 
+   return  localPose;
+    
+
+    //return global;
+  //   Mat4 mat = (hasAnimation ? transform : localPose);
+  //  return mat;
 }
 
 void Mesh::SetBoneTransform(u32 index, const Vec3 &position, const Quat &rotation)
@@ -1327,6 +1442,21 @@ void Mesh::SetBoneTransform(u32 index, const Vec3 &position, const Quat &rotatio
     Mat4 local = (Mat4::Translation(position) * rotation.toMat4());
     m_bones[index]->hasAnimation = true;
     m_bones[index]->transform = local;
+    m_bones[index]->position = position;
+    m_bones[index]->rotation = rotation;
+
+    if (m_bones[index]->node != nullptr)
+    {
+        m_bones[index]->node->setPosition(position);
+        m_bones[index]->node->setRotation(rotation);
+      
+        LogInfo("[Mesh] Set bone transform %s %f %f %f",m_bones[index]->node->getName().c_str(), position.x, position.y, position.z);
+    }
+
+  
+
+ 
+
     m_boneMatrices[index] = local;
 }
 
@@ -1338,6 +1468,7 @@ void Mesh::SetBoneStatic(u32 index)
     if (index >= m_boneMatrices.size())
         m_boneMatrices.resize(index + 1);
 
+    
     m_bones[index]->transform = m_bones[index]->localPose;
     m_boneMatrices[index] = m_bones[index]->transform;
     m_bones[index]->hasAnimation = false;
@@ -1356,7 +1487,7 @@ u32 Mesh::FindBoneIndex(const std::string &name)
 {
     for (u32 i = 0; i < m_bones.size(); i++)
     {
-        if (m_bones[i]->name == name)
+        if (m_bones[i]->GetName() == name)
             return i;
     }
     return (u32)-1;
@@ -1941,7 +2072,6 @@ Mesh *MeshManager::CreateHillPlane(
 
     buffer->m_boundBox.clear();
 
- 
     float sx = 0.0f;
     float tsx = 0.0f;
 
@@ -1957,7 +2087,6 @@ Mesh *MeshManager::CreateHillPlane(
             float py = 0.0f;
             float pz = sy - center.z;
 
-          
             if (hillHeight != 0.0f)
             {
                 py = sinf(px * hillCountX * Pi / center.x) *
@@ -1980,7 +2109,6 @@ Mesh *MeshManager::CreateHillPlane(
         tsx += txStep;
     }
 
- 
     for (int x = 0; x < segmentsX; ++x)
     {
         for (int y = 0; y < segmentsY; ++y)
@@ -1996,9 +2124,8 @@ Mesh *MeshManager::CreateHillPlane(
         }
     }
 
- 
     buffer->CalculateNormals();
- 
+
     mesh->m_boundBox.clear();
     mesh->m_boundBox.merge(buffer->m_boundBox);
     buffer->Build();
@@ -2009,12 +2136,11 @@ Mesh *MeshManager::CreateHillPlane(
     return mesh;
 }
 
-
 // MeshManager.cpp
 
-Mesh* MeshManager::CreateTerrainFromHeightmap(
-    const std::string& name,
-    const std::string& heightmapPath,
+Mesh *MeshManager::CreateTerrainFromHeightmap(
+    const std::string &name,
+    const std::string &heightmapPath,
     float width, float height, float maxHeight,
     int detailX, int detailY,
     float tilesU, float tilesV)
@@ -2025,7 +2151,6 @@ Mesh* MeshManager::CreateTerrainFromHeightmap(
         return Get(name);
     }
 
- 
     Pixmap heightmap;
     if (!heightmap.Load(heightmapPath.c_str()))
     {
@@ -2033,44 +2158,42 @@ Mesh* MeshManager::CreateTerrainFromHeightmap(
         return nullptr;
     }
 
-    LogInfo("[MeshManager] Loaded heightmap: %s (%dx%d, %d components)", 
-            heightmapPath.c_str(), 
-            heightmap.width, 
+    LogInfo("[MeshManager] Loaded heightmap: %s (%dx%d, %d components)",
+            heightmapPath.c_str(),
+            heightmap.width,
             heightmap.height,
             heightmap.components);
 
- 
-    Pixmap* grayscale = nullptr;
-    const Pixmap* sourceMap = &heightmap;
-    
+    Pixmap *grayscale = nullptr;
+    const Pixmap *sourceMap = &heightmap;
+
     if (heightmap.components > 1)
     {
         // Se for RGB/RGBA, converte para grayscale
         grayscale = new Pixmap(heightmap.width, heightmap.height, 1);
-        
+
         for (int y = 0; y < heightmap.height; y++)
         {
             for (int x = 0; x < heightmap.width; x++)
             {
                 Color pixel = heightmap.GetPixelColor(x, y);
-      
+
                 u8 gray = (u8)((pixel.r + pixel.g + pixel.b) / 3);
                 grayscale->SetPixel(x, y, gray, gray, gray, 255);
             }
         }
-        
+
         sourceMap = grayscale;
         LogInfo("[MeshManager] Converted heightmap to grayscale");
     }
 
     // Criar terrain
-    Mesh* terrain = CreateTerrainFromPixmap(
-        name, 
+    Mesh *terrain = CreateTerrainFromPixmap(
+        name,
         sourceMap,
         width, height, maxHeight,
         detailX, detailY,
-        tilesU, tilesV
-    );
+        tilesU, tilesV);
 
     // Limpar grayscale se foi criado
     if (grayscale)
@@ -2079,27 +2202,26 @@ Mesh* MeshManager::CreateTerrainFromHeightmap(
     return terrain;
 }
 
-Mesh* MeshManager::CreateTerrainFromPixmap(
-    const std::string& name,
-    const Pixmap* heightmap,
+Mesh *MeshManager::CreateTerrainFromPixmap(
+    const std::string &name,
+    const Pixmap *heightmap,
     float width, float height, float maxHeight,
     int detailX, int detailY,
     float tilesU, float tilesV)
 {
     // Criar mesh e buffer
-    Mesh* mesh = Create(name);
-    MeshBuffer* buffer = mesh->AddBuffer(0);
+    Mesh *mesh = Create(name);
+    MeshBuffer *buffer = mesh->AddBuffer(0);
 
     // Calcular dimensões
     float halfWidth = width * 0.5f;
     float halfHeight = height * 0.5f;
-    
+
     int vertCountX = detailX + 1;
     int vertCountY = detailY + 1;
 
     buffer->m_boundBox.clear();
 
- 
     for (int y = 0; y < vertCountY; ++y)
     {
         for (int x = 0; x < vertCountX; ++x)
@@ -2112,12 +2234,11 @@ Mesh* MeshManager::CreateTerrainFromPixmap(
             float px = -halfWidth + nx * width;
             float pz = -halfHeight + ny * height;
 
- 
             int imgX = (int)(nx * (heightmap->width - 1));
             int imgY = (int)(ny * (heightmap->height - 1));
-   
+
             Color pixel = heightmap->GetPixelColor(imgX, imgY);
-            
+
             // Normalizar altura [0, 255] -> [0, 1]
             float heightValue = pixel.r / 255.0f; // Usar canal R (grayscale)
             float py = heightValue * maxHeight;
@@ -2131,7 +2252,6 @@ Mesh* MeshManager::CreateTerrainFromPixmap(
         }
     }
 
- 
     for (int y = 0; y < detailY; ++y)
     {
         for (int x = 0; x < detailX; ++x)
@@ -2143,35 +2263,28 @@ Mesh* MeshManager::CreateTerrainFromPixmap(
 
             // Triângulo 1
             buffer->AddFace(i0, i2, i1);
-            
+
             // Triângulo 2
             buffer->AddFace(i1, i2, i3);
         }
     }
 
- 
     buffer->CalculateNormals();
- 
+
     mesh->m_boundBox.clear();
     mesh->m_boundBox.merge(buffer->m_boundBox);
     buffer->Build();
 
-    LogInfo("[MeshManager] Created terrain: %s (%d verts, %d tris)", 
-            name.c_str(), 
+    LogInfo("[MeshManager] Created terrain: %s (%d verts, %d tris)",
+            name.c_str(),
             buffer->GetVertexCount(),
             buffer->GetIndexCount());
 
     return mesh;
 }
 
- 
-
 void MeshManager::UnloadAll()
 {
-
-    
-
- 
 
     for (auto it = m_meshes.begin(); it != m_meshes.end(); it++)
     {
@@ -2203,7 +2316,7 @@ Mesh *MeshManager::Load(const std::string &name, const std::string &filename)
     {
         return nullptr;
     }
-  
+
     mesh->CalculateBoneMatrices();
     return mesh;
 }
@@ -2427,7 +2540,7 @@ void MeshWriter::WriteSkeletonChunk(const Mesh *mesh)
     {
         const Bone *bone = mesh->GetBone(i);
 
-        WriteCString(bone->name);
+        WriteCString(bone->GetName());
         m_stream->WriteInt(bone->parentIndex);
 
         // Local transform (16 floats)
@@ -2533,50 +2646,50 @@ void MeshWriter::WriteSkinChunk(const MeshBuffer *buffer)
     EndChunk(startPos);
 }
 
-void PrintBoneTree(Mesh *mesh, u32 boneIndex, int depth)
-{
-    Bone *bone = mesh->GetBone(boneIndex);
+// void PrintBoneTree(Mesh *mesh, u32 boneIndex, int depth)
+// {
+//     Bone *bone = mesh->GetBone(boneIndex);
 
-    std::string indent(depth * 2, ' ');
-    std::cout << "  " << indent << "[" << boneIndex << "] " << bone->name << std::endl;
+//     std::string indent(depth * 2, ' ');
+//     std::cout << "  " << indent << "[" << boneIndex << "] " << bone->name << std::endl;
 
-    // Print children
-    for (size_t i = 0; i < mesh->GetBoneCount(); i++)
-    {
+//     // Print children
+//     for (size_t i = 0; i < mesh->GetBoneCount(); i++)
+//     {
 
-        if (mesh->GetBone(i)->parentIndex == (s32)boneIndex)
-        {
-            PrintBoneTree(mesh, i, depth + 1);
-        }
-    }
-}
+//         if (mesh->GetBone(i)->parentIndex == (s32)boneIndex)
+//         {
+//             PrintBoneTree(mesh, i, depth + 1);
+//         }
+//     }
+// }
 
-void ValidateBoneHierarchy(Mesh *mesh)
-{
+// void ValidateBoneHierarchy(Mesh *mesh)
+// {
 
-    std::cout << "\n  Bone Hierarchy:" << std::endl;
+//     std::cout << "\n  Bone Hierarchy:" << std::endl;
 
-    // Conta roots
-    int rootCount = 0;
-    for (size_t i = 0; i < mesh->GetBoneCount(); i++)
-    {
-        Bone *bone = mesh->GetBone(i);
-        if (bone->parentIndex < 0)
-        {
-            PrintBoneTree(mesh, i, 0);
-            rootCount++;
-        }
-    }
+//     // Conta roots
+//     int rootCount = 0;
+//     for (size_t i = 0; i < mesh->GetBoneCount(); i++)
+//     {
+//         Bone *bone = mesh->GetBone(i);
+//         if (bone->parentIndex < 0)
+//         {
+//             PrintBoneTree(mesh, i, 0);
+//             rootCount++;
+//         }
+//     }
 
-    if (rootCount == 1)
-    {
-        std::cout << "  ✓ Single root bone (OK)" << std::endl;
-    }
-    else if (rootCount > 1)
-    {
-        std::cout << "  ⚠ Warning: " << rootCount << " root bones detected!" << std::endl;
-    }
-}
+//     if (rootCount == 1)
+//     {
+//         std::cout << "  ✓ Single root bone (OK)" << std::endl;
+//     }
+//     else if (rootCount > 1)
+//     {
+//         std::cout << "  ⚠ Warning: " << rootCount << " root bones detected!" << std::endl;
+//     }
+// }
 
 bool MeshReader::Load(const std::string &filename, Mesh *mesh)
 {
@@ -2758,7 +2871,6 @@ void MeshReader::ReadBufferChunk(Mesh *mesh, const ChunkHeader &header)
     (void)flags;
 
     MeshBuffer *buffer = mesh->AddBuffer(materialIndex);
-
 
     // Read sub-chunks
     while (m_stream->Tell() < endPos)
@@ -3129,7 +3241,7 @@ bool AnimReader::ReadChannelChunk(Channel &channel)
     return true;
 }
 
-Visual::Visual(const std::string &name):Spatial(name)
+Visual::Visual(const std::string &name) : Spatial(name)
 {
 }
 
@@ -3148,6 +3260,14 @@ void Visual::SetTexture(u32 layer, Texture *texture)
     for (Material *material : materials)
     {
         material->SetTexture(layer, texture);
+    }
+}
+
+void Visual::SetMaterialTexture(u32 material, u32 layer, Texture *texture)
+{
+    if (material < materials.size())
+    {
+        materials[material]->SetTexture(layer, texture);
     }
 }
 

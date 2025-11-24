@@ -16,9 +16,15 @@ class MainScene : public Scene
     float roll = 3.0;
  
     Animator *animator;
+    GameObject *soldier ;
  
-
+Mesh *soldierMesh;
 public:
+    void OnDebug(RenderBatch *batch)  override
+    {
+
+       
+    };
     void OnRender() override
     {
 
@@ -44,10 +50,7 @@ public:
         // Mat4  model = Mat4::Translation(Vec3(-2.0f, 0.5f, 0.0f)) * Mat4::Scale(Vec3(0.1f));
         // sceneShader->SetUniformMat4("model", model.m);
         // driver.DrawMesh(meshModel);
-
-        // model = Mat4::Translation(Vec3(0.0f, 0.5f, 0.0f)) * Mat4::Scale(Vec3(0.01f));
-        // sceneShader->SetUniformMat4("model", model.m);
-        // driver.DrawMesh(soldier);
+ 
 
         // renderAll(sceneShader);
     }
@@ -78,8 +81,9 @@ public:
         Mesh *mesh = MeshManager::Instance().CreatePlane("Plane", 10, 10);
         mesh->AddMaterial("wall")->SetTexture(0, TextureManager::Instance().Get("marm"));
 
-        //   GameObject *plane = createGameObject("Plane");
-        //  plane->addComponent<MeshRenderer>(mesh);
+        GameObject *plane = createGameObject("Plane");
+        plane->addComponent<MeshRenderer>(mesh);
+        plane->setPosition(0.0f, -2.0f, 0.0f);
 
         mesh = MeshManager::Instance().CreateCube("Cube", 1);
         mesh->AddMaterial("wall")->SetTexture(0, TextureManager::Instance().Get("wall"));
@@ -95,9 +99,9 @@ public:
 
         for (int i = 0; i < 7; i++)
         {
-            GameObject *cube = createGameObject("Cube");
-            cube->addComponent<MeshRenderer>(mesh);
-            cube->setPosition(cubePositions[i]);
+          //  GameObject *cube = createGameObject("Cube");
+          //  cube->addComponent<MeshRenderer>(mesh);
+          //  cube->setPosition(cubePositions[i]);
 
             //   Rotator* rotator = cube->addComponent<Rotator>();
             //    rotator->setRotationSpeed(Vec3(0, 90, 20));  // 90°/s on Y axis
@@ -111,6 +115,12 @@ public:
 
         if (meshModel)
         {
+
+
+           
+
+            //Bip01_Head = meshModel->FindBone("Bip01_Head");
+
             Material *material = meshModel->AddMaterial("body");
             material->SetTexture(0, TextureManager::Instance().Get("sinbad_body"));
             material = meshModel->AddMaterial("clothes");
@@ -142,39 +152,84 @@ public:
             legsLayer->Play("legsRun", PlayMode::Loop);
         }
 
-        TextureManager::Instance().Add("ranger/face.jpg", false);
-        TextureManager::Instance().Add("ranger/air.jpg", false);
-        TextureManager::Instance().Add("ranger/body.jpg", false);
-        TextureManager::Instance().Add("ranger/colt.jpg", false);
+        TextureManager::Instance().SetFlipVerticalOnLoad(true);
+        TextureManager::Instance().Add("ranger/face.jpg", true);
+        TextureManager::Instance().Add("ranger/air.jpg", true);
+        TextureManager::Instance().Add("ranger/body.jpg", true);
+        TextureManager::Instance().Add("ranger/colt.jpg", true);
+
+
+      
+
         
 
-        Mesh *soldierMesh = MeshManager::Instance().Load("ranger", "assets/ranger/ranger.h3d");
+        soldierMesh = MeshManager::Instance().Load("ranger", "assets/ranger/ranger.h3d");
         if (soldierMesh)
         {
-            // Material *material = soldierMesh->AddMaterial("body");
-            // material->SetTexture(0, TextureManager::Instance().Get("face"));
-            // material = soldierMesh->AddMaterial("clothes");
-            // material->SetTexture(0, TextureManager::Instance().Get("body"));
-            // material = soldierMesh->AddMaterial("colt");
-            // material->SetTexture(0, TextureManager::Instance().Get("colt"));
+            
+            soldierMesh->SetMaterialTexture(0,0, TextureManager::Instance().Get("body"));
+            soldierMesh->SetMaterialTexture(1,0, TextureManager::Instance().Get("face"));
+            soldierMesh->SetMaterialTexture(2,0, TextureManager::Instance().Get("air"));
 
-          LogInfo("Material count: %d",  soldierMesh->GetMaterialCount());
 
-            GameObject *soldier = createGameObject("Soldier");
-            soldier->setPosition(-2, 0, 0);
-            soldier->setScale(0.01f, 0.01f, 0.01f);
-            soldier->addComponent<MeshRenderer>(soldierMesh);
 
+            // GameObject *soldierRoot = createGameObject("SoldierRoot");
+            //  soldierRoot->setScale(0.01f);
+            //  soldierRoot->setPosition(-2, 0, 0);
+//             soldierMesh->SetBoneParent("Bip01_Pelvis", soldierRoot);
+            
+
+            // Node3D *rootNode =  soldierMesh->FindBone("Bip01_Pelvis");
+ 
+
+             Bone *headNode =  soldierMesh->FindBone("Bip01_Head");
+        
+            //Bip01_R_Hand
+            //Bip01_Head
+
+
+             
+             
+             
+             soldier = createGameObject("Soldier");
+             soldier->setPosition(-2, 0, 0);
+             soldier->setScale(0.01f);
+             soldier->addComponent<MeshRenderer>(soldierMesh);
+
+
+          //  Node3D *headNode =  soldier->getJoint("Bip01_Head");
+
+            GameObject *cube = createGameObject("Cube");
+            cube->addComponent<MeshRenderer>(mesh);
+            cube->setScale(1.5f);
+
+            headNode->SetNode(cube);
+      
+
+             
+             
+            //   rootNode->setParent(soldier);
+             
+            //  GameObject *soldierRoot = createGameObject("SoldierRoot",soldier);
+            //   soldierRoot->setScale(0.01f);
+            //  soldierMesh->SetBoneParent("Bip01_Pelvis", soldierRoot);
+
+            //  soldierRoot->setParent(soldier);
+
+          //rootNode->setParent(soldier);
+
+
+             
             Animator *soldierAnimator = soldier->addComponent<Animator>();
   
             
            
             AnimationLayer *torsoLayer  = soldierAnimator->AddLayer();
-            torsoLayer->LoadAnimation("topRun", "assets/ranger/ranger_Hips_Idle_Pose.anim");
+            torsoLayer->LoadAnimation("topRun", "assets/ranger/ranger_Gun_Shooting_Pose.anim");
             torsoLayer->Play("topRun", PlayMode::Loop);
     
             AnimationLayer *legsLayer = soldierAnimator->AddLayer();
-            legsLayer->LoadAnimation("legsRun", "assets/ranger/ranger_Hips_Idle_Pose.anim");
+            legsLayer->LoadAnimation("legsRun", "assets/ranger/ranger_Walk_Legs_Only.anim");
             legsLayer->Play("legsRun", PlayMode::Loop); 
         }
 
@@ -188,7 +243,7 @@ public:
     }
     void OnUpdate(float dt) override
     {
-        const float SPEED = 1.0f;
+        const float SPEED = 90.0f;
 
         Vec3 moveInput(0, 0, 0);
 
@@ -276,6 +331,7 @@ int main()
         batch.SetMatrix(mvp);
         driver.SetDepthTest(true);
         driver.SetBlendEnable(false);
+
 
         batch.Grid(10, 1.0f, true);
 

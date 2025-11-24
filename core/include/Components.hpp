@@ -30,6 +30,8 @@ public:
 
     void render() override;
 
+    
+
 private:
     Mesh *mesh{nullptr};
     bool visible;
