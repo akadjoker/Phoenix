@@ -1288,13 +1288,13 @@ Bone *Mesh::AddBone(const std::string &name)
     return bone;
 }
 
-bool Mesh::SetBoneParent(const std::string &name, Node3D *parent)
+bool Mesh::SetBoneParent(const std::string &name, Bone *parent)
 {
     for (Bone *bone : m_bones)
     {
-        if (bone->GetName() == name)
+        if (bone->getName() == name)
         {
-           // bone->parent = static_cast<Bone *>(parent);
+            bone->parent = static_cast<Bone *>(parent);
             return true;
         }
     }
@@ -1371,7 +1371,7 @@ Bone *Mesh::FindBone(const std::string &name)
 {
     for (Bone *bone : m_bones)
     {
-        if (bone->GetName() == name)
+        if (bone->getName() == name)
             return bone;
     }
     LogWarning("Bone %s not found", name.c_str());
@@ -1390,25 +1390,26 @@ void PrintMatrix(const Mat4 &mat)
     }
 }
 
-Bone::Bone(const std::string &name) 
+Bone::Bone(const std::string &name) : Node3D(name)
 {
-    this->name = name;
+
     transform = Mat4::Identity();
     global = Mat4::Identity();
     localPose = Mat4::Identity();
     inverseBindPose = Mat4::Identity();
     hasAnimation = false;
     parentIndex = -1;
+    index = -1;
 }
 
- 
-  const Mat4 &Bone::GetGlobalTransform() const
+const Mat4 &Bone::GetGlobalTransform() const
 {
 
     if (parent != nullptr)
     {
-        global =  parent->GetGlobalTransform() * GetLocalTransform();
-    }else 
+        global = parent->GetGlobalTransform() * GetLocalTransform();
+    }
+    else
     {
         global = GetLocalTransform();
     }
@@ -1418,16 +1419,52 @@ Bone::Bone(const std::string &name)
 
 const Mat4 &Bone::GetLocalTransform() const
 {
+   
+
     if (hasAnimation)
     {
-      return    transform;
+        return transform ;
     } 
-   return  localPose;
-    
+    return localPose;
+}
 
-    //return global;
-  //   Mat4 mat = (hasAnimation ? transform : localPose);
-  //  return mat;
+void Bone::updateLocalTransform() const
+{
+
+   Node3D::updateLocalTransform();
+ 
+}
+
+void Bone::updateWorldTransform() const
+{
+
+ //   Node3D::updateWorldTransform();
+    Mat4 translation = Mat4::Translation(Vec3(-10,-2.0f,0.0f));
+
+    Mat4 scale = Mat4::Scale(Vec3(0.1f));
+
+    m_worldTransform =  GetGlobalTransform();
+}
+
+void Bone::setTransform(const Vec3 &position, const Quat &rotation)
+{
+    m_localPosition = position;
+    m_localRotation = rotation;
+    m_worldTransformDirty = true;
+    m_transformDirty = true;
+}
+ 
+
+void Mesh::updateBones(const Mat4 &gameObjectWorld)
+{
+     for (auto* bone : m_bones)
+    {
+        
+            bone->updateLocalTransform();
+            bone->updateWorldTransform();
+            bone->m_worldTransform = gameObjectWorld *  bone->GetGlobalTransform() ;
+        
+    }
 }
 
 void Mesh::SetBoneTransform(u32 index, const Vec3 &position, const Quat &rotation)
@@ -1438,25 +1475,13 @@ void Mesh::SetBoneTransform(u32 index, const Vec3 &position, const Quat &rotatio
     if (index >= m_boneMatrices.size())
         m_boneMatrices.resize(index + 1);
 
+   // Mat4 scale = Mat4::Scale(0.1f, 0.1f, 0.1f);
+
     // T * R * S;
-    Mat4 local = (Mat4::Translation(position) * rotation.toMat4());
+    Mat4 local = Mat4::Translation(position) * rotation.toMat4();
     m_bones[index]->hasAnimation = true;
     m_bones[index]->transform = local;
-    m_bones[index]->position = position;
-    m_bones[index]->rotation = rotation;
-
-    if (m_bones[index]->node != nullptr)
-    {
-        m_bones[index]->node->setPosition(position);
-        m_bones[index]->node->setRotation(rotation);
-      
-        LogInfo("[Mesh] Set bone transform %s %f %f %f",m_bones[index]->node->getName().c_str(), position.x, position.y, position.z);
-    }
-
-  
-
- 
-
+    m_bones[index]->setTransform(position, rotation);
     m_boneMatrices[index] = local;
 }
 
@@ -1468,7 +1493,6 @@ void Mesh::SetBoneStatic(u32 index)
     if (index >= m_boneMatrices.size())
         m_boneMatrices.resize(index + 1);
 
-    
     m_bones[index]->transform = m_bones[index]->localPose;
     m_boneMatrices[index] = m_bones[index]->transform;
     m_bones[index]->hasAnimation = false;
@@ -1487,7 +1511,7 @@ u32 Mesh::FindBoneIndex(const std::string &name)
 {
     for (u32 i = 0; i < m_bones.size(); i++)
     {
-        if (m_bones[i]->GetName() == name)
+        if (m_bones[i]->getName() == name)
             return i;
     }
     return (u32)-1;
@@ -2540,7 +2564,7 @@ void MeshWriter::WriteSkeletonChunk(const Mesh *mesh)
     {
         const Bone *bone = mesh->GetBone(i);
 
-        WriteCString(bone->GetName());
+        WriteCString(bone->getName());
         m_stream->WriteInt(bone->parentIndex);
 
         // Local transform (16 floats)
@@ -2693,6 +2717,8 @@ void MeshWriter::WriteSkinChunk(const MeshBuffer *buffer)
 
 bool MeshReader::Load(const std::string &filename, Mesh *mesh)
 {
+    float S= 0.01f;
+    scale = Mat4::Scale(S,S,S);
     FileStream stream(filename, "rb");
     if (!stream.IsOpen())
     {
@@ -3211,6 +3237,8 @@ bool AnimReader::ReadChannelChunk(Channel &channel)
 
     // LogInfo("[AnimReader] Reading channel: %s (%d keyframes)", channel.boneName.c_str(), numKeys);
 
+    float modelScale = 0.01f;
+
     // Read all keyframes
     for (u32 i = 0; i < numKeys; i++)
     {
@@ -3223,6 +3251,8 @@ bool AnimReader::ReadChannelChunk(Channel &channel)
         key.position.x = m_stream->ReadFloat();
         key.position.y = m_stream->ReadFloat();
         key.position.z = m_stream->ReadFloat();
+
+          // key.position *= modelScale;
 
         // Rotation (quaternion)
         key.rotation.x = m_stream->ReadFloat();

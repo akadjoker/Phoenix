@@ -170,7 +170,7 @@ public:
             soldierMesh->SetMaterialTexture(0,0, TextureManager::Instance().Get("body"));
             soldierMesh->SetMaterialTexture(1,0, TextureManager::Instance().Get("face"));
             soldierMesh->SetMaterialTexture(2,0, TextureManager::Instance().Get("air"));
-
+ 
 
 
             // GameObject *soldierRoot = createGameObject("SoldierRoot");
@@ -182,7 +182,7 @@ public:
             // Node3D *rootNode =  soldierMesh->FindBone("Bip01_Pelvis");
  
 
-             Bone *headNode =  soldierMesh->FindBone("Bip01_Head");
+             Bone *headNode =  soldierMesh->FindBone("Bip01_R_Hand");
         
             //Bip01_R_Hand
             //Bip01_Head
@@ -192,18 +192,18 @@ public:
              
              
              soldier = createGameObject("Soldier");
-             soldier->setPosition(-2, 0, 0);
-             soldier->setScale(0.01f);
+         //    soldier->setPosition(-200, 0, 0);
+          //   soldier->setScale(0.01f);
              soldier->addComponent<MeshRenderer>(soldierMesh);
 
 
           //  Node3D *headNode =  soldier->getJoint("Bip01_Head");
 
-            GameObject *cube = createGameObject("Cube");
+            GameObject *cube = createGameObject("Cube",headNode);
             cube->addComponent<MeshRenderer>(mesh);
-            cube->setScale(1.5f);
+            cube->setScale(10.5f);
 
-            headNode->SetNode(cube);
+     
       
 
              

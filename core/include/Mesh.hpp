@@ -28,40 +28,38 @@ class Terrain;
 
 const u32 MAX_TEXTURES = 6;
 
-class Bone  
+class Bone : public Node3D
 {
 private:
     bool hasAnimation;
     s32 parentIndex; // -1 = root
+    s32 index;
     std::string name;
     mutable Mat4 transform;
     mutable Mat4 global;
+    mutable Mat4 world;
     Mat4 localPose;
     Mat4 inverseBindPose;
 
-    Vec3 position;
-    Quat rotation;
- 
     Bone *parent{nullptr};
     friend class Mesh;
     friend class MeshBuffer;
     friend class MeshWriter;
     friend class MeshLoader;
     friend class MeshReader;
-    Node3D *node{nullptr};
- 
 
 public:
     Bone(const std::string &name);
 
-     const Mat4 &GetGlobalTransform() const;
-     const Mat4 &GetLocalTransform() const;
-     
-     s32 GetParentIndex() const { return parentIndex; }
+    const Mat4 &GetGlobalTransform() const;
+    const Mat4 &GetLocalTransform() const;
 
-     const std::string& GetName() const { return name; } 
-     void SetNode(Node3D *node) { this->node = node; }
- 
+    s32 GetParentIndex() const { return parentIndex; }
+
+    void updateLocalTransform() const override;
+    void updateWorldTransform() const override;
+
+    void setTransform(const Vec3 &position, const Quat &rotation);
 };
 
 class Material
@@ -281,7 +279,7 @@ public:
     u32 GetBoneCount() const { return m_bones.size(); }
     Bone *GetBone(u32 index) const;
     Bone *AddBone(const std::string &name);
-    bool SetBoneParent(const std::string &name, Node3D *parent);
+    bool SetBoneParent(const std::string &name, Bone *parent);
 
     std::vector<Bone *> &GetBones() { return m_bones; }
     const std::vector<Bone *> &GetBones() const { return m_bones; }
@@ -295,8 +293,9 @@ public:
     u32 FindBoneIndex(const std::string &name);
     Mat4 GetBoneMatrix(u32 index) const;
     Mat4 GetBoneBindPoseMatrix(u32 index) const;
-
+    void updateBones(const Mat4 &gameObjectWorld);
     void SetBoneTransform(u32 index, const Vec3 &position, const Quat &rotation);
+ 
     void SetBoneStatic(u32 index);
     void ResetBones();
 
@@ -479,6 +478,7 @@ private:
     ChunkHeader ReadChunkHeader();
     void SkipChunk(const ChunkHeader &header);
     std::string ReadCString();
+    Mat4 scale;
 
     void ReadMaterialsChunk(Mesh *mesh, const ChunkHeader &header);
     void ReadSkeletonChunk(Mesh *mesh, const ChunkHeader &header);

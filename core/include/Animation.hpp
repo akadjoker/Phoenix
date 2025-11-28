@@ -138,6 +138,7 @@ public:
 
     // Update
     void Update(float deltaTime);
+ 
 
     // Getters
     bool IsPlaying(const std::string &animName) const;

@@ -49,10 +49,12 @@ void Animator::update(float deltaTime)
 {
     if (m_mesh == nullptr || layers.empty() || !m_active)
         return;
-    for (size_t i = 0; i < layers.size(); i++)
-    {
-        layers[i]->Update(deltaTime);
-    }
+
+        for (size_t i = 0; i < layers.size(); i++)
+        {
+            layers[i]->Update(deltaTime );
+        }
+    //    m_mesh->updateBones(m_owner->getWorldTransform());
 }
 
 AnimationLayer *Animator::AddLayer()
@@ -404,9 +406,7 @@ void AnimationLayer::Update(float deltaTime)
         m_mesh->UpdateSkinning();
     }
 }
-
-
-
+ 
 // ============================================================================
 // CHECK ANIMATION END
 // ============================================================================
