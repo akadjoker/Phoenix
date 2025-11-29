@@ -2,8 +2,11 @@
 #include "Driver.hpp"
 #include "Utils.hpp"
 #include "RenderTarget.hpp"
-#include "Texture.hpp"
+#include "Shader.hpp"
 #include "glad/glad.h"
+#include "Texture.hpp"
+#include "Math.hpp"
+#include <limits>
 
 // ============================================
 // OPENGL FORMAT CONVERSION HELPERS
@@ -2188,4 +2191,294 @@ bool RenderTargetManager::Exists(const std::string &name) const
            m_msaaTargets.find(name) != m_msaaTargets.end() ||
            m_cubemapTargets.find(name) != m_cubemapTargets.end() ||
            m_arrayTargets.find(name) != m_arrayTargets.end();
+}
+
+ShadowMapManager::ShadowMapManager(u32 shadowWidth, u32 shadowHeight, int cascadeCount)
+    : updateTimer(0.0f), needsUpdate(true)
+{
+    config.shadowWidth = shadowWidth;
+    config.shadowHeight = shadowHeight;
+    config.cascadeCount = cascadeCount;
+    depthMapFBOs.resize(config.cascadeCount);
+    depthMaps.resize(config.cascadeCount);
+    dummyColors.resize(config.cascadeCount);
+    lightSpaceMatrices.resize(config.cascadeCount);
+    cascadeSplits.resize(config.cascadeCount);
+}
+
+ShadowMapManager::~ShadowMapManager()
+{
+  
+}
+
+bool ShadowMapManager::Initialize()
+{
+    for (int i = 0; i < config.cascadeCount; ++i)
+    {
+        glGenFramebuffers(1, &depthMapFBOs[i]);
+
+        // Depth texture
+        glGenTextures(1, &depthMaps[i]);
+        glBindTexture(GL_TEXTURE_2D, depthMaps[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16,
+                     config.shadowWidth, config.shadowHeight, 0,
+                     GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+
+        float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+        // Dummy color attachment
+        glGenTextures(1, &dummyColors[i]);
+        glBindTexture(GL_TEXTURE_2D, dummyColors[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                     config.shadowWidth, config.shadowHeight, 0,
+                     GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        // Setup framebuffer
+        glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBOs[i]);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                               GL_TEXTURE_2D, dummyColors[i], 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                               GL_TEXTURE_2D, depthMaps[i], 0);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        {
+            LogError("ShadowMapManager: Cascade %d framebuffer is not complete!", i);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            return false;
+        }
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    return true;
+}
+
+void ShadowMapManager::Release()
+{
+    for (int i = 0; i < config.cascadeCount; ++i)
+    {
+        if (depthMapFBOs[i])
+            glDeleteFramebuffers(1, &depthMapFBOs[i]);
+        if (depthMaps[i])
+            glDeleteTextures(1, &depthMaps[i]);
+        if (dummyColors[i])
+            glDeleteTextures(1, &dummyColors[i]);
+    }
+
+    depthMapFBOs.clear();
+    depthMaps.clear();
+    dummyColors.clear();
+}
+
+void ShadowMapManager::Calculate(const Mat4 &view, const Mat4 &proj, float nearPlane, float farPlane, const Vec3 &lightDir)
+{
+
+  /////  if (updateTimer >= config.updateInterval || needsUpdate)
+    {
+        updateTimer = 0.0f;
+        needsUpdate = false;
+
+        CalculateCascadeSplits(nearPlane, farPlane);
+
+        float lastSplitDist = nearPlane;
+        for (int i = 0; i < config.cascadeCount; ++i)
+        {
+            float splitDist = cascadeSplits[i];
+
+            Mat4 cascadeProj = Mat4::Perspective(
+                ToRadians(60.0f),
+                proj.m[0] / proj.m[5],
+                lastSplitDist,
+                splitDist);
+
+            lightSpaceMatrices[i] = CalculateLightSpaceMatrix(
+                lastSplitDist, splitDist, cascadeProj, view, lightDir);
+
+            lastSplitDist = splitDist;
+        }
+    }
+}
+
+void ShadowMapManager::Update(float dt)
+{
+    updateTimer += dt;
+}
+
+void ShadowMapManager::BeginDepthPass()
+{
+    
+    Driver::Instance().SetCulling(CullMode::Back);
+    Driver::Instance().SaveViewPort();
+    Driver::Instance().SetViewPort(0, 0, config.shadowWidth, config.shadowHeight);
+
+}
+
+void ShadowMapManager::BindCascade(int cascade)
+{
+    if (cascade >= 0 && cascade < config.cascadeCount)
+    {
+        CHECK_GL_ERROR(glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBOs[cascade]));
+        glClear(GL_DEPTH_BUFFER_BIT);
+    }
+}
+
+void ShadowMapManager::EndDepthPass()
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    CHECK_GL_ERROR(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+    Driver::Instance().RestoreViewPort();
+}
+
+void ShadowMapManager::BindShadowMapsToShader(Shader *shader, int startTextureUnit)
+{
+    for (int i = 0; i < config.cascadeCount; ++i)
+    {
+        std::string uniformName = "shadowMap[" + std::to_string(i) + "]";
+        shader->SetTexture2D(uniformName.c_str(), depthMaps[i], startTextureUnit + i);
+    }
+}
+
+void ShadowMapManager::SetShaderUniforms(Shader *shader)
+{
+    shader->SetUniform("cascadeCount", config.cascadeCount);
+    shader->SetUniform("shadowMapSize", config.shadowWidth, config.shadowHeight);
+
+    for (int i = 0; i < config.cascadeCount; ++i)
+    {
+        std::string matrixName = "lightSpaceMatrices[" + std::to_string(i) + "]";
+        shader->SetUniformMat4(matrixName.c_str(), lightSpaceMatrices[i].m);
+
+        std::string distanceName = "cascadePlaneDistances[" + std::to_string(i) + "]";
+        shader->SetUniform(distanceName.c_str(), cascadeSplits[i]);
+    }
+}
+
+const Mat4 &ShadowMapManager::GetLightSpaceMatrix(int cascade) const
+{
+    DEBUG_BREAK_IF(cascade >= 0 && cascade < config.cascadeCount);
+    return lightSpaceMatrices[cascade];
+}
+
+float ShadowMapManager::GetCascadeSplit(int cascade) const
+{
+        DEBUG_BREAK_IF(cascade >= 0 && cascade < config.cascadeCount);
+    return cascadeSplits[cascade];
+}
+
+unsigned int ShadowMapManager::GetDepthMap(int cascade) const
+{
+        DEBUG_BREAK_IF(cascade >= 0 && cascade < config.cascadeCount);
+    return depthMaps[cascade];
+}
+
+int ShadowMapManager::GetCascadeCount() const
+{
+    return config.cascadeCount;
+}
+
+void ShadowMapManager::ForceUpdate()
+{
+    needsUpdate = true;
+}
+
+void ShadowMapManager::CalculateCascadeSplits(float nearPlane, float farPlane)
+{
+    for (int i = 0; i < config.cascadeCount; ++i)
+    {
+        float p = (i + 1) / static_cast<float>(config.cascadeCount);
+        float log = nearPlane * std::pow(farPlane / nearPlane, p);
+        float uniform = nearPlane + (farPlane - nearPlane) * p;
+        cascadeSplits[i] = config.lambda * log + (1.0f - config.lambda) * uniform;
+    }
+}
+
+std::vector<Vec4> ShadowMapManager::GetFrustumCornersWorldSpace(const Mat4 &proj, const Mat4 &view)
+{
+    const Mat4 inv = Mat4::Inverse(proj * view);
+    std::vector<Vec4> frustumCorners;
+
+    for (unsigned int x = 0; x < 2; ++x)
+    {
+        for (unsigned int y = 0; y < 2; ++y)
+        {
+            for (unsigned int z = 0; z < 2; ++z)
+            {
+                const Vec4 pt = inv * Vec4(
+                                          2.0f * x - 1.0f,
+                                          2.0f * y - 1.0f,
+                                          2.0f * z - 1.0f,
+                                          1.0f);
+                frustumCorners.push_back(pt / pt.w);
+            }
+        }
+    }
+    return frustumCorners;
+}
+
+Mat4 ShadowMapManager::CalculateLightSpaceMatrix(float nearPlane, float farPlane,
+                                                 const Mat4 &proj, const Mat4 &view,
+                                                 const Vec3 &lightDir)
+{
+    const auto corners = GetFrustumCornersWorldSpace(proj, view);
+
+    Vec3 center(0, 0, 0);
+    for (const auto &v : corners)
+    {
+        center.x += v.x;
+        center.y += v.y;
+        center.z += v.z;
+    }
+    center /= corners.size();
+
+    center.x = std::round(center.x / config.snapGrid) * config.snapGrid;
+    center.y = std::round(center.y / config.snapGrid) * config.snapGrid;
+    center.z = std::round(center.z / config.snapGrid) * config.snapGrid;
+
+    const Mat4 lightView = Mat4::LookAt(
+        center + lightDir,
+        center,
+        Vec3(0.0f, 1.0f, 0.0f));
+
+    float minX = std::numeric_limits<float>::max();
+    float maxX = std::numeric_limits<float>::lowest();
+    float minY = std::numeric_limits<float>::max();
+    float maxY = std::numeric_limits<float>::lowest();
+    float minZ = std::numeric_limits<float>::max();
+    float maxZ = std::numeric_limits<float>::lowest();
+
+    for (const auto &v : corners)
+    {
+        const auto trf = lightView * v;
+        minX = std::min(minX, trf.x);
+        maxX = std::max(maxX, trf.x);
+        minY = std::min(minY, trf.y);
+        maxY = std::max(maxY, trf.y);
+        minZ = std::min(minZ, trf.z);
+        maxZ = std::max(maxZ, trf.z);
+    }
+
+    if (minZ < 0)
+        minZ *= config.zMultiplier;
+    else
+        minZ /= config.zMultiplier;
+
+    if (maxZ < 0)
+        maxZ /= config.zMultiplier;
+    else
+        maxZ *= config.zMultiplier;
+
+    float worldUnitsPerTexel = (maxX - minX) / config.shadowWidth;
+    minX = std::floor(minX / worldUnitsPerTexel) * worldUnitsPerTexel;
+    maxX = std::floor(maxX / worldUnitsPerTexel) * worldUnitsPerTexel;
+    minY = std::floor(minY / worldUnitsPerTexel) * worldUnitsPerTexel;
+    maxY = std::floor(maxY / worldUnitsPerTexel) * worldUnitsPerTexel;
+
+    const Mat4 lightProjection = Mat4::Ortho(minX, maxX, minY, maxY, minZ, maxZ);
+    return lightProjection * lightView;
 }

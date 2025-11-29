@@ -9,7 +9,7 @@ scene
         object
         {
             name "water"
-            type 4
+            type 5
             scale 1 1 1
             rotation 0 0 0
             position 0 0 0
@@ -20,7 +20,7 @@ scene
         object
         {
             name "skyBOx"
-            type 4
+            type 5
             scale 1 1 1
             rotation 0 0 0
             position 0 0 0
@@ -31,7 +31,7 @@ scene
         object
         {
             name "terrain"
-            type 4
+            type 5
             scale 1 1 1
             rotation 0 0 0
             position 0 -5 0
@@ -42,7 +42,7 @@ scene
         object
         {
             name "Tree"
-            type 4
+            type 5
             scale 1 1 1
             rotation 0 0 0
             position 11.6 -1.4 15.4
@@ -53,7 +53,7 @@ scene
         object
         {
             name "Tree"
-            type 4
+            type 5
             scale 1 1 1
             rotation 0 0 0
             position -13.2 -0.5 12.3
@@ -64,7 +64,7 @@ scene
         object
         {
             name "Tree"
-            type 4
+            type 5
             scale 1 1 1
             rotation 0 0 0
             position -0.2 -2.3 17.7
@@ -75,7 +75,7 @@ scene
         object
         {
             name "Cube"
-            type 4
+            type 5
             scale 1 1 1
             rotation 0 0 0
             position 0 0.5 0
@@ -86,7 +86,7 @@ scene
         object
         {
             name "Cube"
-            type 4
+            type 5
             scale 1 1 1
             rotation 0.621337 0 0
             position 3 -7.45058e-09 -3
@@ -97,7 +97,7 @@ scene
         object
         {
             name "Cube"
-            type 4
+            type 5
             scale 1 1 1
             rotation 0 0 0
             position -3 0.5 -3
@@ -108,7 +108,7 @@ scene
         object
         {
             name "Cube"
-            type 4
+            type 5
             scale 1 1 1
             rotation 0.677188 0 0
             position 8.2 0.5 2
@@ -119,7 +119,7 @@ scene
         object
         {
             name "Cube"
-            type 4
+            type 5
             scale 1 1 1
             rotation 0 0 0
             position -11.5 -0.1 2
@@ -130,7 +130,7 @@ scene
         object
         {
             name "Cube"
-            type 4
+            type 5
             scale 1 1 1
             rotation 0 0 0
             position 2 0.5 -6
@@ -141,7 +141,7 @@ scene
         object
         {
             name "Cube"
-            type 4
+            type 5
             scale 1 1 1
             rotation 0 0 0
             position -2 0.5 -6
@@ -152,7 +152,7 @@ scene
         object
         {
             name "Cube"
-            type 4
+            type 5
             scale 1 1 1
             rotation -4.5249e-09 0.205949 -0.750492
             position 2.1 0.3 5
@@ -163,7 +163,7 @@ scene
         object
         {
             name "Cube"
-            type 4
+            type 5
             scale 1 1 1
             rotation 0 0 0
             position 5 0 -5
@@ -174,7 +174,7 @@ scene
         object
         {
             name "Cube"
-            type 4
+            type 5
             scale 1 1 1
             rotation 0 -2.71669 0
             position -2.1 7.45058e-09 6.9

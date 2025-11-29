@@ -842,7 +842,7 @@ void RibbonTrail::Render()
 
     driver.SetBlendEnable(true);
     driver.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::One);
-    driver.SetDepthTest(true);
+    driver.SetDepthTest(false);
     driver.SetDepthWrite(false);
     driver.SetCulling(CullMode::None);
 
@@ -856,6 +856,7 @@ void RibbonTrail::Render()
 
     driver.SetDepthWrite(true);
     driver.SetBlendEnable(false);
+    driver.SetDepthTest(true);
 }
 
 int RibbonTrail::GetChainCount() const

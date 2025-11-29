@@ -54,36 +54,9 @@ void MeshRenderer::attach()
     if (mesh && mesh->HasSkeleton())
     {
         boneMatrices.resize(mesh->GetBoneCount(), Mat4::Identity());
-
-        for (u32 i = 0; i < mesh->GetBoneCount(); i++)
-        {
-            const Bone& bone = mesh->GetBone(i);
-            Joint3D *joint = m_owner->addJoint(bone.name);
-            joint->parentIndex = bone.parentIndex;
-            joint->m_localPose = bone.localPose;
-            joint->m_inverseBindPose = bone.inverseBindPose;
-            Vec3 position;
-            Quat rotation;
-            Mat4::DecomposeMatrix(bone.localPose, &position, &rotation);
-            joint->setPosition(position);
-            joint->setRotation(rotation);
-            if (bone.parentIndex == -1)
-            {
-                joint->setParent(m_owner);
-            }
-        }
-
-        for (u32 i = 0; i < mesh->GetBoneCount(); i++)
-        {
-            const Bone& bone = mesh->GetBone(i);
-
-            if (bone.parentIndex == -1)
-                continue;
-            Joint3D *parent = m_owner->getJoint(bone.parentIndex);
-            Joint3D *joint  = m_owner->getJoint(i);
-            joint->SetParent(parent); 
-        }
+        m_owner->CreateJoints(mesh);
     }
+          
 
     m_owner->m_boundBox.expand(mesh->getBoundingBox());
 }

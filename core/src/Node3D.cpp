@@ -82,6 +82,38 @@ void Node3D::deserialize(const Serialize &in)
     getWorldTransform();
 }
 
+void Node3D::CreateJoints(Mesh *mesh)
+{
+       for (u32 i = 0; i < mesh->GetBoneCount(); i++)
+        {
+            const Bone& bone = mesh->GetBone(i);
+            Joint3D *joint = addJoint(bone.name);
+            joint->parentIndex = bone.parentIndex;
+            joint->m_localPose = bone.localPose;
+            joint->m_inverseBindPose = bone.inverseBindPose;
+            Vec3 position;
+            Quat rotation;
+            Mat4::DecomposeMatrix(bone.localPose, &position, &rotation);
+            joint->setPosition(position);
+            joint->setRotation(rotation);
+            if (bone.parentIndex == -1)
+            {
+                joint->setParent(this);
+            }
+        }
+
+        for (u32 i = 0; i < mesh->GetBoneCount(); i++)
+        {
+            const Bone& bone = mesh->GetBone(i);
+
+            if (bone.parentIndex == -1)
+                continue;
+            Joint3D *parent = getJoint(bone.parentIndex);
+            Joint3D *joint  = getJoint(i);
+            joint->SetParent(parent); 
+        }
+}
+
 Node3D::Node3D(const std::string &name) : Node(name), m_localPosition(0, 0, 0), m_localRotation(Quat::Identity()), m_localScale(1, 1, 1), m_transformDirty(true), m_worldTransformDirty(true), m_parent(nullptr),
                                           m_flags(0u)
 {

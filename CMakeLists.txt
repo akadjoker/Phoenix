@@ -11,6 +11,13 @@ add_subdirectory(terrains)
 add_subdirectory(test_gui)
 add_subdirectory(animation)
 add_subdirectory(effects)
+add_subdirectory(cshadow)
+add_subdirectory(shadow)
+add_subdirectory(beam)
+
+
+add_subdirectory(deferred)
+add_subdirectory(basic_ssao)
 
 add_subdirectory(exporter)
  

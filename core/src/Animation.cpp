@@ -47,42 +47,45 @@ void Animator::update(float deltaTime)
 
     if (!meshRenderer || !m_mesh || !m_mesh->HasSkeleton())
         return;
+    const u32 bonesCount = m_owner->getJointCount();
 
-    if(!m_firstStarted)
+    if (!m_firstStarted)
     {
         for (size_t i = 0; i < layers.size(); i++)
         {
             layers[i]->Bind(m_owner);
         }
+        for (u32 i = 0; i < bonesCount; i++)
+        {
+            Joint3D *joint = m_owner->getJoint(i);
+            joint->Reset();
+        }
         m_firstStarted = true;
     }
 
-    const u32  bonesCount = m_owner->getJointCount();
-
-    for (u32 i = 0; i <  bonesCount; i++)
-    {
-         Joint3D *joint = m_owner->getJoint(i);
-         joint->Reset();
-    }
-
     auto &boneMats = meshRenderer->boneMatrices;
-    
+
     for (size_t i = 0; i < layers.size(); i++)
     {
         layers[i]->Update(deltaTime, m_owner->m_joints);
     }
 
-    for (u32 i = 0; i <  bonesCount; i++)
+    for (u32 i = 0; i < bonesCount; i++)
     {
         Joint3D *bone = m_owner->getJoint(i);
         boneMats[i] = bone->GetGlobalTransform() * bone->GetBindPose();
     }
+    //  for (u32 i = 0; i <  bonesCount; i++)
+    // {
+    //      Joint3D *joint = m_owner->getJoint(i);
+    //      joint->Reset();
+    // }
 }
 
 AnimationLayer *Animator::AddLayer()
 {
 
-    AnimationLayer *layer = new AnimationLayer( );
+    AnimationLayer *layer = new AnimationLayer();
     layers.push_back(layer);
     return layer;
 }
@@ -97,8 +100,8 @@ AnimationLayer *Animator::GetLayer(u32 index)
     return layers[index];
 }
 
-AnimationLayer::AnimationLayer( )
-    :   m_currentAnim(nullptr), m_previousAnim(nullptr), m_playTo(nullptr), m_currentTime(0.0f), m_currentTimeBlend(0.0f), m_globalSpeed(1.0f), m_isPaused(false), m_isBlending(false), m_blendTime(0.0f), m_blendDuration(0.9f), m_shouldReturn(false), m_currentMode(PlayMode::Loop), m_defaultBlendTime(0.3f), m_isPingPongReverse(false)
+AnimationLayer::AnimationLayer()
+    : m_currentAnim(nullptr), m_previousAnim(nullptr), m_playTo(nullptr), m_currentTime(0.0f), m_currentTimeBlend(0.0f), m_globalSpeed(1.0f), m_isPaused(false), m_isBlending(false), m_blendTime(0.0f), m_blendDuration(0.9f), m_shouldReturn(false), m_currentMode(PlayMode::Loop), m_defaultBlendTime(0.3f), m_isPingPongReverse(false)
 {
 }
 
@@ -118,8 +121,8 @@ AnimationLayer::~AnimationLayer()
 void AnimationLayer::AddAnimation(const std::string &name, Animation *anim)
 {
     m_animations[name] = anim;
- //   if (anim)
-   //     anim->BindToMesh(m_mesh);
+    //   if (anim)
+    //     anim->BindToMesh(m_mesh);
 }
 
 Animation *AnimationLayer::GetAnimation(const std::string &name)
@@ -244,8 +247,6 @@ bool AnimationLayer::IsPlaying(const std::string &animName) const
     return false;
 }
 
- 
-
 void AnimationLayer::Update(float deltaTime, const std::vector<Joint3D *> &bones)
 {
     if (m_isPaused)
@@ -298,8 +299,6 @@ void AnimationLayer::Update(float deltaTime, const std::vector<Joint3D *> &bones
                 {
                     if (channel.boneIndex == -1)
                         continue;
-
-                    
 
                     Vec3 pos1, pos2;
                     Quat rot1, rot2;
