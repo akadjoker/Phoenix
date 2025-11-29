@@ -14,55 +14,80 @@ void MeshRenderer::render()
         return;
     if (mesh)
     {
-        //LogInfo("[MeshRenderer] render %s", mesh->getName().c_str());
+        if (mesh->IsSkinned())
+            UpdateSkinning();
+
+        // LogInfo("[MeshRenderer] render %s", mesh->getName().c_str());
         Driver::Instance().DrawMesh(mesh);
+    }
+}
+
+void MeshRenderer::UpdateSkinning()
+{
+    if (!mesh || !mesh->IsSkinned())
+        return;
+
+    for (size_t i = 0; i < mesh->GetBufferCount(); ++i)
+    {
+        MeshBuffer *buf = mesh->GetBuffer(i);
+        if (!buf->IsSkinned())
+            continue;
+
+        buf->UpdateSkinning(boneMatrices);
     }
 }
 
 MeshRenderer::MeshRenderer(Mesh *m) : mesh(m), visible(true)
 {
+   
+}
+
+MeshRenderer::~MeshRenderer()
+{
+       
 }
 
 void MeshRenderer::attach()
 {
-    // LogInfo("[MeshRenderer] attached to %s", m_owner->getName().c_str());
 
     m_owner->getWorldTransform();
+    if (mesh && mesh->HasSkeleton())
+    {
+        boneMatrices.resize(mesh->GetBoneCount(), Mat4::Identity());
+
+        for (u32 i = 0; i < mesh->GetBoneCount(); i++)
+        {
+            Bone *bone = mesh->GetBone(i);
+            Node3D *joint = m_owner->addJoint(bone->name);
+            joint->setLocalTransform(bone->transform);
+            if (bone->parentIndex == -1)
+            {
+                joint->setParent(m_owner);
+            }
+            // Bone * mBone = new Bone(bone->name);        
+            // mBone->parentIndex = bone->parentIndex;
+            // mBone->localPose = bone->transform;
+            // mBone->hasAnimation = false;
+            // mBone->inverseBindPose = bone->inverseBindPose;
+            // m_bones.push_back(mBone);
+        }
+
+        for (u32 i = 0; i < mesh->GetBoneCount(); i++)
+        {
+            Bone *bone = mesh->GetBone(i);
+
+            if (bone->parentIndex == -1)
+                continue;
+            Node3D *parent = m_owner->getJoint(bone->parentIndex);
+            Node3D *joint = m_owner->getJoint(i);
+            joint->setParent(parent);
+            joint->getWorldTransform();
+            //m_bones[i]->parent = m_bones[bone->parentIndex];
+        }
+    }
 
     m_owner->m_boundBox.expand(mesh->getBoundingBox());
-
-    // if (mesh && mesh->HasSkeleton())
-    // {
-    //     auto& bones = mesh->GetBones();
-    //     for( u32 i = 0; i < bones.size(); i++)
-    //     {
-    //         Bone* bone = bones[i];
-    //         Node3D *joint = m_owner->addJoint(bone->GetName());
-    //         bone->SetNode(joint);
-
-    //         if (bone->GetParentIndex() == -1)
-    //         {
-                
-    //             LogWarning("[MeshRenderer] Bone %s has no parent", bone->GetName().c_str());
-                
-    //             joint->setParent(m_owner);
-    //         }
-    //        //   joint->setParent(m_owner);
-            
-    //     }
-    //      for( u32 i = 0; i < bones.size(); i++)
-    //     {
-    //         Bone* bone = bones[i];
-    //         Node3D *joint = m_owner->getJoint(bone->GetName());
-    //         if (bone->GetParentIndex() != -1)
-    //         {
-    //             Node3D *parent = m_owner->getJoint(bone->GetParentIndex());
-    //             joint->setParent(parent);
-    //         }
-    //     }
-    // }
 }
-
 
 void Rotator::update(float deltaTime)
 {
@@ -235,4 +260,3 @@ void FreeCameraComponent::setYaw(float yawDeg)
     Quat rotation = Quat::FromEulerAnglesDeg(m_pitch, m_yaw, 0.0f);
     m_camera->setRotation(rotation, TransformSpace::World);
 }
- 

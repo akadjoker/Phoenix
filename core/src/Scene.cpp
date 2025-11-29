@@ -248,7 +248,7 @@ bool Scene::Init()
 
 bool Scene::isVisible(Node3D *node)
 {
-    return (m_frustum->intersectsAABB(node->getTransformedBoundingBox()) && node->isActive());
+    return true;//(m_frustum->intersectsAABB(node->getTransformedBoundingBox()) && node->isActive());
 }
 
 void Scene::renderAll(Shader *shader)

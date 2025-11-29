@@ -174,15 +174,22 @@ public:
 
 
             // GameObject *soldierRoot = createGameObject("SoldierRoot");
-            //  soldierRoot->setScale(0.01f);
+             // soldierRoot->setScale(0.01f);
             //  soldierRoot->setPosition(-2, 0, 0);
 //             soldierMesh->SetBoneParent("Bip01_Pelvis", soldierRoot);
             
 
             // Node3D *rootNode =  soldierMesh->FindBone("Bip01_Pelvis");
  
+            //soldierMesh->GetRoot()->setParent(soldier);
 
-             Bone *headNode =  soldierMesh->FindBone("Bip01_R_Hand");
+            Bone *headNode =  soldierMesh->FindBone("Bip01_R_Hand");
+            //Bone *headNode =  soldierMesh->FindBone("Bip01_Head");
+
+          //  soldierMesh->GetRoot()->scale=Vec3(0.02f);
+           //  soldierMesh->GetRoot()->setPosition(-20, 0, 0);
+
+             
         
             //Bip01_R_Hand
             //Bip01_Head
@@ -192,17 +199,19 @@ public:
              
              
              soldier = createGameObject("Soldier");
-         //    soldier->setPosition(-200, 0, 0);
-          //   soldier->setScale(0.01f);
+             soldier->setPosition(-4, 0, 0);
+             soldier->setScale(0.01f);
              soldier->addComponent<MeshRenderer>(soldierMesh);
 
 
           //  Node3D *headNode =  soldier->getJoint("Bip01_Head");
 
-            GameObject *cube = createGameObject("Cube",headNode);
-            cube->addComponent<MeshRenderer>(mesh);
-            cube->setScale(10.5f);
+            // GameObject *cube = createGameObject("Cube");
+            // cube->addComponent<MeshRenderer>(mesh);
 
+            // cube->setScale(1.5f);
+
+       
      
       
 
@@ -216,12 +225,21 @@ public:
 
             //  soldierRoot->setParent(soldier);
 
-          //rootNode->setParent(soldier);
+        //  rootNode->setParent(soldier);
 
 
              
             Animator *soldierAnimator = soldier->addComponent<Animator>();
+            soldierAnimator->awake();
   
+            for (u32 i = 0; i < soldier->getJointCount(); i++)
+            {
+                GameObject *cube = createGameObject("Cube",soldier->getJoint(i));
+                cube->addComponent<MeshRenderer>(mesh);
+                 cube->setScale(50.5f);
+              
+            }
+
             
            
             AnimationLayer *torsoLayer  = soldierAnimator->AddLayer();

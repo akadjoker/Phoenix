@@ -28,38 +28,33 @@ class Terrain;
 
 const u32 MAX_TEXTURES = 6;
 
-class Bone : public Node3D
+/// @brief 
+struct Bone
 {
-private:
-    bool hasAnimation;
-    s32 parentIndex; // -1 = root
-    s32 index;
-    std::string name;
-    mutable Mat4 transform;
-    mutable Mat4 global;
-    mutable Mat4 world;
-    Mat4 localPose;
-    Mat4 inverseBindPose;
 
-    Bone *parent{nullptr};
     friend class Mesh;
     friend class MeshBuffer;
     friend class MeshWriter;
     friend class MeshLoader;
     friend class MeshReader;
+    bool hasAnimation;
+    s32 parentIndex; // -1 = root
+    std::string name;
+    Bone *parent;
+    mutable Mat4 transform;
+    mutable Mat4 global;
 
-public:
+    Mat4 localPose;
+    Mat4 inverseBindPose;
+
     Bone(const std::string &name);
 
     const Mat4 &GetGlobalTransform() const;
     const Mat4 &GetLocalTransform() const;
+    void SetTransform(  const Vec3 &position, const Quat &rotation);
+  
 
-    s32 GetParentIndex() const { return parentIndex; }
 
-    void updateLocalTransform() const override;
-    void updateWorldTransform() const override;
-
-    void setTransform(const Vec3 &position, const Quat &rotation);
 };
 
 class Material
@@ -156,6 +151,7 @@ public:
     void Debug(RenderBatch *batch);
 
     void UpdateSkinning(Mesh *mesh);
+    void UpdateSkinning(const std::vector<Mat4> &boneMatrices);
 
     void RemoveDuplicateVertices(float threshold);
     void Optimize();
@@ -279,24 +275,21 @@ public:
     u32 GetBoneCount() const { return m_bones.size(); }
     Bone *GetBone(u32 index) const;
     Bone *AddBone(const std::string &name);
-    bool SetBoneParent(const std::string &name, Bone *parent);
 
     std::vector<Bone *> &GetBones() { return m_bones; }
     const std::vector<Bone *> &GetBones() const { return m_bones; }
 
-    void UpdateSkinning();
-
     void CalculateBoneMatrices();
     const std::vector<Mat4> &GetBoneMatrices() const { return m_boneMatrices; }
     Bone *FindBone(const std::string &name);
+    Bone *GetRoot();
 
     u32 FindBoneIndex(const std::string &name);
     Mat4 GetBoneMatrix(u32 index) const;
     Mat4 GetBoneBindPoseMatrix(u32 index) const;
-    void updateBones(const Mat4 &gameObjectWorld);
     void SetBoneTransform(u32 index, const Vec3 &position, const Quat &rotation);
+
  
-    void SetBoneStatic(u32 index);
     void ResetBones();
 
 private:

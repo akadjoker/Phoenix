@@ -6,6 +6,7 @@ Node3D *Node3D::addJoint(const std::string &name)
 {
     Node3D* joint = new Node3D(name);
     m_joints.push_back(joint);
+    m_jointsMap[name] = joint;
     return joint;
 }
 
@@ -63,6 +64,7 @@ Node3D::Node3D(const std::string &name) : Node(name), m_localPosition(0, 0, 0), 
 {
     m_boundBox = BoundingBox(Vec3(-0.5f, -0.5f, -0.5f), Vec3(0.5f, 0.5f, 0.5f));
     setPickable(true);
+    m_overrideLocalTransform = false;
  
 }
 
@@ -83,6 +85,7 @@ Node3D::~Node3D()
 
     m_children.clear();
     m_joints.clear();
+    m_jointsMap.clear();
     
  
     if (m_parent)
@@ -158,11 +161,13 @@ u32 Node3D::getFlags() const
 
 void Node3D::updateLocalTransform() const
 {
-    Mat4 translation = Mat4::Translation(m_localPosition);
-    Mat4 rotation = m_localRotation.toMat4();
-    Mat4 scale = Mat4::Scale(m_localScale);
-    
-    m_localTransform = translation * rotation * scale;
+    if (!m_overrideLocalTransform)
+    {
+        Mat4 translation = Mat4::Translation(m_localPosition);
+        Mat4 rotation = m_localRotation.toMat4();
+        Mat4 scale = Mat4::Scale(m_localScale);
+        m_localTransform = translation * rotation * scale;
+    }
     m_transformDirty = false;
 }
 
@@ -177,7 +182,10 @@ void Node3D::updateWorldTransform() const
         m_worldTransform = m_parent->getWorldTransform() * m_localTransform;
     }
     else
+    {
+ 
         m_worldTransform = m_localTransform;
+    }
     
     m_worldTransformDirty = false;
 }
@@ -541,6 +549,13 @@ void Node3D::scale(const Vec3& scale)
     m_localScale = Vec3(m_localScale.x * scale.x,
                         m_localScale.y * scale.y,
                         m_localScale.z * scale.z);
+    markDirty();
+}
+
+void Node3D::setLocalTransform(const Mat4 &mat)
+{
+    m_overrideLocalTransform = true;
+    m_localTransform = mat;
     markDirty();
 }
 

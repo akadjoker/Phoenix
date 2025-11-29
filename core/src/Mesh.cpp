@@ -244,17 +244,14 @@ void MeshBuffer::Debug(RenderBatch *batch)
         // LogWarning("Skinned vertices empty");
     }
 }
+ 
 
-void MeshBuffer::UpdateSkinning(Mesh *mesh)
+void MeshBuffer::UpdateSkinning(  const std::vector<Mat4> &boneMatrices)
 {
-    if (!mesh)
-        return;
+    
 
-    if (!m_isSkinned || mesh->m_boneMatrices.empty() || vertices.empty() || m_skinData.empty())
-    {
-        // LogWarning("Mesh not skinned or malformed!");
+    if (!m_isSkinned || boneMatrices.empty() || vertices.empty() || m_skinData.empty())
         return;
-    }
 
     for (size_t i = 0; i < vertices.size(); i++)
     {
@@ -264,47 +261,30 @@ void MeshBuffer::UpdateSkinning(Mesh *mesh)
         Vec3 finalPos(0, 0, 0);
         Vec3 finalNormal(0, 0, 0);
 
-        // Aplica influência de cada bone
         for (int j = 0; j < 4; j++)
         {
             float weight = skin.weights[j];
             if (weight == 0.0f)
                 continue;
+
             u8 boneID = skin.boneIDs[j];
-            Bone *bone = mesh->GetBone(boneID);
-            if (!bone)
-            {
-                LogWarning("Bone not found %d ", boneID);
+
+            if (boneID >= boneMatrices.size())
                 continue;
-            }
 
-            Mat4 boneMatrix = bone->GetGlobalTransform() * bone->inverseBindPose;
+            const Mat4 &boneMatrix = boneMatrices[boneID];
 
-            mesh->m_boneMatrices[boneID] = boneMatrix;
+            Vec3 transformedPos = boneMatrix.TransformPoint(                Vec3(original.x, original.y, original.z));            finalPos += transformedPos * weight;
 
-            // Transform position
-            Vec3 transformedPos = boneMatrix.TransformPoint(Vec3(original.x, original.y, original.z));
-            finalPos.x += transformedPos.x * weight;
-            finalPos.y += transformedPos.y * weight;
-            finalPos.z += transformedPos.z * weight;
-
-            // Transform normal (sem translation)
-            Vec3 transformedNormal = boneMatrix.TransformVector(Vec3(original.nx, original.ny, original.nz));
-            finalNormal.x += transformedNormal.x * weight;
-            finalNormal.y += transformedNormal.y * weight;
-            finalNormal.z += transformedNormal.z * weight;
+            Vec3 transformedNormal = boneMatrix.TransformVector(                Vec3(original.nx, original.ny, original.nz));            finalNormal += transformedNormal * weight;
         }
 
-        // Normaliza normal
+        // normalizar normal
         float len = sqrt(finalNormal.x * finalNormal.x +
                          finalNormal.y * finalNormal.y +
                          finalNormal.z * finalNormal.z);
         if (len > 0.0f)
-        {
-            finalNormal.x /= len;
-            finalNormal.y /= len;
-            finalNormal.z /= len;
-        }
+            finalNormal = finalNormal / len;
 
         m_skinnedVertices[i].x = finalPos.x;
         m_skinnedVertices[i].y = finalPos.y;
@@ -1287,33 +1267,7 @@ Bone *Mesh::AddBone(const std::string &name)
     m_bones.push_back(bone);
     return bone;
 }
-
-bool Mesh::SetBoneParent(const std::string &name, Bone *parent)
-{
-    for (Bone *bone : m_bones)
-    {
-        if (bone->getName() == name)
-        {
-            bone->parent = static_cast<Bone *>(parent);
-            return true;
-        }
-    }
-    return false;
-}
-
-void Mesh::UpdateSkinning()
-{
-    if (!IsSkinned())
-    {
-        LogWarning("Mesh is not skinned");
-        return;
-    }
-
-    for (size_t i = 0; i < buffers.size(); i++)
-    {
-        buffers[i]->UpdateSkinning(this);
-    }
-}
+ 
 
 void Mesh::CalculateBoundingBox()
 {
@@ -1361,7 +1315,7 @@ void Mesh::CalculateBoneMatrices()
         else
         {
             bone->parent = nullptr;
-            //   LogInfo("Bone[%d] %s → ROOT (no parent)", i, bone->getName().c_str());
+            LogWarning("Bone[%d] %s  (no parent)", i, bone->name.c_str());
         }
     }
     m_boneMatrices.resize(m_bones.size());
@@ -1371,10 +1325,23 @@ Bone *Mesh::FindBone(const std::string &name)
 {
     for (Bone *bone : m_bones)
     {
-        if (bone->getName() == name)
+        if (bone->name == name)
             return bone;
     }
     LogWarning("Bone %s not found", name.c_str());
+    return nullptr;
+}
+
+Bone *Mesh::GetRoot()
+{
+    for (Bone *bone : m_bones)
+    {
+        if (bone->parentIndex == -1)
+        {
+            //  LogInfo("Root: %s", bone->getName().c_str());
+            return bone;
+        }
+    }
     return nullptr;
 }
 
@@ -1390,16 +1357,16 @@ void PrintMatrix(const Mat4 &mat)
     }
 }
 
-Bone::Bone(const std::string &name) : Node3D(name)
+Bone::Bone(const std::string &name)
 {
 
-    transform = Mat4::Identity();
-    global = Mat4::Identity();
+    this->name = name;
     localPose = Mat4::Identity();
     inverseBindPose = Mat4::Identity();
+    global = Mat4::Identity();
     hasAnimation = false;
     parentIndex = -1;
-    index = -1;
+    parent = nullptr;
 }
 
 const Mat4 &Bone::GetGlobalTransform() const
@@ -1419,52 +1386,23 @@ const Mat4 &Bone::GetGlobalTransform() const
 
 const Mat4 &Bone::GetLocalTransform() const
 {
-   
 
     if (hasAnimation)
     {
-        return transform ;
-    } 
+        return transform;
+    }
     return localPose;
 }
 
-void Bone::updateLocalTransform() const
+void Bone::SetTransform(const Vec3 &position, const Quat &rotation)
 {
-
-   Node3D::updateLocalTransform();
- 
-}
-
-void Bone::updateWorldTransform() const
-{
-
- //   Node3D::updateWorldTransform();
-    Mat4 translation = Mat4::Translation(Vec3(-10,-2.0f,0.0f));
-
-    Mat4 scale = Mat4::Scale(Vec3(0.1f));
-
-    m_worldTransform =  GetGlobalTransform();
-}
-
-void Bone::setTransform(const Vec3 &position, const Quat &rotation)
-{
-    m_localPosition = position;
-    m_localRotation = rotation;
-    m_worldTransformDirty = true;
-    m_transformDirty = true;
-}
- 
-
-void Mesh::updateBones(const Mat4 &gameObjectWorld)
-{
-     for (auto* bone : m_bones)
-    {
+      
+        // T * R * S;
+        Mat4 local = Mat4::Translation(position) * rotation.toMat4();
+        hasAnimation = true;
+        transform = local;
         
-            bone->updateLocalTransform();
-            bone->updateWorldTransform();
-            bone->m_worldTransform = gameObjectWorld *  bone->GetGlobalTransform() ;
-        
-    }
+    
 }
 
 void Mesh::SetBoneTransform(u32 index, const Vec3 &position, const Quat &rotation)
@@ -1474,29 +1412,14 @@ void Mesh::SetBoneTransform(u32 index, const Vec3 &position, const Quat &rotatio
 
     if (index >= m_boneMatrices.size())
         m_boneMatrices.resize(index + 1);
-
-   // Mat4 scale = Mat4::Scale(0.1f, 0.1f, 0.1f);
-
     // T * R * S;
     Mat4 local = Mat4::Translation(position) * rotation.toMat4();
     m_bones[index]->hasAnimation = true;
     m_bones[index]->transform = local;
-    m_bones[index]->setTransform(position, rotation);
     m_boneMatrices[index] = local;
 }
 
-void Mesh::SetBoneStatic(u32 index)
-{
-    if (index >= m_bones.size())
-        return;
-
-    if (index >= m_boneMatrices.size())
-        m_boneMatrices.resize(index + 1);
-
-    m_bones[index]->transform = m_bones[index]->localPose;
-    m_boneMatrices[index] = m_bones[index]->transform;
-    m_bones[index]->hasAnimation = false;
-}
+ 
 
 void Mesh::ResetBones()
 {
@@ -1511,7 +1434,7 @@ u32 Mesh::FindBoneIndex(const std::string &name)
 {
     for (u32 i = 0; i < m_bones.size(); i++)
     {
-        if (m_bones[i]->getName() == name)
+        if (m_bones[i]->name == name)
             return i;
     }
     return (u32)-1;
@@ -2562,9 +2485,9 @@ void MeshWriter::WriteSkeletonChunk(const Mesh *mesh)
 
     for (u32 i = 0; i < numBones; i++)
     {
-        const Bone *bone = mesh->GetBone(i);
+        Bone *bone = mesh->GetBone(i);
 
-        WriteCString(bone->getName());
+        WriteCString(bone->name);
         m_stream->WriteInt(bone->parentIndex);
 
         // Local transform (16 floats)
@@ -2717,8 +2640,8 @@ void MeshWriter::WriteSkinChunk(const MeshBuffer *buffer)
 
 bool MeshReader::Load(const std::string &filename, Mesh *mesh)
 {
-    float S= 0.01f;
-    scale = Mat4::Scale(S,S,S);
+    float S = 0.01f;
+    scale = Mat4::Scale(S, S, S);
     FileStream stream(filename, "rb");
     if (!stream.IsOpen())
     {
@@ -3012,36 +2935,8 @@ bool Animation::Load(const std::string &filename)
     return true;
 }
 
-void Animation::Update(float deltaTime)
-{
-    if (m_channels.empty())
-        return;
-    m_currentTime += deltaTime * m_ticksPerSecond;
-    while (m_currentTime >= m_duration)
-        m_currentTime -= m_duration;
-
-    Sample(m_currentTime); // Aplica
-}
-
-void Animation::Sample(float time)
-{
-    if (!m_mesh || m_channels.empty())
-        return;
-
-    for (const auto &channel : m_channels)
-    {
-        if (channel.boneIndex == (u32)-1)
-        {
-            LogWarning("Bone not found: %s", channel.boneName.c_str());
-            continue;
-        }
-
-        Vec3 pos = InterpolatePosition(channel, time);
-        Quat rot = InterpolateRotation(channel, time);
-        m_mesh->SetBoneTransform(channel.boneIndex, pos, rot);
-    }
-    m_mesh->UpdateSkinning();
-}
+ 
+ 
 
 void Animation::BindToMesh(Mesh *mesh)
 {
@@ -3237,8 +3132,6 @@ bool AnimReader::ReadChannelChunk(Channel &channel)
 
     // LogInfo("[AnimReader] Reading channel: %s (%d keyframes)", channel.boneName.c_str(), numKeys);
 
-    float modelScale = 0.01f;
-
     // Read all keyframes
     for (u32 i = 0; i < numKeys; i++)
     {
@@ -3252,7 +3145,7 @@ bool AnimReader::ReadChannelChunk(Channel &channel)
         key.position.y = m_stream->ReadFloat();
         key.position.z = m_stream->ReadFloat();
 
-          // key.position *= modelScale;
+        // key.position *= modelScale;
 
         // Rotation (quaternion)
         key.rotation.x = m_stream->ReadFloat();

@@ -12,6 +12,7 @@ class IndexBuffer;
 class VertexArray;
 class Mesh;
 class MeshBuffer;
+class MeshRenderer;
 class MeshManager;
 class Stream;
 class Texture;
@@ -46,7 +47,7 @@ class Animation
 {
 public:
     bool Load(const std::string &filename);
-    void Update(float deltaTime);
+   
     void BindToMesh(Mesh *mesh);
     float GetDuration() const { return m_duration; }
     float GetTicksPerSecond() const { return m_ticksPerSecond; }
@@ -73,7 +74,8 @@ private:
     friend class Animator;
     friend class AnimationLayer;
 
-    void Sample(float time);
+
+ 
 
     std::vector<AnimationChannel> m_channels;
 };
@@ -138,6 +140,7 @@ public:
 
     // Update
     void Update(float deltaTime);
+    void Update(float deltaTime,const std::vector<Bone*> &bones);
  
 
     // Getters
@@ -188,8 +191,10 @@ class Animator : public Component
 {
 
     std::vector<AnimationLayer *> layers;
+
     Mesh *m_mesh;
     bool m_active;
+    MeshRenderer *meshRenderer;
 
 public:
     Animator();

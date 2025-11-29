@@ -6,6 +6,7 @@
 
 class Mesh;
 class Terrain;
+class Animator;
 
 // ============================================================================
 // MeshRenderer - Renders a mesh
@@ -16,6 +17,7 @@ class MeshRenderer : public Component
 {
 public:
     MeshRenderer(Mesh *m);
+    ~MeshRenderer();
 
     const char *getTypeName() const override { return "MeshRenderer"; }
 
@@ -33,8 +35,12 @@ public:
     
 
 private:
+    friend class Animator;
     Mesh *mesh{nullptr};
     bool visible;
+    std::vector<Mat4> boneMatrices;
+ 
+     void UpdateSkinning();
 };
 
  

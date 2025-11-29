@@ -41,6 +41,7 @@ protected:
     Quat m_localRotation;
     Vec3 m_localScale;
 
+    bool m_overrideLocalTransform;
     mutable Mat4 m_localTransform;
     mutable Mat4 m_worldTransform;
     mutable bool m_transformDirty;
@@ -50,6 +51,7 @@ protected:
     u32 m_flags;
     std::vector<Node3D *> m_children;
     std::vector<Node3D *> m_joints;
+    std::unordered_map<std::string, Node3D *> m_jointsMap;
 
  
 
@@ -77,6 +79,7 @@ public:
 
     Node3D *getJoint(const std::string &name) const;
     Node3D *getJoint(u32 index) const;
+    u32 getJointCount() const { return (u32)m_joints.size(); }
 
     virtual void serialize(Serialize &serialize) override;
     virtual void deserialize(const Serialize &in) override;
@@ -129,9 +132,14 @@ public:
     void rotateYDeg(float angleDeg, TransformSpace space = TransformSpace::Local);
     void rotateZDeg(float angleDeg, TransformSpace space = TransformSpace::Local);
 
+
+
     // Matrizes
+
+    void setLocalTransform(const Mat4 &mat);
     virtual const Mat4 &getLocalTransform() const;
     virtual const Mat4 &getWorldTransform() const;
+
 
     virtual void update(float deltaTime) override {};
     virtual void render() override {}

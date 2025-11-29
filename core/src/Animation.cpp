@@ -5,11 +5,11 @@
 #include "Stream.hpp"
 #include "Animation.hpp"
 
-
-Animator::Animator( )
+Animator::Animator()
 {
     this->m_mesh = nullptr;
     this->m_active = true;
+    meshRenderer = nullptr;
 }
 
 Animator::~Animator()
@@ -19,48 +19,60 @@ Animator::~Animator()
 
     layers.clear();
     m_mesh = nullptr;
+    meshRenderer = nullptr;
 }
 
 void Animator::attach()
 {
-     LogInfo("[Animator] attached to %s", m_owner->getName().c_str());
-
-     if (!m_owner->hasComponent<MeshRenderer>())
-     {
-         LogError("[Animator] %s has no MeshRenderer component", m_owner->getName().c_str());
-         m_active = false;
-         return;
-     }
-
-    MeshRenderer *meshRenderer = m_owner->getComponent<MeshRenderer>();
+    // LogInfo("[Animator] attached to %s", m_owner->getName().c_str());
+    if (!m_owner->hasComponent<MeshRenderer>())
+    {
+        LogError("[Animator] %s has no MeshRenderer component", m_owner->getName().c_str());
+        m_active = false;
+        return;
+    }
+    meshRenderer = m_owner->getComponent<MeshRenderer>();
     m_mesh = meshRenderer->getMesh();
-
-
-    
- 
 }
 void Animator::render()
 {
-    
 }
-
 
 void Animator::update(float deltaTime)
 {
     if (m_mesh == nullptr || layers.empty() || !m_active)
         return;
 
-        for (size_t i = 0; i < layers.size(); i++)
-        {
-            layers[i]->Update(deltaTime );
-        }
-    //    m_mesh->updateBones(m_owner->getWorldTransform());
+    if (!meshRenderer || !m_mesh || !m_mesh->HasSkeleton())
+        return;
+
+    const u32  bonesCount = m_mesh->GetBoneCount();
+
+    m_mesh->ResetBones();
+
+    auto &boneMats = meshRenderer->boneMatrices;
+    
+    for (size_t i = 0; i < layers.size(); i++)
+    {
+        //layers[i]->Update(deltaTime, meshRenderer->m_bones);
+        layers[i]->Update(deltaTime);
+    }
+
+    for (u32 i = 0; i <  bonesCount; i++)
+    {
+        Bone *bone = m_mesh->GetBone(i);
+        //Bone *bone  = meshRenderer->m_bones[i];
+        Mat4 global = bone->GetGlobalTransform();
+        boneMats[i] = global * bone->inverseBindPose;
+        Node3D *joint = m_owner->getJoint(i);
+        joint->setLocalTransform(bone->transform);
+    }
 }
 
 AnimationLayer *Animator::AddLayer()
 {
-    
-    AnimationLayer *layer =  new AnimationLayer(m_mesh);
+
+    AnimationLayer *layer = new AnimationLayer(m_mesh);
     layers.push_back(layer);
     return layer;
 }
@@ -76,7 +88,7 @@ AnimationLayer *Animator::GetLayer(u32 index)
 }
 
 AnimationLayer::AnimationLayer(Mesh *mesh)
-    : m_mesh(mesh), m_currentAnim(nullptr), m_previousAnim(nullptr), m_playTo(nullptr), m_currentTime(0.0f),m_currentTimeBlend(0.0f), m_globalSpeed(1.0f), m_isPaused(false), m_isBlending(false), m_blendTime(0.0f), m_blendDuration(0.9f), m_shouldReturn(false), m_currentMode(PlayMode::Loop), m_defaultBlendTime(0.3f), m_isPingPongReverse(false)
+    : m_mesh(mesh), m_currentAnim(nullptr), m_previousAnim(nullptr), m_playTo(nullptr), m_currentTime(0.0f), m_currentTimeBlend(0.0f), m_globalSpeed(1.0f), m_isPaused(false), m_isBlending(false), m_blendTime(0.0f), m_blendDuration(0.9f), m_shouldReturn(false), m_currentMode(PlayMode::Loop), m_defaultBlendTime(0.3f), m_isPingPongReverse(false)
 {
 }
 
@@ -136,7 +148,7 @@ void AnimationLayer::Play(const std::string &animName, PlayMode mode, float blen
     if (!anim)
         return;
 
-     if (m_currentAnimName == animName && !m_isBlending)
+    if (m_currentAnimName == animName && !m_isBlending)
         return;
 
     if (m_currentAnim && blendTime > 0.0f)
@@ -201,16 +213,6 @@ void AnimationLayer::Stop(float blendOutTime)
             m_currentTime = 0.0f;
             m_isPaused = false;
             m_isBlending = false;
-
-            // Volta para bind pose?? em multi layer temos problemas , logo s eve se vale apena
-            // if (m_mesh)
-            // {
-            //     for (Bone *bone : m_mesh->GetBones())
-            //     {
-            //         bone->hasAnimation = false;
-            //     }
-            //     m_mesh->UpdateSkinning();
-            // }
         }
     }
 }
@@ -248,109 +250,93 @@ void AnimationLayer::Update(float deltaTime)
     if (m_playTo)
     {
 
-       
+        if (m_currentAnim)
+        {
+            m_previousAnim = m_currentAnim;
+            m_previousAnimName = m_currentAnim->GetName();
+        }
 
-            if (m_currentAnim)
+        if (m_isBlending)
+        {
+            // LogInfo("[ANIMATOR] Blending from %s to %s", m_currentAnimName.c_str(), m_playTo->GetName().c_str());
+            m_blendTime += dt;
+            float blend = Min(m_blendTime / m_blendDuration, 1.0f);
+
+            if (blend >= 1.0f || !m_currentAnim)
             {
-                m_previousAnim = m_currentAnim;
-                m_previousAnimName = m_currentAnim->GetName();
-            }
-
-            if (m_isBlending)
-            {
-                // LogInfo("[ANIMATOR] Blending from %s to %s", m_currentAnimName.c_str(), m_playTo->GetName().c_str());
-                m_blendTime += dt ;
-                float blend = Min(m_blendTime / m_blendDuration, 1.0f);
-
-                if (blend >= 1.0f || !m_currentAnim)
-                {  
-                    m_currentTime = m_currentTimeBlend;
-                    m_currentTimeBlend = 0.0f;
-                    m_isBlending = false;
-                    m_blendTime = 0.0f;
-                    m_blendDuration = 0.0f;
-                    isOnBlend = false;
-                    m_currentAnimName = m_playTo->GetName(); 
-                    m_currentAnim = m_playTo;
-                    m_playTo = nullptr;
-                }
-                else
-                {
-                    
-                  //  LogInfo("[ANIMATOR]  Blending %f - %f - Blend %f ", m_blendTime, m_blendDuration,blend);
-
-                       m_currentAnimName= m_playTo->GetName(); 
-                       m_currentTimeBlend+= dt  * m_playTo->GetTicksPerSecond();
-
-                       while (m_currentTimeBlend >= m_playTo->GetDuration())
-                            m_currentTimeBlend -= m_playTo->GetDuration();
-
-
-                  
-                        isOnBlend = true;
-
-                        for (const auto &channel : m_currentAnim->m_channels)
-                        {
-                            if (channel.boneIndex == (u32)-1)
-                                continue;
-
-                            
-                            Vec3 pos1, pos2;
-                            Quat rot1, rot2;
-
-                            pos1 = m_currentAnim->InterpolatePosition(channel, m_currentTime);
-                            rot1 = m_currentAnim->InterpolateRotation(channel, m_currentTime);
-
-                            AnimationChannel* newCh = m_playTo->FindChannel(channel.boneName);
-                            if (newCh)
-                            {
-                                pos2 = m_playTo->InterpolatePosition(*newCh,m_currentTimeBlend);
-                                rot2 = m_playTo->InterpolateRotation(*newCh,m_currentTimeBlend);
-
-                                Vec3 finalPos = Vec3::Lerp(pos1 , pos2, blend);
-                                Quat finalRot = Quat::Slerp(rot1, rot2, blend);
-                    
-
-                            m_mesh->SetBoneTransform(channel.boneIndex, finalPos, finalRot);
-                            }
-                            else
-                            {
-                                //LogWarning("Channel not found: %s", channel.boneName.c_str());
-                                m_mesh->SetBoneTransform(channel.boneIndex, pos1, rot1);
-                            }
-
-
-
-                       
-                        }
-                        m_mesh->UpdateSkinning();
-                }
-
-
-            }
-            else
-            {
-                //   LogInfo("[ANIMATOR] no Blending from %s to %s", m_currentAnimName.c_str(), m_playTo->GetName().c_str());
-
-                m_currentTime = 0.0f;
+                m_currentTime = m_currentTimeBlend;
+                m_currentTimeBlend = 0.0f;
                 m_isBlending = false;
                 m_blendTime = 0.0f;
                 m_blendDuration = 0.0f;
+                isOnBlend = false;
                 m_currentAnimName = m_playTo->GetName();
                 m_currentAnim = m_playTo;
                 m_playTo = nullptr;
             }
-        
- 
+            else
+            {
+
+                //  LogInfo("[ANIMATOR]  Blending %f - %f - Blend %f ", m_blendTime, m_blendDuration,blend);
+
+                m_currentAnimName = m_playTo->GetName();
+                m_currentTimeBlend += dt * m_playTo->GetTicksPerSecond();
+
+                while (m_currentTimeBlend >= m_playTo->GetDuration())
+                    m_currentTimeBlend -= m_playTo->GetDuration();
+
+                isOnBlend = true;
+
+                for (const auto &channel : m_currentAnim->m_channels)
+                {
+                    if (channel.boneIndex == (u32)-1)
+                        continue;
+
+                    Vec3 pos1, pos2;
+                    Quat rot1, rot2;
+
+                    pos1 = m_currentAnim->InterpolatePosition(channel, m_currentTime);
+                    rot1 = m_currentAnim->InterpolateRotation(channel, m_currentTime);
+
+                    AnimationChannel *newCh = m_playTo->FindChannel(channel.boneName);
+                    if (newCh)
+                    {
+                        pos2 = m_playTo->InterpolatePosition(*newCh, m_currentTimeBlend);
+                        rot2 = m_playTo->InterpolateRotation(*newCh, m_currentTimeBlend);
+
+                        Vec3 finalPos = Vec3::Lerp(pos1, pos2, blend);
+                        Quat finalRot = Quat::Slerp(rot1, rot2, blend);
+
+                        m_mesh->SetBoneTransform(channel.boneIndex, finalPos, finalRot);
+                    }
+                    else
+                    {
+                        // LogWarning("Channel not found: %s", channel.boneName.c_str());
+                        m_mesh->SetBoneTransform(channel.boneIndex, pos1, rot1);
+                    }
+                }
+            }
+        }
+        else
+        {
+            //   LogInfo("[ANIMATOR] no Blending from %s to %s", m_currentAnimName.c_str(), m_playTo->GetName().c_str());
+
+            m_currentTime = 0.0f;
+            m_isBlending = false;
+            m_blendTime = 0.0f;
+            m_blendDuration = 0.0f;
+            m_currentAnimName = m_playTo->GetName();
+            m_currentAnim = m_playTo;
+            m_playTo = nullptr;
+        }
     }
 
+    if (isOnBlend)
+        return;
 
-
-    if (isOnBlend)        return;
- 
     if (m_currentAnim)
     {
-       float duration = m_currentAnim->GetDuration();
+        float duration = m_currentAnim->GetDuration();
 
         if (m_currentMode == PlayMode::PingPong)
         {
@@ -381,7 +367,7 @@ void AnimationLayer::Update(float deltaTime)
             {
                 if (m_shouldReturn && !m_returnToAnim.empty())
                 {
-                   // LogInfo("Returning to previous animation: %s from %s", m_returnToAnim.c_str(), m_currentAnimName.c_str());
+                    // LogInfo("Returning to previous animation: %s from %s", m_returnToAnim.c_str(), m_currentAnimName.c_str());
                     m_currentAnimName = "";
                     m_isBlending = false;
                     m_currentTime = 0.0f;
@@ -403,10 +389,163 @@ void AnimationLayer::Update(float deltaTime)
             Quat rot = m_currentAnim->InterpolateRotation(channel, m_currentTime);
             m_mesh->SetBoneTransform(channel.boneIndex, pos, rot);
         }
-        m_mesh->UpdateSkinning();
     }
 }
- 
+
+void AnimationLayer::Update(float deltaTime, const std::vector<Bone *> &bones)
+{
+    if (m_isPaused)
+        return;
+
+    float dt = deltaTime * m_globalSpeed;
+    bool isOnBlend = false;
+
+    if (m_playTo)
+    {
+
+        if (m_currentAnim)
+        {
+            m_previousAnim = m_currentAnim;
+            m_previousAnimName = m_currentAnim->GetName();
+        }
+
+        if (m_isBlending)
+        {
+            // LogInfo("[ANIMATOR] Blending from %s to %s", m_currentAnimName.c_str(), m_playTo->GetName().c_str());
+            m_blendTime += dt;
+            float blend = Min(m_blendTime / m_blendDuration, 1.0f);
+
+            if (blend >= 1.0f || !m_currentAnim)
+            {
+                m_currentTime = m_currentTimeBlend;
+                m_currentTimeBlend = 0.0f;
+                m_isBlending = false;
+                m_blendTime = 0.0f;
+                m_blendDuration = 0.0f;
+                isOnBlend = false;
+                m_currentAnimName = m_playTo->GetName();
+                m_currentAnim = m_playTo;
+                m_playTo = nullptr;
+            }
+            else
+            {
+
+                //  LogInfo("[ANIMATOR]  Blending %f - %f - Blend %f ", m_blendTime, m_blendDuration,blend);
+
+                m_currentAnimName = m_playTo->GetName();
+                m_currentTimeBlend += dt * m_playTo->GetTicksPerSecond();
+
+                while (m_currentTimeBlend >= m_playTo->GetDuration())
+                    m_currentTimeBlend -= m_playTo->GetDuration();
+
+                isOnBlend = true;
+
+                for (const auto &channel : m_currentAnim->m_channels)
+                {
+                    if (channel.boneIndex == (u32)-1)
+                        continue;
+
+                    
+
+                    Vec3 pos1, pos2;
+                    Quat rot1, rot2;
+
+                    pos1 = m_currentAnim->InterpolatePosition(channel, m_currentTime);
+                    rot1 = m_currentAnim->InterpolateRotation(channel, m_currentTime);
+
+                    AnimationChannel *newCh = m_playTo->FindChannel(channel.boneName);
+                    if (newCh)
+                    {
+                        pos2 = m_playTo->InterpolatePosition(*newCh, m_currentTimeBlend);
+                        rot2 = m_playTo->InterpolateRotation(*newCh, m_currentTimeBlend);
+
+                        Vec3 finalPos = Vec3::Lerp(pos1, pos2, blend);
+                        Quat finalRot = Quat::Slerp(rot1, rot2, blend);
+
+                        bones[channel.boneIndex]->SetTransform(finalPos, finalRot);
+                    }
+                    else
+                    {
+                        // LogWarning("Channel not found: %s", channel.boneName.c_str());
+                        bones[channel.boneIndex]->SetTransform(pos1, rot1);
+                    }
+                }
+            }
+        }
+        else
+        {
+            //   LogInfo("[ANIMATOR] no Blending from %s to %s", m_currentAnimName.c_str(), m_playTo->GetName().c_str());
+
+            m_currentTime = 0.0f;
+            m_isBlending = false;
+            m_blendTime = 0.0f;
+            m_blendDuration = 0.0f;
+            m_currentAnimName = m_playTo->GetName();
+            m_currentAnim = m_playTo;
+            m_playTo = nullptr;
+        }
+    }
+
+    if (isOnBlend)
+        return;
+
+    if (m_currentAnim)
+    {
+        float duration = m_currentAnim->GetDuration();
+
+        if (m_currentMode == PlayMode::PingPong)
+        {
+            if (!m_isPingPongReverse)
+            {
+                m_currentTime += dt * m_currentAnim->GetTicksPerSecond();
+                if (m_currentTime >= duration)
+                {
+                    m_currentTime = duration;
+                    m_isPingPongReverse = true;
+                }
+            }
+            else
+            {
+                m_currentTime -= dt * m_currentAnim->GetTicksPerSecond();
+                if (m_currentTime <= 0.0f)
+                {
+                    m_currentTime = 0.0f;
+                    m_isPingPongReverse = false;
+                }
+            }
+        }
+        else
+        {
+            m_currentTime += dt * m_currentAnim->GetTicksPerSecond();
+
+            if (CheckAnimationEnd())
+            {
+                if (m_shouldReturn && !m_returnToAnim.empty())
+                {
+                    // LogInfo("Returning to previous animation: %s from %s", m_returnToAnim.c_str(), m_currentAnimName.c_str());
+                    m_currentAnimName = "";
+                    m_isBlending = false;
+                    m_currentTime = 0.0f;
+                    m_isPaused = false;
+                    Play(m_returnToAnim, m_toReturnMode, m_defaultBlendTime);
+                    m_shouldReturn = false;
+                    return;
+                }
+            }
+        }
+
+        // Sample da animação
+        for (const auto &channel : m_currentAnim->m_channels)
+        {
+            if (channel.boneIndex == (u32)-1)
+                continue;
+
+            Vec3 pos = m_currentAnim->InterpolatePosition(channel, m_currentTime);
+            Quat rot = m_currentAnim->InterpolateRotation(channel, m_currentTime);
+            bones[channel.boneIndex]->SetTransform(pos, rot);
+        }
+    }
+}
 // ============================================================================
 // CHECK ANIMATION END
 // ============================================================================
@@ -435,8 +574,6 @@ bool AnimationLayer::CheckAnimationEnd()
             m_currentTime = fmod(m_currentTime, duration);
         }
         break;
-
- 
 
     case PlayMode::PingPong:
         if (m_currentTime >= duration)
