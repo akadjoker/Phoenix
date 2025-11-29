@@ -42,6 +42,18 @@ Joint3D *Node3D::findJoint(const std::string &name) const
     return nullptr;
 }
 
+s32 Node3D::findJointIndex(const std::string &name) const
+{
+    for (u32 i = 0; i < m_joints.size(); i++)
+    {
+        if (m_joints[i]->getName() == name)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
 void Node3D::serialize(Serialize &serialize)
 {
     Node::serialize(serialize);

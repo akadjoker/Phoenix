@@ -39,7 +39,7 @@ struct AnimationKeyframe
 struct AnimationChannel
 {
     std::string boneName;
-    u32 boneIndex; // Index no mesh
+    s32 boneIndex; // Index no mesh
     std::vector<AnimationKeyframe> keyframes;
 };
 
@@ -48,13 +48,14 @@ class Animation
 public:
     bool Load(const std::string &filename);
    
-    void BindToMesh(Mesh *mesh);
+ 
+    void Bind(Node3D *parent);
+
     float GetDuration() const { return m_duration; }
     float GetTicksPerSecond() const { return m_ticksPerSecond; }
     const std::string &GetName() const { return m_name; }
 
     AnimationChannel *GetChannel(u32 index) { return &m_channels[index]; }
-
     AnimationChannel *FindChannel(const std::string &name);
 
     Vec3 InterpolatePosition(const AnimationChannel &channel, float time);
@@ -69,7 +70,7 @@ private:
     std::string m_name;
     float m_duration;
     float m_ticksPerSecond;
-    Mesh *m_mesh = nullptr;
+ 
     float m_currentTime;
     friend class Animator;
     friend class AnimationLayer;
@@ -78,6 +79,7 @@ private:
  
 
     std::vector<AnimationChannel> m_channels;
+    std::unordered_map<std::string, AnimationChannel> m_boneMap;
 };
 
 
@@ -122,7 +124,7 @@ enum class PlayMode
 class AnimationLayer
 {
 public:
-    AnimationLayer(Mesh *mesh);
+    AnimationLayer( );
     ~AnimationLayer();
 
     void AddAnimation(const std::string &name, Animation *anim);
@@ -141,6 +143,8 @@ public:
     // Update
     void Update(float deltaTime);
     void Update(float deltaTime,const std::vector<Joint3D*> &bones);
+
+    void Bind(Node3D *parent);
  
 
     // Getters
@@ -153,7 +157,7 @@ public:
     void SetDefaultBlendTime(float time) { m_defaultBlendTime = time; }
 
 private:
-    Mesh *m_mesh;
+ 
     std::map<std::string, Animation *> m_animations;
 
     // Animação única atual
@@ -191,9 +195,9 @@ class Animator : public Component
 {
 
     std::vector<AnimationLayer *> layers;
-
     Mesh *m_mesh;
     bool m_active;
+    bool m_firstStarted;
     MeshRenderer *meshRenderer;
 
 public:

@@ -270,17 +270,12 @@ public:
     bool HasSkeleton() const { return !m_bones.empty(); }
     bool IsSkinned() const { return !m_bones.empty(); }
     u32 GetBoneCount() const { return m_bones.size(); }
-    Bone *GetBone(u32 index) const;
+    const Bone& GetBone(u32 index) const;
     Bone *AddBone(const std::string &name);
 
-    std::vector<Bone *> &GetBones() { return m_bones; }
-    const std::vector<Bone *> &GetBones() const { return m_bones; }
-
-    void CalculateBoneMatrices();
-    const std::vector<Mat4> &GetBoneMatrices() const { return m_boneMatrices; }
+ 
+ 
     Bone *FindBone(const std::string &name);
-    Bone *GetRoot();
-
     int FindBoneIndex(const std::string &name);
  
 
@@ -288,7 +283,7 @@ public:
    
 
 private:
-    std::vector<Bone *> m_bones;
+    std::vector<Bone> m_bones;
     std::vector<Mat4> m_boneMatrices;
     std::vector<MeshBuffer *> buffers;
 

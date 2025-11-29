@@ -1160,10 +1160,7 @@ Mesh::~Mesh()
     }
     buffers.clear();
 
-    for (Bone *bone : m_bones)
-    {
-        delete bone;
-    }
+    
     m_bones.clear();
 }
 
@@ -1253,19 +1250,17 @@ void Mesh::OptimizeBuffers()
     SortByMaterial();
 }
 
-Bone *Mesh::GetBone(u32 index) const
+const Bone& Mesh::GetBone(u32 index) const
 {
-    if (index >= m_bones.size())
-        return nullptr;
+    DEBUG_BREAK_IF(index >= m_bones.size());
     return m_bones[index];
 }
 
 Bone *Mesh::AddBone(const std::string &name)
 {
-    Bone *bone = new Bone(name);
-
+    Bone bone(name);
     m_bones.push_back(bone);
-    return bone;
+    return &m_bones.back();
 }
  
 
@@ -1292,36 +1287,20 @@ void Mesh::Debug(RenderBatch *batch)
     }
 }
 
-// Skeleton.cpp
-void Mesh::CalculateBoneMatrices()
-{
 
-    
-}
 
 Bone *Mesh::FindBone(const std::string &name)
 {
-    for (Bone *bone : m_bones)
+   for (u32 i = 0; i < m_bones.size(); i++)
     {
-        if (bone->name == name)
-            return bone;
+        if (m_bones[i].name == name)
+            return &m_bones[i];
     }
     LogWarning("Bone %s not found", name.c_str());
     return nullptr;
 }
 
-Bone *Mesh::GetRoot()
-{
-    for (Bone *bone : m_bones)
-    {
-        if (bone->parentIndex == -1)
-        {
-            //  LogInfo("Root: %s", bone->getName().c_str());
-            return bone;
-        }
-    }
-    return nullptr;
-}
+ 
 
 void PrintMatrix(const Mat4 &mat)
 {
@@ -1349,7 +1328,7 @@ int Mesh::FindBoneIndex(const std::string &name)
 {
     for (u32 i = 0; i < m_bones.size(); i++)
     {
-        if (m_bones[i]->name == name)
+        if (m_bones[i].name == name)
             return i;
     }
     return -1;
@@ -2171,8 +2150,6 @@ Mesh *MeshManager::Load(const std::string &name, const std::string &filename)
     {
         return nullptr;
     }
-
-    mesh->CalculateBoneMatrices();
     return mesh;
 }
 
@@ -2393,18 +2370,18 @@ void MeshWriter::WriteSkeletonChunk(const Mesh *mesh)
 
     for (u32 i = 0; i < numBones; i++)
     {
-        Bone *bone = mesh->GetBone(i);
+        const Bone& bone = mesh->GetBone(i);
 
-        WriteCString(bone->name);
-        m_stream->WriteInt(bone->parentIndex);
+        WriteCString(bone.name);
+        m_stream->WriteInt(bone.parentIndex);
 
         // Local transform (16 floats)
-        const Mat4 &local = bone->localPose;
+        const Mat4 &local = bone.localPose;
         for (int j = 0; j < 16; j++)
             m_stream->WriteFloat(local.m[j]);
 
         // Inverse bind pose (16 floats)
-        const Mat4 &invBind = bone->inverseBindPose;
+        const Mat4 &invBind = bone.inverseBindPose;
         for (int j = 0; j < 16; j++)
             m_stream->WriteFloat(invBind.m[j]);
     }
@@ -2709,11 +2686,10 @@ void MeshReader::ReadSkeletonChunk(Mesh *mesh, const ChunkHeader &header)
 
         // PrintMatrix(bone->localPose);
 
-        // Inverse bind pose
+
         for (int j = 0; j < 16; j++)
             bone->inverseBindPose.m[j] = m_stream->ReadFloat();
 
-        // bone->inverseBindPose = bone->localPose.inverse();
 
         // PrintMatrix(bone->inverseBindPose);
     }
@@ -2835,8 +2811,9 @@ bool Animation::Load(const std::string &filename)
     for (size_t i = 0; i < frameAnim->channels.size(); i++)
     {
         m_channels[i].boneName = frameAnim->channels[i].boneName;
-        m_channels[i].boneIndex = (u32)-1;
+        m_channels[i].boneIndex = -1;
         m_channels[i].keyframes = frameAnim->channels[i].keyframes;
+        m_boneMap[m_channels[i].boneName] = m_channels[i];
     }
 
     delete frameAnim;
@@ -2845,14 +2822,14 @@ bool Animation::Load(const std::string &filename)
 
  
  
+ 
 
-void Animation::BindToMesh(Mesh *mesh)
+void Animation::Bind(Node3D *parent)
 {
-   
     for (auto &channel : m_channels)
     {
-        channel.boneIndex = mesh->FindBoneIndex(channel.boneName);
-        if (channel.boneIndex == (u32)-1)
+        channel.boneIndex = parent->findJointIndex(channel.boneName);
+        if (channel.boneIndex == -1)
         {
             LogWarning("Bone not found: %s", channel.boneName.c_str());
         }
@@ -2861,11 +2838,9 @@ void Animation::BindToMesh(Mesh *mesh)
 
 AnimationChannel *Animation::FindChannel(const std::string &name)
 {
-    for (auto &channel : m_channels)
-    {
-        if (channel.boneName == name)
-            return &channel;
-    }
+    auto it = m_boneMap.find(name);
+    if (it != m_boneMap.end())
+        return &it->second;
     return nullptr;
 }
 

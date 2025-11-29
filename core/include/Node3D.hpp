@@ -85,10 +85,10 @@ public:
 
 
     Joint3D *addJoint(const std::string &name);
-
     Joint3D *getJoint(const std::string &name) const;
     Joint3D *getJoint(u32 index) const;
     Joint3D *findJoint(const std::string &name) const; 
+    s32 findJointIndex(const std::string &name) const;
     u32 getJointCount() const { return (u32)m_joints.size(); }
 
     virtual void serialize(Serialize &serialize) override;

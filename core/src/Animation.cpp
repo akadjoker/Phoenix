@@ -9,6 +9,7 @@ Animator::Animator()
 {
     this->m_mesh = nullptr;
     this->m_active = true;
+    m_firstStarted = false;
     meshRenderer = nullptr;
 }
 
@@ -20,6 +21,7 @@ Animator::~Animator()
     layers.clear();
     m_mesh = nullptr;
     meshRenderer = nullptr;
+    m_started = false;
 }
 
 void Animator::attach()
@@ -46,6 +48,15 @@ void Animator::update(float deltaTime)
     if (!meshRenderer || !m_mesh || !m_mesh->HasSkeleton())
         return;
 
+    if(!m_firstStarted)
+    {
+        for (size_t i = 0; i < layers.size(); i++)
+        {
+            layers[i]->Bind(m_owner);
+        }
+        m_firstStarted = true;
+    }
+
     const u32  bonesCount = m_owner->getJointCount();
 
     for (u32 i = 0; i <  bonesCount; i++)
@@ -71,7 +82,7 @@ void Animator::update(float deltaTime)
 AnimationLayer *Animator::AddLayer()
 {
 
-    AnimationLayer *layer = new AnimationLayer(m_mesh);
+    AnimationLayer *layer = new AnimationLayer( );
     layers.push_back(layer);
     return layer;
 }
@@ -86,8 +97,8 @@ AnimationLayer *Animator::GetLayer(u32 index)
     return layers[index];
 }
 
-AnimationLayer::AnimationLayer(Mesh *mesh)
-    : m_mesh(mesh), m_currentAnim(nullptr), m_previousAnim(nullptr), m_playTo(nullptr), m_currentTime(0.0f), m_currentTimeBlend(0.0f), m_globalSpeed(1.0f), m_isPaused(false), m_isBlending(false), m_blendTime(0.0f), m_blendDuration(0.9f), m_shouldReturn(false), m_currentMode(PlayMode::Loop), m_defaultBlendTime(0.3f), m_isPingPongReverse(false)
+AnimationLayer::AnimationLayer( )
+    :   m_currentAnim(nullptr), m_previousAnim(nullptr), m_playTo(nullptr), m_currentTime(0.0f), m_currentTimeBlend(0.0f), m_globalSpeed(1.0f), m_isPaused(false), m_isBlending(false), m_blendTime(0.0f), m_blendDuration(0.9f), m_shouldReturn(false), m_currentMode(PlayMode::Loop), m_defaultBlendTime(0.3f), m_isPingPongReverse(false)
 {
 }
 
@@ -107,8 +118,8 @@ AnimationLayer::~AnimationLayer()
 void AnimationLayer::AddAnimation(const std::string &name, Animation *anim)
 {
     m_animations[name] = anim;
-    if (anim)
-        anim->BindToMesh(m_mesh);
+ //   if (anim)
+   //     anim->BindToMesh(m_mesh);
 }
 
 Animation *AnimationLayer::GetAnimation(const std::string &name)
@@ -285,7 +296,7 @@ void AnimationLayer::Update(float deltaTime, const std::vector<Joint3D *> &bones
 
                 for (const auto &channel : m_currentAnim->m_channels)
                 {
-                    if (channel.boneIndex == (u32)-1)
+                    if (channel.boneIndex == -1)
                         continue;
 
                     
@@ -387,6 +398,13 @@ void AnimationLayer::Update(float deltaTime, const std::vector<Joint3D *> &bones
             Quat rot = m_currentAnim->InterpolateRotation(channel, m_currentTime);
             bones[channel.boneIndex]->SetAnimationFrame(pos, rot);
         }
+    }
+}
+void AnimationLayer::Bind(Node3D *parent)
+{
+    for (auto &Animation : m_animations)
+    {
+        Animation.second->Bind(parent);
     }
 }
 // ============================================================================
