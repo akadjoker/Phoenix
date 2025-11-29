@@ -2,8 +2,7 @@
 
 A lightweight 3D rendering engine built with OpenGL ES 3.0 and C++.
 
-![Engine Demo](screenshots/demo.png)
-
+ 
 ## Features
 
 ### Core Rendering
