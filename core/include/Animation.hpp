@@ -140,7 +140,7 @@ public:
 
     // Update
     void Update(float deltaTime);
-    void Update(float deltaTime,const std::vector<Bone*> &bones);
+    void Update(float deltaTime,const std::vector<Joint3D*> &bones);
  
 
     // Getters

@@ -14,7 +14,7 @@ enum class ObjectType : u8
     Object,
     Node,
     Node3D,
-    Bone,
+    Joint3D,
     GameObject,
     Mesh,
     Light,

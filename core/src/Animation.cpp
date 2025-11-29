@@ -46,26 +46,25 @@ void Animator::update(float deltaTime)
     if (!meshRenderer || !m_mesh || !m_mesh->HasSkeleton())
         return;
 
-    const u32  bonesCount = m_mesh->GetBoneCount();
+    const u32  bonesCount = m_owner->getJointCount();
 
-    m_mesh->ResetBones();
+    for (u32 i = 0; i <  bonesCount; i++)
+    {
+         Joint3D *joint = m_owner->getJoint(i);
+         joint->Reset();
+    }
 
     auto &boneMats = meshRenderer->boneMatrices;
     
     for (size_t i = 0; i < layers.size(); i++)
     {
-        //layers[i]->Update(deltaTime, meshRenderer->m_bones);
-        layers[i]->Update(deltaTime);
+        layers[i]->Update(deltaTime, m_owner->m_joints);
     }
 
     for (u32 i = 0; i <  bonesCount; i++)
     {
-        Bone *bone = m_mesh->GetBone(i);
-        //Bone *bone  = meshRenderer->m_bones[i];
-        Mat4 global = bone->GetGlobalTransform();
-        boneMats[i] = global * bone->inverseBindPose;
-        Node3D *joint = m_owner->getJoint(i);
-        joint->setLocalTransform(bone->transform);
+        Joint3D *bone = m_owner->getJoint(i);
+        boneMats[i] = bone->GetGlobalTransform() * bone->GetBindPose();
     }
 }
 
@@ -94,7 +93,6 @@ AnimationLayer::AnimationLayer(Mesh *mesh)
 
 AnimationLayer::~AnimationLayer()
 {
-    // Deleta as animações que foram criadas pelo AnimationLayer
     for (auto &pair : m_animations)
     {
         delete pair.second;
@@ -235,164 +233,9 @@ bool AnimationLayer::IsPlaying(const std::string &animName) const
     return false;
 }
 
-// ============================================================================
-// UPDATE PRINCIPAL
-// ============================================================================
+ 
 
-void AnimationLayer::Update(float deltaTime)
-{
-    if (m_isPaused)
-        return;
-
-    float dt = deltaTime * m_globalSpeed;
-    bool isOnBlend = false;
-
-    if (m_playTo)
-    {
-
-        if (m_currentAnim)
-        {
-            m_previousAnim = m_currentAnim;
-            m_previousAnimName = m_currentAnim->GetName();
-        }
-
-        if (m_isBlending)
-        {
-            // LogInfo("[ANIMATOR] Blending from %s to %s", m_currentAnimName.c_str(), m_playTo->GetName().c_str());
-            m_blendTime += dt;
-            float blend = Min(m_blendTime / m_blendDuration, 1.0f);
-
-            if (blend >= 1.0f || !m_currentAnim)
-            {
-                m_currentTime = m_currentTimeBlend;
-                m_currentTimeBlend = 0.0f;
-                m_isBlending = false;
-                m_blendTime = 0.0f;
-                m_blendDuration = 0.0f;
-                isOnBlend = false;
-                m_currentAnimName = m_playTo->GetName();
-                m_currentAnim = m_playTo;
-                m_playTo = nullptr;
-            }
-            else
-            {
-
-                //  LogInfo("[ANIMATOR]  Blending %f - %f - Blend %f ", m_blendTime, m_blendDuration,blend);
-
-                m_currentAnimName = m_playTo->GetName();
-                m_currentTimeBlend += dt * m_playTo->GetTicksPerSecond();
-
-                while (m_currentTimeBlend >= m_playTo->GetDuration())
-                    m_currentTimeBlend -= m_playTo->GetDuration();
-
-                isOnBlend = true;
-
-                for (const auto &channel : m_currentAnim->m_channels)
-                {
-                    if (channel.boneIndex == (u32)-1)
-                        continue;
-
-                    Vec3 pos1, pos2;
-                    Quat rot1, rot2;
-
-                    pos1 = m_currentAnim->InterpolatePosition(channel, m_currentTime);
-                    rot1 = m_currentAnim->InterpolateRotation(channel, m_currentTime);
-
-                    AnimationChannel *newCh = m_playTo->FindChannel(channel.boneName);
-                    if (newCh)
-                    {
-                        pos2 = m_playTo->InterpolatePosition(*newCh, m_currentTimeBlend);
-                        rot2 = m_playTo->InterpolateRotation(*newCh, m_currentTimeBlend);
-
-                        Vec3 finalPos = Vec3::Lerp(pos1, pos2, blend);
-                        Quat finalRot = Quat::Slerp(rot1, rot2, blend);
-
-                        m_mesh->SetBoneTransform(channel.boneIndex, finalPos, finalRot);
-                    }
-                    else
-                    {
-                        // LogWarning("Channel not found: %s", channel.boneName.c_str());
-                        m_mesh->SetBoneTransform(channel.boneIndex, pos1, rot1);
-                    }
-                }
-            }
-        }
-        else
-        {
-            //   LogInfo("[ANIMATOR] no Blending from %s to %s", m_currentAnimName.c_str(), m_playTo->GetName().c_str());
-
-            m_currentTime = 0.0f;
-            m_isBlending = false;
-            m_blendTime = 0.0f;
-            m_blendDuration = 0.0f;
-            m_currentAnimName = m_playTo->GetName();
-            m_currentAnim = m_playTo;
-            m_playTo = nullptr;
-        }
-    }
-
-    if (isOnBlend)
-        return;
-
-    if (m_currentAnim)
-    {
-        float duration = m_currentAnim->GetDuration();
-
-        if (m_currentMode == PlayMode::PingPong)
-        {
-            if (!m_isPingPongReverse)
-            {
-                m_currentTime += dt * m_currentAnim->GetTicksPerSecond();
-                if (m_currentTime >= duration)
-                {
-                    m_currentTime = duration;
-                    m_isPingPongReverse = true;
-                }
-            }
-            else
-            {
-                m_currentTime -= dt * m_currentAnim->GetTicksPerSecond();
-                if (m_currentTime <= 0.0f)
-                {
-                    m_currentTime = 0.0f;
-                    m_isPingPongReverse = false;
-                }
-            }
-        }
-        else
-        {
-            m_currentTime += dt * m_currentAnim->GetTicksPerSecond();
-
-            if (CheckAnimationEnd())
-            {
-                if (m_shouldReturn && !m_returnToAnim.empty())
-                {
-                    // LogInfo("Returning to previous animation: %s from %s", m_returnToAnim.c_str(), m_currentAnimName.c_str());
-                    m_currentAnimName = "";
-                    m_isBlending = false;
-                    m_currentTime = 0.0f;
-                    m_isPaused = false;
-                    Play(m_returnToAnim, m_toReturnMode, m_defaultBlendTime);
-                    m_shouldReturn = false;
-                    return;
-                }
-            }
-        }
-
-        // Sample da animação
-        for (const auto &channel : m_currentAnim->m_channels)
-        {
-            if (channel.boneIndex == (u32)-1)
-                continue;
-
-            Vec3 pos = m_currentAnim->InterpolatePosition(channel, m_currentTime);
-            Quat rot = m_currentAnim->InterpolateRotation(channel, m_currentTime);
-            m_mesh->SetBoneTransform(channel.boneIndex, pos, rot);
-        }
-    }
-}
-
-void AnimationLayer::Update(float deltaTime, const std::vector<Bone *> &bones)
+void AnimationLayer::Update(float deltaTime, const std::vector<Joint3D *> &bones)
 {
     if (m_isPaused)
         return;
@@ -462,12 +305,12 @@ void AnimationLayer::Update(float deltaTime, const std::vector<Bone *> &bones)
                         Vec3 finalPos = Vec3::Lerp(pos1, pos2, blend);
                         Quat finalRot = Quat::Slerp(rot1, rot2, blend);
 
-                        bones[channel.boneIndex]->SetTransform(finalPos, finalRot);
+                        bones[channel.boneIndex]->SetAnimationFrame(finalPos, finalRot);
                     }
                     else
                     {
                         // LogWarning("Channel not found: %s", channel.boneName.c_str());
-                        bones[channel.boneIndex]->SetTransform(pos1, rot1);
+                        bones[channel.boneIndex]->SetAnimationFrame(pos1, rot1);
                     }
                 }
             }
@@ -542,7 +385,7 @@ void AnimationLayer::Update(float deltaTime, const std::vector<Bone *> &bones)
 
             Vec3 pos = m_currentAnim->InterpolatePosition(channel, m_currentTime);
             Quat rot = m_currentAnim->InterpolateRotation(channel, m_currentTime);
-            bones[channel.boneIndex]->SetTransform(pos, rot);
+            bones[channel.boneIndex]->SetAnimationFrame(pos, rot);
         }
     }
 }

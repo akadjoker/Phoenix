@@ -13,6 +13,10 @@
 
 class MeshRenderer;
 class TerrainRenderer;
+class AnimationLayer;
+class Animator;
+class Node3D;
+class Joint3D;
 
 enum class TransformSpace
 {
@@ -34,6 +38,10 @@ enum class NodeFlag : u32
 
 };
 
+
+
+
+
 class Node3D : public Node
 {
 protected:
@@ -50,8 +58,8 @@ protected:
     Node3D *m_parent;
     u32 m_flags;
     std::vector<Node3D *> m_children;
-    std::vector<Node3D *> m_joints;
-    std::unordered_map<std::string, Node3D *> m_jointsMap;
+    std::vector<Joint3D *> m_joints;
+    std::unordered_map<std::string, Joint3D *> m_jointsMap;
 
  
 
@@ -69,16 +77,18 @@ protected:
 
     friend class MeshRenderer;
     friend class TerrainRenderer;
-
+    friend class Animator;
+    friend class AnimationLayer;
 public:
     Node3D(const std::string &name = "Node3D");
     virtual ~Node3D();
 
 
-    Node3D *addJoint(const std::string &name);
+    Joint3D *addJoint(const std::string &name);
 
-    Node3D *getJoint(const std::string &name) const;
-    Node3D *getJoint(u32 index) const;
+    Joint3D *getJoint(const std::string &name) const;
+    Joint3D *getJoint(u32 index) const;
+    Joint3D *findJoint(const std::string &name) const; 
     u32 getJointCount() const { return (u32)m_joints.size(); }
 
     virtual void serialize(Serialize &serialize) override;
@@ -166,4 +176,43 @@ public:
     bool isShowBoxes() const;
 
     bool pick(const Ray &ray) const;
+};
+
+
+
+class Joint3D : public Node3D
+{
+    bool hasAnimation;
+    int parentIndex;
+    Joint3D *parent;//model space 
+    bool m_manualUpdate;
+
+    mutable Mat4 m_modelTransform;
+    mutable Mat4 m_globalTransform;
+    
+    mutable Mat4 m_localPose;// Local pose
+    mutable Mat4 m_inverseBindPose; // Inverse bind pose
+
+    friend class Animator;
+    friend class MeshRenderer;
+    friend class AnimationLayer;
+
+    void SetAnimationFrame(const Vec3 &position, const Quat &rotation);
+    void Reset();
+
+    public:
+        Joint3D(const std::string &name = "Joint3D");
+        void SetControllable(bool value);
+        bool IsControllable();
+
+        void SetParent(Joint3D *parent);
+
+        const Mat4& GetLocalPose() const ;
+        const Mat4& GetBindPose() const ;
+
+        const Mat4& GetGlobalTransform() const ;
+        const Mat4& GetModelTransform() const ;
+
+
+        virtual ObjectType getType() override { return ObjectType::Joint3D; }
 };

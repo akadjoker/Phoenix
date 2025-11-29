@@ -40,18 +40,15 @@ struct Bone
     bool hasAnimation;
     s32 parentIndex; // -1 = root
     std::string name;
-    Bone *parent;
-    mutable Mat4 transform;
-    mutable Mat4 global;
+ 
+ 
 
     Mat4 localPose;
     Mat4 inverseBindPose;
 
     Bone(const std::string &name);
 
-    const Mat4 &GetGlobalTransform() const;
-    const Mat4 &GetLocalTransform() const;
-    void SetTransform(  const Vec3 &position, const Quat &rotation);
+  
   
 
 
@@ -284,13 +281,11 @@ public:
     Bone *FindBone(const std::string &name);
     Bone *GetRoot();
 
-    u32 FindBoneIndex(const std::string &name);
-    Mat4 GetBoneMatrix(u32 index) const;
-    Mat4 GetBoneBindPoseMatrix(u32 index) const;
-    void SetBoneTransform(u32 index, const Vec3 &position, const Quat &rotation);
+    int FindBoneIndex(const std::string &name);
+ 
 
  
-    void ResetBones();
+   
 
 private:
     std::vector<Bone *> m_bones;

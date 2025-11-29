@@ -58,18 +58,19 @@ void MeshRenderer::attach()
         for (u32 i = 0; i < mesh->GetBoneCount(); i++)
         {
             Bone *bone = mesh->GetBone(i);
-            Node3D *joint = m_owner->addJoint(bone->name);
-            joint->setLocalTransform(bone->transform);
+            Joint3D *joint = m_owner->addJoint(bone->name);
+            joint->parentIndex = bone->parentIndex;
+            joint->m_localPose = bone->localPose;
+            joint->m_inverseBindPose = bone->inverseBindPose;
+            Vec3 position;
+            Quat rotation;
+            Mat4::DecomposeMatrix(bone->localPose, &position, &rotation);
+            joint->setPosition(position);
+            joint->setRotation(rotation);
             if (bone->parentIndex == -1)
             {
                 joint->setParent(m_owner);
             }
-            // Bone * mBone = new Bone(bone->name);        
-            // mBone->parentIndex = bone->parentIndex;
-            // mBone->localPose = bone->transform;
-            // mBone->hasAnimation = false;
-            // mBone->inverseBindPose = bone->inverseBindPose;
-            // m_bones.push_back(mBone);
         }
 
         for (u32 i = 0; i < mesh->GetBoneCount(); i++)
@@ -78,11 +79,11 @@ void MeshRenderer::attach()
 
             if (bone->parentIndex == -1)
                 continue;
-            Node3D *parent = m_owner->getJoint(bone->parentIndex);
-            Node3D *joint = m_owner->getJoint(i);
-            joint->setParent(parent);
-            joint->getWorldTransform();
-            //m_bones[i]->parent = m_bones[bone->parentIndex];
+            Joint3D *parent = m_owner->getJoint(bone->parentIndex);
+            Joint3D *joint  = m_owner->getJoint(i);
+            joint->SetParent(parent); 
+
+            
         }
     }
 

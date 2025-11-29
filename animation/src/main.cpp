@@ -17,6 +17,8 @@ class MainScene : public Scene
  
     Animator *animator;
     GameObject *soldier ;
+    Joint3D* headNode;
+    float angle =0;
  
 Mesh *soldierMesh;
 public:
@@ -136,12 +138,20 @@ public:
             meshModel->SetBufferMaterial(5, 2);
             meshModel->SetBufferMaterial(6, 2);
 
+            {
             GameObject *sinbad = createGameObject("Sinbad");
             sinbad->addComponent<MeshRenderer>(meshModel);
             Animator* animator = sinbad->addComponent<Animator>();
             sinbad->setPosition(1, 0, 0);
             sinbad->setScale(0.5f, 0.5f, 0.5f);
 
+            //   for (u32 i = 0; i < sinbad->getJointCount(); i++)
+            // {
+            //     GameObject *cube = createGameObject("Cube",sinbad->getJoint(i));
+            //     cube->addComponent<MeshRenderer>(mesh);
+            //     cube->setScale(0.5f);
+              
+            // }
             
             AnimationLayer *torsoLayer = animator->AddLayer();
             torsoLayer->LoadAnimation("topRun", "assets/sinbad/sinbad_RunTop.anim");
@@ -150,6 +160,24 @@ public:
             AnimationLayer *legsLayer = animator->AddLayer();
             legsLayer->LoadAnimation("legsRun", "assets/sinbad/sinbad_RunBase.anim");
             legsLayer->Play("legsRun", PlayMode::Loop);
+            }
+            
+            {
+            GameObject *sinbad = createGameObject("Sinbad");
+            sinbad->addComponent<MeshRenderer>(meshModel);
+            Animator* animator = sinbad->addComponent<Animator>();
+            sinbad->setPosition(-1, 0, 0);
+            sinbad->setScale(0.5f, 0.5f, 0.5f);
+
+            
+            AnimationLayer *torsoLayer = animator->AddLayer();
+            torsoLayer->LoadAnimation("topRun", "assets/sinbad/sinbad_Dance.anim");
+            torsoLayer->Play("topRun", PlayMode::Loop);
+    
+            // AnimationLayer *legsLayer = animator->AddLayer();
+            // legsLayer->LoadAnimation("legsRun", "assets/sinbad/sinbad_RunBase.anim");
+            // legsLayer->Play("legsRun", PlayMode::Loop);
+            }
         }
 
         TextureManager::Instance().SetFlipVerticalOnLoad(true);
@@ -183,8 +211,8 @@ public:
  
             //soldierMesh->GetRoot()->setParent(soldier);
 
-            Bone *headNode =  soldierMesh->FindBone("Bip01_R_Hand");
-            //Bone *headNode =  soldierMesh->FindBone("Bip01_Head");
+            //Bone *headNode =  soldierMesh->FindBone("Bip01_R_Hand");
+            // *headNode =  soldierMesh->FindBone("Bip01_Head");
 
           //  soldierMesh->GetRoot()->scale=Vec3(0.02f);
            //  soldierMesh->GetRoot()->setPosition(-20, 0, 0);
@@ -236,11 +264,16 @@ public:
             {
                 GameObject *cube = createGameObject("Cube",soldier->getJoint(i));
                 cube->addComponent<MeshRenderer>(mesh);
-                 cube->setScale(50.5f);
+                cube->setScale(20.5f);
               
             }
 
-            
+             headNode =  soldier->findJoint("Bip01_Head");
+             //headNode =  soldier->findJoint("Bip01_Spine3");
+             
+             headNode->SetControllable(true);
+
+
            
             AnimationLayer *torsoLayer  = soldierAnimator->AddLayer();
             torsoLayer->LoadAnimation("topRun", "assets/ranger/ranger_Gun_Shooting_Pose.anim");
@@ -281,6 +314,10 @@ public:
         cameraMove->setMoveInput(moveInput);
        // animator->Update(dt);
       //  soldierAnimator->Update(dt);
+
+      angle += 10.0f * dt;
+      headNode->rotateX(sin(angle) * 0.1f);
+      //soldier->rotateY(angle);
 
     }
     void OnResize(u32 w, u32 h) override

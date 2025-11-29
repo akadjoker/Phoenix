@@ -1296,29 +1296,7 @@ void Mesh::Debug(RenderBatch *batch)
 void Mesh::CalculateBoneMatrices()
 {
 
-    if (!IsSkinned())
-    {
-        LogWarning("Mesh is not skinned");
-        return;
-    }
-
-    for (size_t i = 0; i < m_bones.size(); i++)
-    {
-        Bone *bone = m_bones[i];
-
-        if (bone->parentIndex >= 0 && bone->parentIndex < (s32)m_bones.size())
-        {
-            bone->parent = m_bones[bone->parentIndex];
-
-            // LogInfo("Bone[%d] %s → parent[%d] %s",i, bone->name.c_str(),                 bone->parentIndex, m_bones[bone->parentIndex]->name.c_str());
-        }
-        else
-        {
-            bone->parent = nullptr;
-            LogWarning("Bone[%d] %s  (no parent)", i, bone->name.c_str());
-        }
-    }
-    m_boneMatrices.resize(m_bones.size());
+    
 }
 
 Bone *Mesh::FindBone(const std::string &name)
@@ -1361,92 +1339,22 @@ Bone::Bone(const std::string &name)
 {
 
     this->name = name;
-    localPose = Mat4::Identity();
-    inverseBindPose = Mat4::Identity();
-    global = Mat4::Identity();
     hasAnimation = false;
     parentIndex = -1;
-    parent = nullptr;
-}
-
-const Mat4 &Bone::GetGlobalTransform() const
-{
-
-    if (parent != nullptr)
-    {
-        global = parent->GetGlobalTransform() * GetLocalTransform();
-    }
-    else
-    {
-        global = GetLocalTransform();
-    }
-
-    return global;
-}
-
-const Mat4 &Bone::GetLocalTransform() const
-{
-
-    if (hasAnimation)
-    {
-        return transform;
-    }
-    return localPose;
-}
-
-void Bone::SetTransform(const Vec3 &position, const Quat &rotation)
-{
-      
-        // T * R * S;
-        Mat4 local = Mat4::Translation(position) * rotation.toMat4();
-        hasAnimation = true;
-        transform = local;
-        
-    
-}
-
-void Mesh::SetBoneTransform(u32 index, const Vec3 &position, const Quat &rotation)
-{
-    if (index >= m_bones.size())
-        return;
-
-    if (index >= m_boneMatrices.size())
-        m_boneMatrices.resize(index + 1);
-    // T * R * S;
-    Mat4 local = Mat4::Translation(position) * rotation.toMat4();
-    m_bones[index]->hasAnimation = true;
-    m_bones[index]->transform = local;
-    m_boneMatrices[index] = local;
-}
-
  
-
-void Mesh::ResetBones()
-{
-    for (u32 i = 0; i < m_bones.size(); i++)
-    {
-        m_bones[i]->hasAnimation = false;
-        m_boneMatrices[i] = m_bones[i]->localPose;
-    }
 }
-
-u32 Mesh::FindBoneIndex(const std::string &name)
+ 
+  
+int Mesh::FindBoneIndex(const std::string &name)
 {
     for (u32 i = 0; i < m_bones.size(); i++)
     {
         if (m_bones[i]->name == name)
             return i;
     }
-    return (u32)-1;
+    return -1;
 }
-
-Mat4 Mesh::GetBoneMatrix(u32 index) const
-{
-    if (index >= m_bones.size())
-        return Mat4::Identity();
-
-    return m_bones[index]->GetGlobalTransform();
-}
+ 
 
 void Mesh::SortByMaterial()
 {
@@ -2793,7 +2701,7 @@ void MeshReader::ReadSkeletonChunk(Mesh *mesh, const ChunkHeader &header)
 
         bone->parentIndex = m_stream->ReadInt();
         //
-        //   LogInfo("[MeshReader] Bone: %s Parent(%d)", bone->name.c_str(), bone->parentIndex);
+           LogInfo("[MeshReader] Bone: %s Parent(%d)", bone->name.c_str(), bone->parentIndex);
 
         // Local transform
         for (int j = 0; j < 16; j++)
@@ -2940,7 +2848,7 @@ bool Animation::Load(const std::string &filename)
 
 void Animation::BindToMesh(Mesh *mesh)
 {
-    m_mesh = mesh;
+   
     for (auto &channel : m_channels)
     {
         channel.boneIndex = mesh->FindBoneIndex(channel.boneName);
