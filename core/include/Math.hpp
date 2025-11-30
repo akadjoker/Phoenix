@@ -487,14 +487,16 @@ public:
     float determinant() const;
     Mat3 inverse() const;
 
-    // Funções de criação de transformações
+
     static Mat3 Identity();
-    static Mat3 Scale(float sx, float sy);
-    static Mat3 Scale(const Vec2 &scale);
-    static Mat3 Rotation(float angleRad);
-    static Mat3 RotationDeg(float angleDeg);
-    static Mat3 Translation(float tx, float ty);
-    static Mat3 Translation(const Vec2 &translation);
+    static Mat3 Scale(float sx, float sy, float sz);
+    static Mat3 Scale(const Vec3 &scale);
+
+    static Mat3 Rotation(float angle, const Vec3 &axis);
+    static Mat3 RotationX(float angle);
+    static Mat3 RotationY(float angle);
+    static Mat3 RotationZ(float angle);
+ 
 };
 
 // Scalar * Mat3
@@ -514,7 +516,10 @@ public:
          float m4, float m5, float m6, float m7,
          float m8, float m9, float m10, float m11,
          float m12, float m13, float m14, float m15);
+    Mat4(const Mat3& rotation, const Vec3& translation) ;
 
+        void set(const Mat3& rotation, const Vec3& translation) ;
+    
     // Acesso por índice
     float &operator[](int index);
     const float &operator[](int index) const;
@@ -545,6 +550,7 @@ public:
 
     // Operações de matriz
     Mat4 transposed() const;
+    void identity();
     void transpose();
     float determinant() const;
     Mat4 inverse() const;
@@ -572,6 +578,7 @@ public:
     static Mat4 Rotation(const Vec3 &axis, float angleRad);
     static Mat4 RotationDeg(const Vec3 &axis, float angleDeg);
     static void DecomposeMatrix(const Mat4 &matrix, Vec3 *outPosition, Quat *outRotation);
+
 
     // Funções para câmera/projeção
     static Mat4 LookAt(const Vec3 &eye, const Vec3 &center, const Vec3 &up);

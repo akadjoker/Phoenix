@@ -7,6 +7,7 @@
 class Mesh;
 class Terrain;
 class Animator;
+class M3dMesh;
 
 // ============================================================================
 // MeshRenderer - Renders a mesh
@@ -43,6 +44,125 @@ private:
      void UpdateSkinning();
 };
 
+
+
+class MeshM3DRenderer : public Component
+{
+public:
+    MeshM3DRenderer(MeshM3D *m);
+    ~MeshM3DRenderer();
+
+    const char *getTypeName() const override { return "MeshM3DRenderer"; }
+
+    void setVisible(bool v) { visible = v; }
+    bool isVisible() const { return visible; }
+
+    void setMesh(MeshM3D *m) { mesh = m; }
+    MeshM3D *getMesh() const { return mesh; }
+
+    void attach() override;
+
+    void render() override;
+
+    
+
+private:
+    
+    MeshM3D *mesh{nullptr};
+    bool visible;
+    
+};
+
+
+// ============================================================================
+// Vertex Animator - Animation component
+// ============================================================================
+
+struct VertexAnimation
+{
+    std::string name;
+    int startFrame;
+    int endFrame;
+    float fps;
+    bool loop;
+
+    VertexAnimation(const std::string& n, int start, int end, float f, bool l = true)
+        : name(n), startFrame(start), endFrame(end), fps(f), loop(l) {}
+};
+
+
+
+
+class VertexAnimator : public Component
+{
+public:
+    VertexAnimator();
+    ~VertexAnimator();
+
+
+    const char *getTypeName() const override { return "VertexAnimator"; }
+
+    void AddAnimation(const std::string& name, int startFrame, int endFrame, float fps, bool loop = true);
+    void PlayAnimation(const std::string& name, bool forceRestart = false);
+    void PlayAnimationThen(const std::string& name, const std::string& nextAnim, bool forceRestart = false);
+    void PlayAnimationSequence(const std::vector<std::string>& animationNames);
+    void TransitionToAnimation(const std::string& name, float duration = 0.3f);
+    void GetCurrentFrames(int& currentFrame, int& nextFrame, float& interpolation);
+
+    bool IsPlaying() const;
+    bool IsPlaying(const std::string& name) const;
+    std::string GetCurrentAnimation() const;
+    std::string GetQueuedAnimation() const;
+    u32 GetAnimationCount() const;
+    u32 GetFrame() const;
+    
+    void Stop();
+    void Pause();
+    void Resume();
+
+
+     void attach() override;
+     void update(float deltaTime) override;
+
+    private:
+    std::map<std::string, VertexAnimation*> animations;
+    std::string currentAnimation;
+    std::string nextAnimation;
+    std::string trasitionName;
+    std::string queuedAnimation;
+
+    float currentTime;
+    float transitionTime;
+    float transitionDuration;
+
+    u32 lastFrame {0};
+    u32 m_current_frame {0};
+    MeshM3DRenderer* meshRenderer;
+    MeshM3D *m_mesh;
+    bool m_active;
+
+
+    enum State 
+    {
+        STOPPED,
+        PLAYING,
+        PAUSED,
+        TRANSITIONING
+    };
+
+    State state;
+    State GetState() const;
+
+    void SetTransitionDuration(float duration);
+    void ClearCallback();
+    bool HasQueuedAnimation() const;
+    void UpdateAnimation(float deltaTime);
+    void UpdateTransition(float deltaTime);
+    void GetTransitionFrames(int& currentFrame, int& nextFrame, float& interpolation);
+
+    
+};
+
  
 
 // ============================================================================
@@ -67,6 +187,12 @@ public:
     void update(float deltaTime) override;
  
 };
+
+
+
+ 
+ 
+
 
 // ============================================================================
 // Oscillator - Moves object back and forth (example behavior)

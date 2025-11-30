@@ -77,10 +77,11 @@ void GameObject::start()
 
 void GameObject::update(float deltaTime)
 {
+    
     updateWorldTransform();
     
     
-    Node3D::update(deltaTime);
+    UpdateChildren(deltaTime);
 
    // LogInfo("[GameObject] update %s", getName().c_str());
     

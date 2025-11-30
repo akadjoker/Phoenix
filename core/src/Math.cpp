@@ -989,31 +989,63 @@ Mat3 Mat3::inverse() const
     return inv;
 }
 
-// Funções estáticas
 Mat3 Mat3::Identity()
 {
     return Mat3();
 }
 
-Mat3 Mat3::Scale(float sx, float sy)
+Mat3 Mat3::Scale(float sx, float sy, float sz)
 {
     Mat3 result(0.0f);
     result.m[0] = sx;
     result.m[4] = sy;
-    result.m[8] = 1.0f;
+    result.m[8] = sz;
     return result;
 }
 
-Mat3 Mat3::Scale(const Vec2 &scale)
+Mat3 Mat3::Scale(const Vec3 &scale)
 {
-    return Scale(scale.x, scale.y);
+    return Scale(scale.x, scale.y, scale.z);
 }
 
-Mat3 Mat3::Rotation(float angleRad)
+Mat3 Mat3::RotationX(float angle)
 {
-    float c = std::cos(angleRad);
-    float s = std::sin(angleRad);
+    float c = std::cos(angle);
+    float s = std::sin(angle);
+    Mat3 result;
+    result.m[0] = 1.0f;
+    result.m[3] = 0.0f;
+    result.m[6] = 0.0f;
+    result.m[1] = 0.0f;
+    result.m[4] = c;
+    result.m[7] = -s;
+    result.m[2] = 0.0f;
+    result.m[5] = s;
+    result.m[8] = c;
+    return result;
+}
 
+Mat3 Mat3::RotationY(float angle)
+{
+    float c = std::cos(angle);
+    float s = std::sin(angle);
+    Mat3 result;
+    result.m[0] = c;
+    result.m[3] = 0.0f;
+    result.m[6] = s;
+    result.m[1] = 0.0f;
+    result.m[4] = 1.0f;
+    result.m[7] = 0.0f;
+    result.m[2] = -s;
+    result.m[5] = 0.0f;
+    result.m[8] = c;
+    return result;
+}
+
+Mat3 Mat3::RotationZ(float angle)
+{
+    float c = std::cos(angle);
+    float s = std::sin(angle);
     Mat3 result;
     result.m[0] = c;
     result.m[3] = -s;
@@ -1027,22 +1059,27 @@ Mat3 Mat3::Rotation(float angleRad)
     return result;
 }
 
-Mat3 Mat3::RotationDeg(float angleDeg)
+Mat3 Mat3::Rotation(float angle, const Vec3 &axis)
 {
-    return Rotation(angleDeg * DEG_TO_RAD);
-}
+    Vec3 a = axis.normalized();
+    float c = std::cos(angle);
+    float s = std::sin(angle);
+    float t = 1.0f - c;
 
-Mat3 Mat3::Translation(float tx, float ty)
-{
     Mat3 result;
-    result.m[6] = tx;
-    result.m[7] = ty;
-    return result;
-}
+    result.m[0] = t * a.x * a.x + c;
+    result.m[1] = t * a.x * a.y + s * a.z;
+    result.m[2] = t * a.x * a.z - s * a.y;
 
-Mat3 Mat3::Translation(const Vec2 &translation)
-{
-    return Translation(translation.x, translation.y);
+    result.m[3] = t * a.x * a.y - s * a.z;
+    result.m[4] = t * a.y * a.y + c;
+    result.m[5] = t * a.y * a.z + s * a.x;
+
+    result.m[6] = t * a.x * a.z + s * a.y;
+    result.m[7] = t * a.y * a.z - s * a.x;
+    result.m[8] = t * a.z * a.z + c;
+
+    return result;
 }
 
 // Scalar * Mat3
@@ -1109,6 +1146,46 @@ Mat4::Mat4(float m0, float m1, float m2, float m3,
     m[7] = m13;
     m[11] = m14;
     m[15] = m15;
+}
+
+Mat4::Mat4(const Mat3 &rotation, const Vec3 &translation)
+{
+    m[0] = rotation.m[0];
+    m[4] = rotation.m[3];
+    m[8] = rotation.m[6];
+    m[12] = translation.x;
+    m[1] = rotation.m[1];
+    m[5] = rotation.m[4];
+    m[9] = rotation.m[7];
+    m[13] = translation.y;
+    m[2] = rotation.m[2];
+    m[6] = rotation.m[5];
+    m[10] = rotation.m[8];
+    m[14] = translation.z;
+    m[3] = 0.0f;
+    m[7] = 0.0f;
+    m[11] = 0.0f;
+    m[15] = 1.0f;
+}
+
+void Mat4::set(const Mat3 &rotation, const Vec3 &translation)
+{
+     m[0] = rotation.m[0];
+    m[4] = rotation.m[3];
+    m[8] = rotation.m[6];
+    m[12] = translation.x;
+    m[1] = rotation.m[1];
+    m[5] = rotation.m[4];
+    m[9] = rotation.m[7];
+    m[13] = translation.y;
+    m[2] = rotation.m[2];
+    m[6] = rotation.m[5];
+    m[10] = rotation.m[8];
+    m[14] = translation.z;
+    m[3] = 0.0f;
+    m[7] = 0.0f;
+    m[11] = 0.0f;
+    m[15] = 1.0f;
 }
 
 // Acesso por índice
@@ -1286,6 +1363,18 @@ Mat4 Mat4::transposed() const
         }
     }
     return result;
+}
+
+void Mat4::identity()
+{
+    for (int i = 0; i < 16; i++)
+    {
+        m[i] = 0.0f;
+    }
+    m[0] = 1.0f;
+    m[5] = 1.0f;
+    m[10] = 1.0f;
+    m[15] = 1.0f;
 }
 
 void Mat4::transpose()

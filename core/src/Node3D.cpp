@@ -114,6 +114,22 @@ void Node3D::CreateJoints(Mesh *mesh)
         }
 }
 
+void Node3D::UpdateChildren(float dt)
+{
+    for (Node3D *child : m_children)
+    {
+        child->update(dt);
+    }
+}
+
+void Node3D::RenderChildren() const
+{
+    for (Node3D *child : m_children)
+    {
+        child->render();
+    }
+}
+
 Node3D::Node3D(const std::string &name) : Node(name), m_localPosition(0, 0, 0), m_localRotation(Quat::Identity()), m_localScale(1, 1, 1), m_transformDirty(true), m_worldTransformDirty(true), m_parent(nullptr),
                                           m_flags(0u)
 {

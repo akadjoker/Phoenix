@@ -15,7 +15,8 @@ add_subdirectory(cshadow)
 add_subdirectory(shadow)
 add_subdirectory(beam)
 
-
+add_subdirectory(md3animation)
+add_subdirectory(template)
 add_subdirectory(deferred)
 add_subdirectory(basic_ssao)
 

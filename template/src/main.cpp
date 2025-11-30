@@ -1,161 +1,121 @@
 
 
 #include "Core.hpp"
- 
 
 int screenWidth = 1024;
 int screenHeight = 768;
 
-
-
-
- 
 int main()
 {
 
     Device &device = Device::Instance();
 
-    if (!device.Create(screenWidth, screenHeight, "Game", true,1))
+    if (!device.Create(screenWidth, screenHeight, "Game", true, 1))
     {
         return 1;
     }
     Driver &driver = Driver::Instance();
     driver.SetClearDepth(1.0f);
     driver.SetClearColor(0.2f, 0.3f, 0.3f, 1.0f);
- 
-     RenderBatch batch;
-     batch.Init();
-    
-     Font font;
-     font.SetBatch(&batch);
-     font.LoadDefaultFont();
 
+    RenderBatch batch;
+    batch.Init();
+
+    Font font;
+    font.SetBatch(&batch);
+    font.LoadDefaultFont();
 
     float lastX{0};
     float lastY{0};
 
-    CameraFree camera(45.0f, (float)screenWidth / (float)screenHeight, 0.1f, 1000.0f);
+    FreeCameraComponent *cameraMove;
+    Camera camera;
+
+    cameraMove = camera.addComponent<FreeCameraComponent>();
+    cameraMove->setMoveSpeed(15.0f);
+    cameraMove->setMouseSensitivity(0.15f);
+    cameraMove->setSprintMultiplier(3.0f);
+    camera.setAspectRatio((float)screenWidth / (float)screenHeight);
+    camera.setFOV(45.0f);
+    camera.setNearPlane(0.1f);
+    camera.setFarPlane(1000.0f);
     camera.setPosition(0.0f, 0.5f, 10.0f);
 
-
-    bool firstMouse{true};
-    float mouseSensitivity{0.8f};
-
-
-    while (device.IsRunning())
+    while (device.Run())
     {
 
         float dt = device.GetFrameTime();
-        const float SPEED = 12.0f * dt;
 
-        SDL_Event event;
-        while (device.PollEvents(&event))
+        if (device.IsResize())
         {
-            if (event.type == SDL_QUIT)
-            {
-                device.SetShouldClose(true);
-                break;
-            }else 
-            if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
-            {
-                device.SetShouldClose(true);
-                break;
-            }
-            else if (event.type == SDL_WINDOWEVENT)
-            {
-                if (event.window.event == SDL_WINDOWEVENT_RESIZED)
-                {
-                    screenWidth = event.window.data1;
-                    screenHeight = event.window.data2;
-    
-                    driver.SetViewPort(0, 0, screenWidth, screenHeight);
-                    camera.setAspectRatio((float)screenWidth / (float)screenHeight);
-                    break;
-                }
-            break;
-        }
+            driver.SetViewPort(0, 0, device.GetWidth(), device.GetHeight());
+            camera.setAspectRatio(device.GetWidth() / device.GetHeight());
         }
 
-               int xposIn, yposIn;
-        u32 IsMouseDown = SDL_GetMouseState(&xposIn, &yposIn);
+        const float SPEED = 1.0f;
 
-        if (IsMouseDown & SDL_BUTTON(SDL_BUTTON_LEFT))
+        Vec3 moveInput(0, 0, 0);
+
+        if (Input::IsKeyDown(KEY_W))
+            moveInput.z += SPEED; // Forward
+        if (Input::IsKeyDown(KEY_S))
+            moveInput.z -= SPEED; // Backward
+        if (Input::IsKeyDown(KEY_A))
+            moveInput.x -= SPEED; // Left
+        if (Input::IsKeyDown(KEY_D))
+            moveInput.x += SPEED; // Right
+        if (Input::IsKeyDown(KEY_Q))
+            moveInput.y -= SPEED; // Down
+        if (Input::IsKeyDown(KEY_E))
+            moveInput.y += SPEED; // Up
+
+        cameraMove->setMoveInput(moveInput);
+
+        if (Input::IsMouseDown(MouseButton::LEFT))
         {
-            float xpos = static_cast<float>(xposIn);
-            float ypos = static_cast<float>(yposIn);
-
-            if (firstMouse)
-            {
-                lastX = xpos;
-                lastY = ypos;
-                firstMouse = false;
-            }
-
-            float xoffset = xpos - lastX;
-            float yoffset = ypos - lastY;
-
-            lastX = xpos;
-            lastY = ypos;
-             //fpsCamera.MouseLook(xoffset, yoffset);
-
-             camera.rotate(yoffset * mouseSensitivity,xoffset * mouseSensitivity);
-      
-        }
-        else
-        {
-            firstMouse = true;
+            Vec2 mouseDelta = Input::GetMouseDelta();
+            cameraMove->setRotationInput(mouseDelta);
         }
 
-        const Uint8 *state = SDL_GetKeyboardState(NULL);
-        if (state[SDL_SCANCODE_W])
-            camera.move(SPEED);
-        if (state[SDL_SCANCODE_S])
-            camera.move(-SPEED);
-        if (state[SDL_SCANCODE_A])
-            camera.strafe(-SPEED);
-        if (state[SDL_SCANCODE_D])
-            camera.strafe(SPEED);
-
-        camera.update(1.0f);
+        camera.update(dt);
         const Mat4 &view = camera.getViewMatrix();
         const Mat4 &proj = camera.getProjectionMatrix();
         const Mat4 &mvp = proj * view;
+        batch.SetMatrix(mvp);
+
+        batch.SetMatrix(mvp);
+        driver.SetDepthTest(true);
+        driver.SetBlendEnable(false);
+
+        batch.Grid(10, 1.0f, true);
+
+        batch.Render();
 
         const Mat4 ortho = Mat4::Ortho(0.0f, (float)screenWidth, (float)screenHeight, 0.0f, -1.0f, 1.0f);
-        
 
-       driver.Clear(CLEAR_COLOR | CLEAR_DEPTH);
+        driver.Clear(CLEAR_COLOR | CLEAR_DEPTH);
 
+        batch.SetMatrix(mvp);
+        driver.SetDepthTest(true);
+        driver.SetBlendEnable(false);
 
-       batch.SetMatrix(mvp);
-       driver.SetDepthTest(true);
-       driver.SetBlendEnable(false);
+        batch.Grid(10, 1.0f, true);
 
-       batch.Grid(10, 1.0f, true);
+        batch.Render();
 
-       batch.Render();
- 
+        batch.SetMatrix(ortho);
+        driver.SetDepthTest(false);
+        driver.SetBlendEnable(true);
+        driver.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
 
+        batch.SetColor(255, 255, 255);
 
-       batch.SetMatrix(ortho);
-       driver.SetDepthTest(false);
-       driver.SetBlendEnable(true);
-       driver.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
+        font.Print(10, 10, "Fps %d", device.GetFPS());
 
-       batch.SetColor(255, 255, 255);
-//
-       font.Print(10,10,"Fps :%d",device.GetFPS());
-
-       
-
-       batch.Render();
- 
- 
-
+        batch.Render();
 
         device.Flip();
     }
-
 
     font.Release();
     batch.Release();

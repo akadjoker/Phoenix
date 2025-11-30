@@ -2,6 +2,7 @@
 #include "Driver.hpp"
 #include "glad/glad.h"
 #include "Texture.hpp"
+#include "Vertex.hpp"
 #include "Shader.hpp"
 #include "Frustum.hpp"
 #include "Camera.hpp"
@@ -73,6 +74,15 @@ Driver &Driver::Instance()
 {
     static Driver instance;
     return instance;
+}
+
+
+void Driver::DrawVertexArray(VertexArray *buffer,u32 vertex,u32 count,PrimitiveType type)
+{
+    m_countDrawCall++;
+    m_countVertex += vertex;
+    m_countTriangle += CalculatePrimitiveCount(type, count);
+    buffer->Render(PrimitiveType::PT_TRIANGLES, count);
 }
 
 void Driver::DrawMeshBuffer(MeshBuffer *meshBuffer)

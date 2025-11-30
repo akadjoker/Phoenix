@@ -123,7 +123,7 @@ void VertexDeclaration::AddElement(u32 stream, u32 offset,
     m_elements.push_back(elem);
 
     u32 endOffset = offset + elem.GetSize();
-    auto& streamSize = m_streamSizes[stream];
+    auto &streamSize = m_streamSizes[stream];
     if (endOffset > streamSize)
     {
         streamSize = endOffset;
@@ -145,14 +145,14 @@ u32 VertexDeclaration::GetVertexSize(u32 stream) const
     return (it != m_streamSizes.end()) ? it->second : 0;
 }
 
-const std::vector<VertexElement>& VertexDeclaration::GetElements() const
+const std::vector<VertexElement> &VertexDeclaration::GetElements() const
 {
     return m_elements;
 }
 
-const VertexElement* VertexDeclaration::FindElement(VertexElementSemantic semantic, u32 index) const
+const VertexElement *VertexDeclaration::FindElement(VertexElementSemantic semantic, u32 index) const
 {
-    for (const auto& elem : m_elements)
+    for (const auto &elem : m_elements)
     {
         if (elem.semantic == semantic && elem.index == index)
         {
@@ -177,7 +177,7 @@ VertexBuffer::VertexBuffer(u32 vSize, u32 vCount, bool dynamic)
 
     CHECK_GL_ERROR(glGenBuffers(1, &m_vbo));
     CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, m_vbo));
-    
+
     GLenum usage = dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
     CHECK_GL_ERROR(glBufferData(GL_ARRAY_BUFFER, m_vertexSize * m_vertexCount, nullptr, usage));
     CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, 0));
@@ -191,9 +191,8 @@ VertexBuffer::~VertexBuffer()
         m_vbo = 0;
     }
 }
- 
 
-void VertexBuffer::SetData(const void* data)
+void VertexBuffer::SetData(const void *data)
 {
     if (!IsValid() || !data)
     {
@@ -202,7 +201,7 @@ void VertexBuffer::SetData(const void* data)
     }
 
     CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, m_vbo));
-    
+
     if (m_isDynamic)
     {
         CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, 0, m_vertexSize * m_vertexCount, data));
@@ -211,11 +210,11 @@ void VertexBuffer::SetData(const void* data)
     {
         CHECK_GL_ERROR(glBufferData(GL_ARRAY_BUFFER, m_vertexSize * m_vertexCount, data, GL_STATIC_DRAW));
     }
-    
+
     CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, 0));
 }
 
-void VertexBuffer::SetSubData(u32 offset, u32 size, const void* data)
+void VertexBuffer::SetSubData(u32 offset, u32 size, const void *data)
 {
     if (!IsValid() || !data)
     {
@@ -228,9 +227,11 @@ void VertexBuffer::SetSubData(u32 offset, u32 size, const void* data)
         LogError("VertexBuffer::setSubData - offset + size exceeds buffer size\n");
         return;
     }
-
+    u32 byteOffset = offset * m_vertexSize;
+    u32 byteSize = size * m_vertexSize;
     CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, m_vbo));
-    CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, offset, size, data));
+    //CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, offset, size, data));
+    CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, byteOffset, byteSize, data));
     CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, 0));
 }
 
@@ -241,8 +242,6 @@ void VertexBuffer::Bind() const
         CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, m_vbo));
     }
 }
-
-
 
 // ============================================================================
 // INDEX BUFFER
@@ -259,10 +258,10 @@ IndexBuffer::IndexBuffer(u32 iCount, bool dynamic, bool use16Bit)
 
     CHECK_GL_ERROR(glGenBuffers(1, &m_ibo));
     CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ibo));
-    
+
     size_t size = m_indexCount * (m_is16Bit ? sizeof(s16) : sizeof(u32));
     GLenum usage = dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
-    
+
     CHECK_GL_ERROR(glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, nullptr, usage));
     CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
 }
@@ -275,9 +274,8 @@ IndexBuffer::~IndexBuffer()
         m_ibo = 0;
     }
 }
- 
 
-void IndexBuffer::SetData(const void* data)
+void IndexBuffer::SetData(const void *data)
 {
     if (!IsValid() || !data)
     {
@@ -286,9 +284,9 @@ void IndexBuffer::SetData(const void* data)
     }
 
     size_t size = m_indexCount * (m_is16Bit ? sizeof(uint16_t) : sizeof(u32));
-    
+
     CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ibo));
-    
+
     if (m_isDynamic)
     {
         CHECK_GL_ERROR(glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, size, data));
@@ -297,11 +295,11 @@ void IndexBuffer::SetData(const void* data)
     {
         CHECK_GL_ERROR(glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, data, GL_STATIC_DRAW));
     }
-    
+
     CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
 }
 
-void IndexBuffer::SetSubData(u32 offset, u32 count, const void* data)
+void IndexBuffer::SetSubData(u32 offset, u32 count, const void *data)
 {
     if (!IsValid() || !data)
     {
@@ -311,7 +309,7 @@ void IndexBuffer::SetSubData(u32 offset, u32 count, const void* data)
 
     if (offset + count > m_indexCount)
     {
-        LogError("IndexBuffer::setSubData -  count %d  exceeds buffer size %d", offset + count ,m_indexCount);
+        LogError("IndexBuffer::setSubData -  count %d  exceeds buffer size %d", offset + count, m_indexCount);
         return;
     }
 
@@ -347,11 +345,7 @@ u32 IndexBuffer::GetIndexType() const
 // ============================================================================
 
 VertexArray::VertexArray()
-    : m_vao(0)
-    , m_vertexDeclaration(nullptr)
-    , m_indexBuffer(nullptr)
-    , m_isBuilt(false)
-    , m_needsRebuild(false)
+    : m_vao(0), m_vertexDeclaration(nullptr), m_indexBuffer(nullptr), m_isBuilt(false), m_needsRebuild(false)
 {
     CHECK_GL_ERROR(glGenVertexArrays(1, &m_vao));
     m_vertexDeclaration = new VertexDeclaration();
@@ -362,8 +356,7 @@ VertexArray::~VertexArray()
     Release();
 }
 
-  
-VertexBuffer* VertexArray::AddVertexBuffer(u32 vSize, u32 vCount, bool dynamic)
+VertexBuffer *VertexArray::AddVertexBuffer(u32 vSize, u32 vCount, bool dynamic)
 {
     if (m_isBuilt)
     {
@@ -371,12 +364,12 @@ VertexBuffer* VertexArray::AddVertexBuffer(u32 vSize, u32 vCount, bool dynamic)
         m_needsRebuild = true;
     }
 
-    VertexBuffer* vb = new VertexBuffer(vSize, vCount, dynamic);
+    VertexBuffer *vb = new VertexBuffer(vSize, vCount, dynamic);
     m_vertexBuffers.push_back(vb);
     return vb;
 }
 
-IndexBuffer* VertexArray::CreateIndexBuffer(u32 iCount, bool dynamic, bool use16Bit)
+IndexBuffer *VertexArray::CreateIndexBuffer(u32 iCount, bool dynamic, bool use16Bit)
 {
     if (m_indexBuffer)
     {
@@ -394,7 +387,7 @@ void VertexArray::Release()
     {
         return;
     }
-     for (auto vb : m_vertexBuffers)
+    for (auto vb : m_vertexBuffers)
     {
         delete vb;
     }
@@ -432,16 +425,16 @@ void VertexArray::Build()
     }
 
     // Setup vertex attributes from declaration
-    const auto& elements = m_vertexDeclaration->GetElements();
+    const auto &elements = m_vertexDeclaration->GetElements();
     GLint location = 0;
 
-    for (const auto& elem : elements)
+    for (const auto &elem : elements)
     {
         // Validate stream index
         if (elem.stream >= m_vertexBuffers.size())
         {
-            LogWarning("Invalid stream %u in vertex element (only %zu streams available)\n", 
-                      elem.stream, m_vertexBuffers.size());
+            LogWarning("Invalid stream %u in vertex element (only %zu streams available)\n",
+                       elem.stream, m_vertexBuffers.size());
             continue;
         }
 
@@ -452,7 +445,7 @@ void VertexArray::Build()
             break;
         }
 
-        const VertexBuffer* vb = m_vertexBuffers[elem.stream];
+        const VertexBuffer *vb = m_vertexBuffers[elem.stream];
         if (!vb || !vb->IsValid())
         {
             LogWarning("Invalid vertex buffer at stream %u\n", elem.stream);
@@ -460,7 +453,7 @@ void VertexArray::Build()
         }
 
         const GLsizei stride = static_cast<GLsizei>(m_vertexDeclaration->GetVertexSize(elem.stream));
-        const void* offset = reinterpret_cast<const void*>(static_cast<uintptr_t>(elem.offset));
+        const void *offset = reinterpret_cast<const void *>(static_cast<uintptr_t>(elem.offset));
 
         vb->Bind();
         CHECK_GL_ERROR(glEnableVertexAttribArray(location));
@@ -475,8 +468,7 @@ void VertexArray::Build()
                 elem.GetComponentCount(),
                 elem.GetType(),
                 stride,
-                offset
-            ));
+                offset));
         }
         else
         {
@@ -486,8 +478,7 @@ void VertexArray::Build()
                 elem.GetType(),
                 elem.ShouldNormalize() ? GL_TRUE : GL_FALSE,
                 stride,
-                offset
-            ));
+                offset));
         }
 
         CHECK_GL_ERROR(glVertexAttribDivisor(location, elem.instanceDivisor));
@@ -514,7 +505,7 @@ void VertexArray::ensureBuilt() const
 {
     if (!m_isBuilt || m_needsRebuild || m_vertexDeclaration->IsDirty())
     {
-        const_cast<VertexArray*>(this)->Build();
+        const_cast<VertexArray *>(this)->Build();
     }
 }
 
@@ -550,12 +541,12 @@ void VertexArray::Render(PrimitiveType type, u32 count) const
     {
         const GLenum idxType = m_indexBuffer->GetIndexType();
         Driver::Instance().DrawElements(glMode, count, idxType, nullptr);
-        //CHECK_GL_ERROR(glDrawElements(glMode, count, idxType, nullptr));
+        // CHECK_GL_ERROR(glDrawElements(glMode, count, idxType, nullptr));
     }
     else
     {
         Driver::Instance().DrawArrays(glMode, 0, count);
-        //CHECK_GL_ERROR(glDrawArrays(glMode, 0, count));
+        // CHECK_GL_ERROR(glDrawArrays(glMode, 0, count));
     }
 
     CHECK_GL_ERROR(glBindVertexArray(0));

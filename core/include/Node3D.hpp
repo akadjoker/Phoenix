@@ -77,11 +77,15 @@ protected:
     u32 getFlags() const;
 
     friend class MeshRenderer;
+    friend class MeshM3DRenderer;
     friend class TerrainRenderer;
     friend class Animator;
     friend class AnimationLayer;
 
     void CreateJoints(Mesh *mesh);
+
+    void UpdateChildren(float dt);
+    void RenderChildren() const;
 public:
     Node3D(const std::string &name = "Node3D");
     virtual ~Node3D();

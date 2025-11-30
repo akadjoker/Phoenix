@@ -28,7 +28,7 @@ void QuadtreeNode::split()
 
     Vec3 center = bounds.center();
     Vec3 size = bounds.size();
-    Vec3 halfSize = size * 0.5f;
+    //Vec3 halfSize = size * 0.5f;
 
     // Criar 4 quadrantes (no plano XZ, ignora Y)
     // NW (North-West) = canto superior esquerdo

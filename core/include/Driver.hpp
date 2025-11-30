@@ -9,6 +9,7 @@ class Mesh;
 class MeshBuffer;
 class Frustum;
 class Camera;
+class VertexArray;
 
 
 const unsigned CLEAR_NONE = 0u;
@@ -109,6 +110,7 @@ public:
     void DrawMeshBuffer( MeshBuffer *meshBuffer);
     void DrawMeshBuffer( MeshBuffer *meshBuffer , PrimitiveType type, u32 count);
     void DrawMesh(Mesh *mesh);
+    void DrawVertexArray(VertexArray *buffer,u32 vertex,u32 count,PrimitiveType type);
  
 
     void DrawElements(u32 mode, u32 count, u32 type, const void *indices);

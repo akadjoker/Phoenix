@@ -1,4 +1,4 @@
-project(shadow)
+project(template)
 cmake_policy(SET CMP0072 NEW)
 
 
@@ -26,12 +26,12 @@ add_compile_options(
 
 
 file(GLOB SOURCES "src/*.cpp")
-add_executable(shadow   ${SOURCES})
+add_executable(template   ${SOURCES})
 
 if (WIN32)
-    target_include_directories(shadow PUBLIC "${LIBS_DIR}/include" include src)
+    target_include_directories(template PUBLIC "${LIBS_DIR}/include" include src)
 else() 
-    target_include_directories(shadow PUBLIC  include src)
+    target_include_directories(template PUBLIC  include src)
 endif()
 
 
@@ -39,25 +39,25 @@ endif()
 if(CMAKE_BUILD_TYPE MATCHES Debug)
 
     if (UNIX)
-        target_compile_options(shadow PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g  -D_DEBUG )
-        target_link_options(shadow PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g  -D_DEBUG) 
+        target_compile_options(template PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g  -D_DEBUG )
+        target_link_options(template PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g  -D_DEBUG) 
     endif()
 
 
 elseif(CMAKE_BUILD_TYPE MATCHES Release)
-    target_compile_options(shadow PRIVATE -O3   -DNDEBUG )
-    target_link_options(shadow PRIVATE -O3   -DNDEBUG )
+    target_compile_options(template PRIVATE -O3   -DNDEBUG )
+    target_link_options(template PRIVATE -O3   -DNDEBUG )
 endif()
 
 
 
 if (WIN32)
-    target_link_libraries(shadow core "${LIBS_DIR}/lib/x64/SDL2main.lib" "${LIBS_DIR}/lib/x64/SDL2.lib"  Winmm.lib opengl32.lib)
+    target_link_libraries(template core "${LIBS_DIR}/lib/x64/SDL2main.lib" "${LIBS_DIR}/lib/x64/SDL2.lib"  Winmm.lib opengl32.lib)
 endif()
 
 
 if (UNIX)
-    target_link_libraries(shadow core  m SDL2 GL)
+    target_link_libraries(template core  m SDL2 GL)
 endif()
 
 #message(STATUS "SDL2 Library Dir: ${LIB_DIR}/")

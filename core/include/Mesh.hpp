@@ -25,10 +25,13 @@ class MeshLoader;
 class Animator;
 class Pixmap;
 class Terrain;
+class MeshM3D;
+class MeshM3DRenderer;
+class VertexAnimator;
 
 const u32 MAX_TEXTURES = 6;
 
-/// @brief 
+/// @brief
 struct Bone
 {
 
@@ -40,18 +43,11 @@ struct Bone
     bool hasAnimation;
     s32 parentIndex; // -1 = root
     std::string name;
- 
- 
 
     Mat4 localPose;
     Mat4 inverseBindPose;
 
     Bone(const std::string &name);
-
-  
-  
-
-
 };
 
 class Material
@@ -109,6 +105,7 @@ private:
     friend class MeshReader;
     friend class MeshWriter;
     friend class Terrain;
+    friend class MeshM3D;
 
 public:
     MeshBuffer(const std::string &name = "MeshBuffer");
@@ -233,6 +230,83 @@ public:
     virtual void Debug(RenderBatch *batch) { (void)batch; };
 };
 
+class MeshM3D : public Visual
+{
+public:
+    MeshM3D(const std::string &name = "MeshM3D");
+    ~MeshM3D();
+    bool Load(const std::string &filename, float scale = 1.0f);
+
+    void Render() override;
+    void Debug(RenderBatch *batch) override;
+
+    void SetSurfaceMaterial(u32 index,u32 material);
+
+    void SetFrame(int currentFrame, int nextFrame, float pol); 
+
+    u32 GetFrameCount() const { return numFrames; }
+
+    struct Bone
+    {
+        std::string name;
+        Mat4 transform;
+    };
+
+private:
+    friend class MeshManager;
+    friend class Driver;
+    friend class MeshM3DRenderer;
+    friend class VertexAnimator;
+    struct Surface
+    {
+        Surface();
+        VertexArray *buffer;
+        VertexBuffer *vb;
+        IndexBuffer *ib;
+        u32 numFrames;
+        u32 numTriangles;
+        int material;
+        std::string name;
+        std::vector<Vertex> vertices;
+        std::vector<Vec3>   positions;
+        std::vector<Vec3>   normals;
+        
+        std::vector<u16> indices;
+        void init();
+        void update();
+        void release();
+        void render();
+        void debug(RenderBatch *batch);
+    };
+    struct Tag
+    {
+        std::string name;
+        Vec3  	axes[3];
+        Vec3 position;
+        
+    };
+ 
+ 
+    Surface& AddSurface();
+    Tag& AddTag();
+    std::vector<Tag> tags;
+    std::vector<Bone> bones;
+    std::vector<Surface> surfaces;
+    u32 numOfTags;
+    u32 numFrames;
+
+    float m_scale;
+ 
+    void UpdateTags(int currentFrame, int nextFrame, float pol);
+
+    public:
+
+    const MeshM3D::Bone* GetBone(u32 index) const  ;
+    u32 GetBoneCount() const { return bones.size(); } 
+   
+
+};
+
 class Mesh : public Visual
 {
 public:
@@ -270,17 +344,11 @@ public:
     bool HasSkeleton() const { return !m_bones.empty(); }
     bool IsSkinned() const { return !m_bones.empty(); }
     u32 GetBoneCount() const { return m_bones.size(); }
-    const Bone& GetBone(u32 index) const;
+    const Bone &GetBone(u32 index) const;
     Bone *AddBone(const std::string &name);
 
- 
- 
     Bone *FindBone(const std::string &name);
     int FindBoneIndex(const std::string &name);
- 
-
- 
-   
 
 private:
     std::vector<Bone> m_bones;
@@ -522,11 +590,17 @@ public:
     Mesh *Import(const std::string &name, const std::string &filename);
     Mesh *ImportFromStream(const std::string &name, Stream *stream, const std::string &extension);
 
+    MeshM3D *LoadM3D(const std::string &name, const std::string &filename, float scale);
+    MeshM3D *GetM3D(const std::string &name);
+
+    
+
     MeshManager();
     ~MeshManager();
 
 private:
     std::unordered_map<std::string, Mesh *> m_meshes;
+    std::unordered_map<std::string, MeshM3D*> m_m3d_meshes;
 
     std::vector<MeshLoader *> m_loaders;
 };

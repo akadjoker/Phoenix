@@ -2125,6 +2125,11 @@ void MeshManager::UnloadAll()
         delete it->second;
     }
     m_meshes.clear();
+    for (auto it = m_m3d_meshes.begin(); it != m_m3d_meshes.end(); it++)
+    {
+        delete it->second;
+    }
+    m_m3d_meshes.clear();
     LogInfo("[MeshManager] Unloaded all meshes");
 }
 
@@ -2253,6 +2258,33 @@ Mesh *MeshManager::ImportFromStream(const std::string &name, Stream *stream, con
     LogInfo("[MeshManager] Loaded: %s from stream", name.c_str());
 
     return mesh;
+}
+
+MeshM3D *MeshManager::LoadM3D(const std::string &name, const std::string &filename, float scale)
+{
+    auto it = m_m3d_meshes.find(name);
+    if (it != m_m3d_meshes.end())
+    {
+        LogWarning("[MeshManager] Mesh already exists: %s", name.c_str());
+        return it->second;
+    }
+    MeshM3D *mesh = new MeshM3D(name);
+    if (!mesh->Load(filename, scale))
+    {
+        delete mesh;
+        return nullptr;
+    }
+
+    m_m3d_meshes[name] = mesh;
+    return mesh;
+}
+
+MeshM3D *MeshManager::GetM3D(const std::string &name)
+{
+    auto it = m_m3d_meshes.find(name);
+    if (it == m_m3d_meshes.end())
+        return nullptr;
+    return it->second;
 }
 
 //***************************************** */
