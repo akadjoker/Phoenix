@@ -13,7 +13,6 @@
 class RenderTarget;
 class MSAARenderTarget;
 class CubemapRenderTarget;
-class ArrayRenderTarget;
 class Texture;
 class Shader;
 class Mat4;
@@ -232,53 +231,7 @@ private:
     bool m_isValid = false;
     std::string m_name = "Cubemap";
 };
-
-// ============================================
-// ARRAY RENDER TARGET (for cascaded shadows)
-// ============================================
-
-class ArrayRenderTarget
-{
-public:
-    ArrayRenderTarget();
-    ~ArrayRenderTarget();
-
-    // Non-copyable, movable
-    ArrayRenderTarget(const ArrayRenderTarget &) = delete;
-    ArrayRenderTarget &operator=(const ArrayRenderTarget &) = delete;
-    ArrayRenderTarget(ArrayRenderTarget &&other) noexcept;
-    ArrayRenderTarget &operator=(ArrayRenderTarget &&other) noexcept;
-
-    // Create depth array (useful for cascaded shadow maps)
-    bool CreateDepthArray(u32 width, u32 height, u32 layers);
-
-    // Create color array
-    bool CreateColorArray(u32 width, u32 height, u32 layers, TextureFormat format = TextureFormat::RGBA8);
-
-    // Bind specific layer for rendering
-    void BindLayer(u32 layer);
-    void Unbind() const;
-    void Clear(bool clearColor = true, bool clearDepth = true);
-
-    // Get resulting array texture
-    Texture *GetArrayTexture() { return m_arrayTexture; }
-    u32 GetLayerCount() const { return m_layers; }
-    u32 GetWidth() const { return m_width; }
-    u32 GetHeight() const { return m_height; }
-    bool IsValid() const { return m_isValid; }
-
-    void SetName(const std::string &name) { m_name = name; }
-    void Release();
-
-private:
-    u32 m_fbo = 0;
-    u32 m_width = 0, m_height = 0;
-    u32 m_layers = 0;
-    Texture *m_arrayTexture = nullptr;
-    bool m_isDepthOnly = false;
-    bool m_isValid = false;
-    std::string m_name = "Array";
-};
+ 
 
 // ============================================
 // BUILDER PATTERN (fluent interface)
@@ -332,15 +285,13 @@ public:
     RenderTarget *Create(const std::string &name, u32 width, u32 height);
     MSAARenderTarget *CreateMSAA(const std::string &name, u32 width, u32 height, u32 samples = 4);
     CubemapRenderTarget *CreateCubemap(const std::string &name, u32 size);
-    ArrayRenderTarget *CreateArray(const std::string &name, u32 width, u32 height, u32 layers);
+ 
 
     // === FACTORY METHODS (common use cases) ===
 
     // Shadow map (depth only, single layer)
     RenderTarget *CreateShadowMap(const std::string &name, u32 resolution = 2048);
 
-    // Cascaded shadow maps (depth array, multiple layers)
-    ArrayRenderTarget *CreateCascadedShadowMap(const std::string &name, u32 resolution = 2048, u32 cascades = 4);
 
     // HDR render target (RGBA16F + depth)
     RenderTarget *CreateHDR(const std::string &name, u32 width, u32 height);
@@ -365,7 +316,7 @@ public:
     RenderTarget *Get(const std::string &name);
     MSAARenderTarget *GetMSAA(const std::string &name);
     CubemapRenderTarget *GetCubemap(const std::string &name);
-    ArrayRenderTarget *GetArray(const std::string &name);
+ 
 
     // === REMOVAL ===
     void Remove(const std::string &name);
@@ -399,7 +350,7 @@ private:
     std::unordered_map<std::string, RenderTarget *> m_targets;
     std::unordered_map<std::string, MSAARenderTarget *> m_msaaTargets;
     std::unordered_map<std::string, CubemapRenderTarget *> m_cubemapTargets;
-    std::unordered_map<std::string, ArrayRenderTarget *> m_arrayTargets;
+
 };
 
  

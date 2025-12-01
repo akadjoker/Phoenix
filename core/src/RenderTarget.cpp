@@ -1136,13 +1136,13 @@ bool CubemapRenderTarget::Create(u32 size, TextureFormat colorFormat, bool withD
 
     // Create cubemap texture
     m_cubemap = new Texture();
-    // if (!m_cubemap->CreateCube(size, colorFormat, nullptr))
-    // {
-    //     LogError("[Cubemap:%s] Failed to create cubemap texture", m_name.c_str());
-    //     delete m_cubemap;
-    //     m_cubemap = nullptr;
-    //     return false;
-    // }
+    if (!m_cubemap->CreateCube(size, colorFormat, nullptr))
+    {
+        LogError("[Cubemap:%s] Failed to create cubemap texture", m_name.c_str());
+        delete m_cubemap;
+        m_cubemap = nullptr;
+        return false;
+    }
 
     m_cubemap->SetMinFilter(FilterMode::LINEAR);
     m_cubemap->SetMagFilter(FilterMode::LINEAR);
@@ -1231,7 +1231,7 @@ void CubemapRenderTarget::Release()
         m_fbo = 0;
     }
 
-    // CRÍTICO: Delete cubemap texture!
+ 
     if (m_cubemap)
     {
         delete m_cubemap;
@@ -1246,233 +1246,7 @@ void CubemapRenderTarget::Release()
 
     m_isValid = false;
 }
-
-// ============================================
-// ARRAY RENDER TARGET IMPLEMENTATION
-// ============================================
-
-ArrayRenderTarget::ArrayRenderTarget()
-{
-    GLESLimits::Initialize();
-}
-
-ArrayRenderTarget::~ArrayRenderTarget()
-{
-    Release();
-}
-
-ArrayRenderTarget::ArrayRenderTarget(ArrayRenderTarget &&other) noexcept
-    : m_fbo(other.m_fbo),
-      m_width(other.m_width),
-      m_height(other.m_height),
-      m_layers(other.m_layers),
-      m_arrayTexture(other.m_arrayTexture),
-      m_isDepthOnly(other.m_isDepthOnly),
-      m_isValid(other.m_isValid),
-      m_name(std::move(other.m_name))
-{
-    // CRÍTICO: Zera o other
-    other.m_fbo = 0;
-    other.m_arrayTexture = nullptr;
-    other.m_isValid = false;
-}
-
-ArrayRenderTarget &ArrayRenderTarget::operator=(ArrayRenderTarget &&other) noexcept
-{
-    if (this != &other)
-    {
-        Release();
-
-        m_fbo = other.m_fbo;
-        m_width = other.m_width;
-        m_height = other.m_height;
-        m_layers = other.m_layers;
-        m_arrayTexture = other.m_arrayTexture;
-        m_isDepthOnly = other.m_isDepthOnly;
-        m_isValid = other.m_isValid;
-        m_name = std::move(other.m_name);
-
-        // CRÍTICO: Zera o other
-        other.m_fbo = 0;
-        other.m_arrayTexture = nullptr;
-        other.m_isValid = false;
-    }
-    return *this;
-}
-
-bool ArrayRenderTarget::CreateDepthArray(u32 width, u32 height, u32 layers)
-{
-    if (m_isValid)
-        Release();
-
-    if (width == 0 || height == 0 || layers == 0)
-    {
-        LogError("[Array:%s] Invalid parameters: %ux%ux%u", m_name.c_str(), width, height, layers);
-        return false;
-    }
-
-    // CRÍTICO: Valida limites
-    if (layers > (u32)GLESLimits::maxArrayLayers)
-    {
-        LogError("[Array:%s] Layers %u exceeds device limit %d",
-                 m_name.c_str(), layers, GLESLimits::maxArrayLayers);
-        return false;
-    }
-
-    m_width = width;
-    m_height = height;
-    m_layers = layers;
-    m_isDepthOnly = true;
-
-    // Create 2D array depth texture
-    // NOTA: Texture::Create3D pode ser usado se tiveres suporte para texture arrays
-    // Senão precisas criar manualmente:
-    m_arrayTexture = new Texture();
-
-    // Cria texture 2D array manualmente (assumindo que tens GL_TEXTURE_2D_ARRAY support)
-    u32 texHandle = 0;
-    CHECK_GL_ERROR(glGenTextures(1, &texHandle));
-    CHECK_GL_ERROR(glBindTexture(GL_TEXTURE_2D_ARRAY, texHandle));
-
-    // Allocate storage para todas as layers
-    CHECK_GL_ERROR(glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_DEPTH_COMPONENT24,
-                                  width, height, layers));
-
-    // Setup texture parameters
-    CHECK_GL_ERROR(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
-    CHECK_GL_ERROR(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
-    CHECK_GL_ERROR(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
-    CHECK_GL_ERROR(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
-
-    // HACK: Store handle directly (adapta ao teu sistema)
-    // Idealmente a Texture class deveria suportar arrays nativamente
-
-    // Create FBO
-    CHECK_GL_ERROR(glGenFramebuffers(1, &m_fbo));
-    CHECK_GL_ERROR(glBindFramebuffer(GL_FRAMEBUFFER, m_fbo));
-
-    // Disable color attachment for depth-only
-    GLenum none = GL_NONE;
-    CHECK_GL_ERROR(glDrawBuffers(1, &none));
-
-    CHECK_GL_ERROR(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-
-    m_isValid = true;
-    LogInfo("[Array:%s] Created depth array %ux%ux%u", m_name.c_str(), width, height, layers);
-    return true;
-}
-
-bool ArrayRenderTarget::CreateColorArray(u32 width, u32 height, u32 layers, TextureFormat format)
-{
-    if (m_isValid)
-        Release();
-
-    if (width == 0 || height == 0 || layers == 0)
-    {
-        LogError("[Array:%s] Invalid parameters: %ux%ux%u", m_name.c_str(), width, height, layers);
-        return false;
-    }
-
-    // CRÍTICO: Valida limites
-    if (layers > (u32)GLESLimits::maxArrayLayers)
-    {
-        LogError("[Array:%s] Layers %u exceeds device limit %d",
-                 m_name.c_str(), layers, GLESLimits::maxArrayLayers);
-        return false;
-    }
-
-    m_width = width;
-    m_height = height;
-    m_layers = layers;
-    m_isDepthOnly = false;
-
-    // Create 2D array color texture
-    m_arrayTexture = new Texture();
-
-    u32 texHandle = 0;
-    CHECK_GL_ERROR(glGenTextures(1, &texHandle));
-    CHECK_GL_ERROR(glBindTexture(GL_TEXTURE_2D_ARRAY, texHandle));
-
-    GLenum internalFormat = ToGLFormat(format);
-    CHECK_GL_ERROR(glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, internalFormat,
-                                  width, height, layers));
-
-    CHECK_GL_ERROR(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-    CHECK_GL_ERROR(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-    CHECK_GL_ERROR(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
-    CHECK_GL_ERROR(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
-
-    // Create FBO
-    CHECK_GL_ERROR(glGenFramebuffers(1, &m_fbo));
-
-    m_isValid = true;
-    LogInfo("[Array:%s] Created color array %ux%ux%u", m_name.c_str(), width, height, layers);
-    return true;
-}
-
-void ArrayRenderTarget::BindLayer(u32 layer)
-{
-    if (!m_isValid || layer >= m_layers)
-    {
-        LogError("[Array:%s] Cannot bind layer %u (max %u)", m_name.c_str(), layer, m_layers);
-        return;
-    }
-
-    CHECK_GL_ERROR(glBindFramebuffer(GL_FRAMEBUFFER, m_fbo));
-
-    // Attach specific layer
-    if (m_arrayTexture)
-    {
-        GLenum attachment = m_isDepthOnly ? GL_DEPTH_ATTACHMENT : GL_COLOR_ATTACHMENT0;
-
-        CHECK_GL_ERROR(glFramebufferTextureLayer(
-            GL_FRAMEBUFFER,
-            attachment,
-            m_arrayTexture->GetHandle(),
-            0,    // mipmap level
-            layer // array layer
-            ));
-    }
-
-    CHECK_GL_ERROR(glViewport(0, 0, m_width, m_height));
-}
-
-void ArrayRenderTarget::Unbind() const
-{
-    CHECK_GL_ERROR(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-}
-
-void ArrayRenderTarget::Clear(bool clearColor, bool clearDepth)
-{
-    GLbitfield mask = 0;
-    if (clearColor && !m_isDepthOnly)
-        mask |= GL_COLOR_BUFFER_BIT;
-    if (clearDepth)
-        mask |= GL_DEPTH_BUFFER_BIT;
-
-    if (mask != 0)
-    {
-        CHECK_GL_ERROR(glClear(mask));
-    }
-}
-
-void ArrayRenderTarget::Release()
-{
-    if (m_fbo)
-    {
-        CHECK_GL_ERROR(glDeleteFramebuffers(1, &m_fbo));
-        m_fbo = 0;
-    }
-
-    // CRÍTICO: Delete array texture!
-    if (m_arrayTexture)
-    {
-        delete m_arrayTexture;
-        m_arrayTexture = nullptr;
-    }
-
-    m_isValid = false;
-}
+ 
 // ============================================
 // RENDER TARGET BUILDER IMPLEMENTATION
 // ============================================
@@ -1711,29 +1485,7 @@ CubemapRenderTarget *RenderTargetManager::CreateCubemap(const std::string &name,
     LogInfo("[RTManager] Created Cubemap RenderTarget '%s'", name.c_str());
     return rt;
 }
-
-ArrayRenderTarget *RenderTargetManager::CreateArray(const std::string &name, u32 width, u32 height, u32 layers)
-{
-    if (Exists(name))
-    {
-        LogWarning("[RTManager] Array RenderTarget '%s' already exists", name.c_str());
-        return GetArray(name);
-    }
-
-    ArrayRenderTarget *rt = new ArrayRenderTarget();
-    rt->SetName(name);
-
-    if (!rt->CreateColorArray(width, height, layers, TextureFormat::RGBA8))
-    {
-        LogError("[RTManager] Failed to create Array RenderTarget '%s'", name.c_str());
-        delete rt;
-        return nullptr;
-    }
-
-    m_arrayTargets[name] = rt;
-    LogInfo("[RTManager] Created Array RenderTarget '%s'", name.c_str());
-    return rt;
-}
+ 
 
 // === FACTORY METHODS ===
 
@@ -1762,28 +1514,7 @@ RenderTarget *RenderTargetManager::CreateShadowMap(const std::string &name, u32 
     return rt;
 }
 
-ArrayRenderTarget *RenderTargetManager::CreateCascadedShadowMap(const std::string &name, u32 resolution, u32 cascades)
-{
-    if (Exists(name))
-    {
-        Remove(name);
-    }
-
-    ArrayRenderTarget *rt = new ArrayRenderTarget();
-    rt->SetName(name);
-
-    if (!rt->CreateDepthArray(resolution, resolution, cascades))
-    {
-        delete rt;
-        return nullptr;
-    }
-
-    m_arrayTargets[name] = rt;
-    LogInfo("[RTManager] Created Cascaded Shadow Map '%s': %ux%u, %u cascades",
-            name.c_str(), resolution, resolution, cascades);
-    return rt;
-}
-
+ 
 RenderTarget *RenderTargetManager::CreateHDR(const std::string &name, u32 width, u32 height)
 {
     RenderTarget *rt = Create(name, width, height);
@@ -1950,16 +1681,7 @@ CubemapRenderTarget *RenderTargetManager::GetCubemap(const std::string &name)
     LogWarning("[RTManager] Cubemap RenderTarget '%s' not found", name.c_str());
     return nullptr;
 }
-
-ArrayRenderTarget *RenderTargetManager::GetArray(const std::string &name)
-{
-    auto it = m_arrayTargets.find(name);
-    if (it != m_arrayTargets.end())
-        return it->second;
-
-    LogWarning("[RTManager] Array RenderTarget '%s' not found", name.c_str());
-    return nullptr;
-}
+ 
 
 // === REMOVAL (COM DELETES CORRIGIDOS!) ===
 
@@ -1992,15 +1714,7 @@ void RenderTargetManager::Remove(const std::string &name)
         m_cubemapTargets.erase(it3);
         return;
     }
-
-    auto it4 = m_arrayTargets.find(name);
-    if (it4 != m_arrayTargets.end())
-    {
-        LogInfo("[RTManager] Removing Array RenderTarget '%s'", name.c_str());
-        delete it4->second; // CRÍTICO!
-        m_arrayTargets.erase(it4);
-        return;
-    }
+ 
 
     LogWarning("[RTManager] RenderTarget '%s' not found for removal", name.c_str());
 }
@@ -2033,13 +1747,7 @@ void RenderTargetManager::UnloadAll()
     }
     m_cubemapTargets.clear();
 
-    // Clean up array targets
-    for (auto &pair : m_arrayTargets)
-    {
-        LogInfo("[RTManager] Deleting Array RenderTarget '%s'", pair.first.c_str());
-        delete pair.second; // CRÍTICO!
-    }
-    m_arrayTargets.clear();
+    
 
     LogInfo("[RTManager] All render targets cleaned up successfully");
 }
@@ -2049,7 +1757,7 @@ void RenderTargetManager::UnloadAll()
 size_t RenderTargetManager::GetCount() const
 {
     return m_targets.size() + m_msaaTargets.size() +
-           m_cubemapTargets.size() + m_arrayTargets.size();
+           m_cubemapTargets.size()  ;
 }
 
 size_t RenderTargetManager::GetMemoryUsage() const
@@ -2092,15 +1800,7 @@ size_t RenderTargetManager::GetMemoryUsage() const
         totalBytes += memory;
     }
 
-    // Estimate memory for array targets (multiply by layer count)
-    for (const auto &pair : m_arrayTargets)
-    {
-        auto rt = pair.second;
-        if (!rt->IsValid())
-            continue;
-        size_t memory = rt->GetWidth() * rt->GetHeight() * rt->GetLayerCount() * 4;
-        totalBytes += memory;
-    }
+   
 
     return totalBytes;
 }
@@ -2114,7 +1814,7 @@ void RenderTargetManager::PrintStats() const
     LogInfo("  - Normal: %zu", m_targets.size());
     LogInfo("  - MSAA: %zu", m_msaaTargets.size());
     LogInfo("  - Cubemap: %zu", m_cubemapTargets.size());
-    LogInfo("  - Array: %zu", m_arrayTargets.size());
+ 
     LogInfo("  Estimated Memory Usage: %.2f MB", GetMemoryUsage() / (1024.0f * 1024.0f));
     LogInfo("========================================");
 }
@@ -2163,19 +1863,7 @@ void RenderTargetManager::ListAll() const
                     rt->GetSize(), rt->GetSize());
         }
     }
-
-    if (!m_arrayTargets.empty())
-    {
-        LogInfo("--- Array Render Targets ---");
-        for (const auto &pair : m_arrayTargets)
-        {
-            auto rt = pair.second;
-            LogInfo("  - '%s': %ux%u, %u layers",
-                    pair.first.c_str(),
-                    rt->GetWidth(), rt->GetHeight(),
-                    rt->GetLayerCount());
-        }
-    }
+ 
 
     if (GetCount() == 0)
     {
@@ -2189,8 +1877,7 @@ bool RenderTargetManager::Exists(const std::string &name) const
 {
     return m_targets.find(name) != m_targets.end() ||
            m_msaaTargets.find(name) != m_msaaTargets.end() ||
-           m_cubemapTargets.find(name) != m_cubemapTargets.end() ||
-           m_arrayTargets.find(name) != m_arrayTargets.end();
+           m_cubemapTargets.find(name) != m_cubemapTargets.end() ;
 }
 
 ShadowMapManager::ShadowMapManager(u32 shadowWidth, u32 shadowHeight, int cascadeCount)
