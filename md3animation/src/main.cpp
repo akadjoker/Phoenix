@@ -55,7 +55,7 @@ int main()
     
 
 
-    MeshM3D *berreta = MeshManager::Instance().LoadM3D("Berreta","assets/md3/beretta/beretta_hold.md3", 100.0f);
+    MeshM3D *berreta = MeshManager::Instance().LoadM3D("Berreta","assets/md3/beretta/beretta_hold.md3" );
 
     if (!berreta)
     {
@@ -67,13 +67,13 @@ int main()
 
     MeshM3D *specs[8];
 
-    specs[0] = MeshManager::Instance().LoadM3D("Main","assets/md3/beretta/beretta_view_main.md3", 30.0f);
-    specs[1] = MeshManager::Instance().LoadM3D("Slide","assets/md3/beretta/beretta_view_slide.md3", 25.0f);
-    specs[2] = MeshManager::Instance().LoadM3D("Clip","assets/md3/beretta/beretta_view_clip.md3", 6.0f);
-    specs[3] = MeshManager::Instance().LoadM3D("Safety","assets/md3/beretta/beretta_view_safety.md3", 1.0f);
-    specs[4] = MeshManager::Instance().LoadM3D("Sliderel","assets/md3/beretta/beretta_view_sliderel.md3", 1.0f);
-    specs[5] = MeshManager::Instance().LoadM3D("cock","assets/md3/beretta/beretta_view_cock.md3", 1.0f);
-    specs[6] = MeshManager::Instance().LoadM3D("trigger","assets/md3/beretta/beretta_view_trigger.md3", 1.0f);
+    specs[0] = MeshManager::Instance().LoadM3D("Main","assets/md3/beretta/beretta_view_main.md3" );
+    specs[1] = MeshManager::Instance().LoadM3D("Slide","assets/md3/beretta/beretta_view_slide.md3" );
+    specs[2] = MeshManager::Instance().LoadM3D("Clip","assets/md3/beretta/beretta_view_clip.md3");
+    specs[3] = MeshManager::Instance().LoadM3D("Safety","assets/md3/beretta/beretta_view_safety.md3");
+    specs[4] = MeshManager::Instance().LoadM3D("Sliderel","assets/md3/beretta/beretta_view_sliderel.md3");
+    specs[5] = MeshManager::Instance().LoadM3D("cock","assets/md3/beretta/beretta_view_cock.md3");
+    specs[6] = MeshManager::Instance().LoadM3D("trigger","assets/md3/beretta/beretta_view_trigger.md3");
 
 
     

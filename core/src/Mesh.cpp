@@ -244,11 +244,9 @@ void MeshBuffer::Debug(RenderBatch *batch)
         // LogWarning("Skinned vertices empty");
     }
 }
- 
 
-void MeshBuffer::UpdateSkinning(  const std::vector<Mat4> &boneMatrices)
+void MeshBuffer::UpdateSkinning(const std::vector<Mat4> &boneMatrices)
 {
-    
 
     if (!m_isSkinned || boneMatrices.empty() || vertices.empty() || m_skinData.empty())
         return;
@@ -274,9 +272,11 @@ void MeshBuffer::UpdateSkinning(  const std::vector<Mat4> &boneMatrices)
 
             const Mat4 &boneMatrix = boneMatrices[boneID];
 
-            Vec3 transformedPos = boneMatrix.TransformPoint(                Vec3(original.x, original.y, original.z));            finalPos += transformedPos * weight;
+            Vec3 transformedPos = boneMatrix.TransformPoint(Vec3(original.x, original.y, original.z));
+            finalPos += transformedPos * weight;
 
-            Vec3 transformedNormal = boneMatrix.TransformVector(                Vec3(original.nx, original.ny, original.nz));            finalNormal += transformedNormal * weight;
+            Vec3 transformedNormal = boneMatrix.TransformVector(Vec3(original.nx, original.ny, original.nz));
+            finalNormal += transformedNormal * weight;
         }
 
         // normalizar normal
@@ -1160,7 +1160,6 @@ Mesh::~Mesh()
     }
     buffers.clear();
 
-    
     m_bones.clear();
 }
 
@@ -1250,7 +1249,7 @@ void Mesh::OptimizeBuffers()
     SortByMaterial();
 }
 
-const Bone& Mesh::GetBone(u32 index) const
+const Bone &Mesh::GetBone(u32 index) const
 {
     DEBUG_BREAK_IF(index >= m_bones.size());
     return m_bones[index];
@@ -1262,7 +1261,6 @@ Bone *Mesh::AddBone(const std::string &name)
     m_bones.push_back(bone);
     return &m_bones.back();
 }
- 
 
 void Mesh::CalculateBoundingBox()
 {
@@ -1287,11 +1285,9 @@ void Mesh::Debug(RenderBatch *batch)
     }
 }
 
-
-
 Bone *Mesh::FindBone(const std::string &name)
 {
-   for (u32 i = 0; i < m_bones.size(); i++)
+    for (u32 i = 0; i < m_bones.size(); i++)
     {
         if (m_bones[i].name == name)
             return &m_bones[i];
@@ -1299,8 +1295,6 @@ Bone *Mesh::FindBone(const std::string &name)
     LogWarning("Bone %s not found", name.c_str());
     return nullptr;
 }
-
- 
 
 void PrintMatrix(const Mat4 &mat)
 {
@@ -1320,10 +1314,8 @@ Bone::Bone(const std::string &name)
     this->name = name;
     hasAnimation = false;
     parentIndex = -1;
- 
 }
- 
-  
+
 int Mesh::FindBoneIndex(const std::string &name)
 {
     for (u32 i = 0; i < m_bones.size(); i++)
@@ -1333,7 +1325,6 @@ int Mesh::FindBoneIndex(const std::string &name)
     }
     return -1;
 }
- 
 
 void Mesh::SortByMaterial()
 {
@@ -2260,7 +2251,7 @@ Mesh *MeshManager::ImportFromStream(const std::string &name, Stream *stream, con
     return mesh;
 }
 
-MeshM3D *MeshManager::LoadM3D(const std::string &name, const std::string &filename, float scale)
+MeshM3D *MeshManager::LoadM3D(const std::string &name, const std::string &filename)
 {
     auto it = m_m3d_meshes.find(name);
     if (it != m_m3d_meshes.end())
@@ -2269,7 +2260,7 @@ MeshM3D *MeshManager::LoadM3D(const std::string &name, const std::string &filena
         return it->second;
     }
     MeshM3D *mesh = new MeshM3D(name);
-    if (!mesh->Load(filename, scale))
+    if (!mesh->Load(filename))
     {
         delete mesh;
         return nullptr;
@@ -2402,7 +2393,7 @@ void MeshWriter::WriteSkeletonChunk(const Mesh *mesh)
 
     for (u32 i = 0; i < numBones; i++)
     {
-        const Bone& bone = mesh->GetBone(i);
+        const Bone &bone = mesh->GetBone(i);
 
         WriteCString(bone.name);
         m_stream->WriteInt(bone.parentIndex);
@@ -2710,7 +2701,7 @@ void MeshReader::ReadSkeletonChunk(Mesh *mesh, const ChunkHeader &header)
 
         bone->parentIndex = m_stream->ReadInt();
         //
-           LogInfo("[MeshReader] Bone: %s Parent(%d)", bone->name.c_str(), bone->parentIndex);
+        LogInfo("[MeshReader] Bone: %s Parent(%d)", bone->name.c_str(), bone->parentIndex);
 
         // Local transform
         for (int j = 0; j < 16; j++)
@@ -2718,10 +2709,8 @@ void MeshReader::ReadSkeletonChunk(Mesh *mesh, const ChunkHeader &header)
 
         // PrintMatrix(bone->localPose);
 
-
         for (int j = 0; j < 16; j++)
             bone->inverseBindPose.m[j] = m_stream->ReadFloat();
-
 
         // PrintMatrix(bone->inverseBindPose);
     }
@@ -2851,10 +2840,6 @@ bool Animation::Load(const std::string &filename)
     delete frameAnim;
     return true;
 }
-
- 
- 
- 
 
 void Animation::Bind(Node3D *parent)
 {
@@ -3103,10 +3088,8 @@ void Visual::SetTexture(u32 layer, Texture *texture)
 
 void Visual::SetMaterialTexture(u32 material, u32 layer, Texture *texture)
 {
-    if (material < materials.size())
-    {
-        materials[material]->SetTexture(layer, texture);
-    }
+    DEBUG_BREAK_IF(material >= materials.size());
+    materials[material]->SetTexture(layer, texture);
 }
 
 Material *Visual::AddMaterial(const std::string &name)
@@ -3115,4 +3098,11 @@ Material *Visual::AddMaterial(const std::string &name)
     material->SetName(name);
     materials.push_back(material);
     return material;
+}
+
+Material *Visual::GetMaterial(u32 index) const
+{
+    DEBUG_BREAK_IF(index >= materials.size());
+
+    return materials[index];
 }

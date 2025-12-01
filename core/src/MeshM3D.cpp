@@ -48,7 +48,7 @@ void VectorNormalize(Vec3& v)
 }
 
 
-bool MeshM3D::Load(const std::string &filename, float scale)
+bool MeshM3D::Load(const std::string &filename)
 {
     
 
@@ -77,8 +77,7 @@ bool MeshM3D::Load(const std::string &filename, float scale)
         tMd3Bone *pBones = new tMd3Bone[m_Header.numFrames];
         file.Read(&pBones[0], sizeof(tMd3Bone) * m_Header.numFrames);
         //LogInfo("Scale %f creator  %s", pBones[0].scale, pBones[0].creator);
-
-        m_scale =  scale / pBones[0].scale;
+ 
 
         numOfTags = m_Header.numTags;
 

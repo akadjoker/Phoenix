@@ -130,10 +130,6 @@ void Node3D::RenderChildren(Shader *shader) const
     {
         child->render(shader);
     }
-    for (Node3D *joint : m_joints)
-    {
-     //   joint->render(shader);
-    }
 }
 
 Node3D::Node3D(const std::string &name) : Node(name), m_localPosition(0, 0, 0), m_localRotation(Quat::Identity()), m_localScale(1, 1, 1), m_transformDirty(true), m_worldTransformDirty(true), m_parent(nullptr),

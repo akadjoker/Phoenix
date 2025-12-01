@@ -215,7 +215,7 @@ public:
     Visual(const std::string &name = "Visual");
     ~Visual();
     Material *AddMaterial(const std::string &name);
-    Material *GetMaterial(u32 index) const { return materials[index]; }
+    Material *GetMaterial(u32 index) const  ;
     void SetTexture(u32 layer, Texture *texture);
     void SetMaterialTexture(u32 material, u32 layer, Texture *texture);
     u32 GetMaterialCount() const { return materials.size(); }
@@ -233,7 +233,7 @@ class MeshM3D : public Visual
 public:
     MeshM3D(const std::string &name = "MeshM3D");
     ~MeshM3D();
-    bool Load(const std::string &filename, float scale = 1.0f);
+    bool Load(const std::string &filename );
 
     void Render() override;
     void Debug(RenderBatch *batch) override;
@@ -292,8 +292,7 @@ private:
     std::vector<Surface> surfaces;
     u32 numOfTags;
     u32 numFrames;
-
-    float m_scale;
+ 
  
     void UpdateTags(int currentFrame, int nextFrame, float pol);
 
@@ -588,7 +587,7 @@ public:
     Mesh *Import(const std::string &name, const std::string &filename);
     Mesh *ImportFromStream(const std::string &name, Stream *stream, const std::string &extension);
 
-    MeshM3D *LoadM3D(const std::string &name, const std::string &filename, float scale);
+    MeshM3D *LoadM3D(const std::string &name, const std::string &filename);
     MeshM3D *GetM3D(const std::string &name);
 
     

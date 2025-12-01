@@ -150,9 +150,12 @@ Node3D *Scene::createNode3D(const std::string &name, Node3D *parent)
     if (parent)
     {
         node->setParent(parent);
+    } else 
+    {
+        m_objects.push_back(node);
+        m_needRebuildLists = true;
+
     }
-    m_objects.push_back(node);
-    m_needRebuildLists = true;
     return node;
 }
 
@@ -187,11 +190,14 @@ GameObject *Scene::createGameObject(const std::string &name, Node3D *parent)
     if (parent)
     {
         node->setParent(parent);
+    } else
+    {
+
+        m_objects.push_back(node);
+        m_needRebuildLists = true;
     }
     node->setActive(true);
-    m_objects.push_back(node);
     node->awake();
-    m_needRebuildLists = true;
     return node;
 }
 
