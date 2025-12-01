@@ -24,10 +24,7 @@ int main()
     Font font;
     font.SetBatch(&batch);
     font.LoadDefaultFont();
-
-    float lastX{0};
-    float lastY{0};
-
+ 
     FreeCameraComponent *cameraMove;
     Camera camera;
 

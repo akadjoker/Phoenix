@@ -1,6 +1,35 @@
 
 #include "bsp.hpp"
 
+
+struct MapHeader
+{
+    u32 magic;         // 'M','A','P','2' 
+    u32 version;       // 1
+    u32 numTextures;
+    u32 numLightmaps;
+    u32 numSurfaces;
+};
+
+struct MapSurfaceHeader
+{
+    u32 textureIndex;   // índice em textures[]
+    u32 lightmapIndex;  // índice em lightmaps[] ou 0xFFFFFFFF se não tiver
+    u32 vertexCount;
+    u32 indexCount;
+};
+
+struct MapVertex
+{
+    Vec3 pos;
+    Vec3 normal;
+    Vec2 uv0;  // diffuse
+    Vec2 uv1;  // lightmap
+};
+
+// binary layout: 3f + 3f + 2f + 2f = 40 bytes
+
+
 void BSP::loadTexture(FileStream &file)
 {
 
@@ -27,25 +56,25 @@ void BSP::loadLightmap(FileStream &file)
     file.Read(&LightMaps[0], lumps[kLightmaps].length);
 
     LogInfo(" %d", NumLightMaps);
-    lightmaps.reserve(NumLightMaps);
-    // for (int i = 0; i < NumLightMaps; ++i)
-    // {
+    //lightmaps.reserve(NumLightMaps);
+    for (int i = 0; i < NumLightMaps; ++i)
+    {
 
-    //     Pixmap pix(128, 128, 4);
+        Pixmap pix(128, 128, 4);
 
-    //     for (int y = 0; y < 128; ++y)
-    //     {
-    //         for (int x = 0; x < 128; ++x)
-    //         {
-    //             u8 r = LightMaps[i].imageBits[y][x][0];
-    //             u8 g = LightMaps[i].imageBits[y][x][1];
-    //             u8 b = LightMaps[i].imageBits[y][x][2];
-    //             pix.SetPixel(x, y, r, g, b, 255);
-    //         }
-    //     }
-
-    //     pix.Save(Utils::TextFormat("lightmap%d.png", i));
-    // }
+        for (int y = 0; y < 128; ++y)
+        {
+            for (int x = 0; x < 128; ++x)
+            {
+                u8 r = LightMaps[i].imageBits[y][x][0];
+                u8 g = LightMaps[i].imageBits[y][x][1];
+                u8 b = LightMaps[i].imageBits[y][x][2];
+                pix.SetPixel(x, y, r, g, b, 255);
+            }
+        }
+        lightmaps.push_back(Utils::TextFormat("lightmap%d.png", i));
+        pix.Save(Utils::TextFormat("lightmap%d.png", i));
+    }
 }
 
 void BSP::loadVertex(FileStream &file)
@@ -137,68 +166,99 @@ bool BSP::loadFromFile(const std::string &filePath)
     return true;
 }
 
-bool BSP::saveToFile(const std::string &filePath)
+bool BSP::saveToFile(const std::string& filePath)
 {
-    Mesh* mesh = new Mesh("map");
+    // Garante que já tens Surfaces construídas e merged
+    if (Surfaces.empty())
+        BuildSurfaces();
+    if (mergedSurfaces.empty())
+        MergeSurfacesByMaterial();
 
-    for (u32 i=0; i < textures.size(); i++)
+    FileStream out(filePath, "wb");
+    if (!out.IsOpen())
+        return false;
+
+    // --- Header ---
+    MapHeader hdr{};
+    hdr.magic        = 0x324D4150; // '2MAP' ou outro; podes escolher 'MAP2' = 0x324C5041 etc.
+    hdr.version      = 1;
+    hdr.numTextures  = static_cast<u32>(textures.size());
+    hdr.numLightmaps = static_cast<u32>(lightmaps.size());
+    hdr.numSurfaces  = static_cast<u32>(mergedSurfaces.size());
+
+    out.WriteUInt(hdr.magic);
+    out.WriteUInt(hdr.version);
+    out.WriteUInt(hdr.numTextures);
+    out.WriteUInt(hdr.numLightmaps);
+    out.WriteUInt(hdr.numSurfaces);
+
+    // --- Textures diffuse ---
+    for (const std::string& texName : textures)
     {
-       Material * material = mesh->AddMaterial(Utils::GetFileNameWithoutExt(textures[i].c_str()));
-
-       Texture * texture = new Texture();
-       texture->SetName(textures[i].c_str());
-       material->SetTexture(0,texture);
-       delete texture;
-
-    }
-    for (u32 i = 0; i < mergedSurfaces.size(); i++)
-    {
-        const auto &surface = mergedSurfaces[i];
-
-    
-
-       MeshBuffer * buffer = mesh->AddBuffer(surface.textureID);
-
-        for (u32 j = 0; j < surface.indices.size(); j++)
-        {
-            buffer->AddIndex(surface.indices[j]);
-        }
-
-        for (u32 j = 0; j < surface.vertices.size(); j++)
-        {
-            Vec3 vertex = surface.vertices[j];
-            Vec2 uv0 = surface.uv0[j];
-            Vec3 normal = surface.normals[j];
-
-            buffer->AddVertex(vertex.x, vertex.y, vertex.z, normal.x, normal.y, normal.z, uv0.x, uv0.y);
-        }
-    
-
+        out.WriteUTF(texName);
     }
 
+    // --- Lightmaps ---
+    // Aqui assumes que já fizeste:
+    // lightmaps.push_back("lightmap0.png");
+    // lightmaps.push_back("lightmap1.png");
+    // etc. quando os exportaste.
+    for (const std::string& lmName : lightmaps)
+    {
+        out.WriteUTF(lmName);
+    }
 
-// struct BSPSurface
-// {
-//     u32 vertexCount { 0 };
-//     u32 triangleCount{ 0 }; 
+    // --- Superfícies ---
+    for (const BSPSurface& s : mergedSurfaces)
+    {
+        u32 textureIndex  = static_cast<u32>(s.textureID);
+        u32 lightmapIndex = (s.lightmapID >= 0)
+                          ? static_cast<u32>(s.lightmapID)
+                          : 0xFFFFFFFFu;
 
+        u32 vertexCount   = static_cast<u32>(s.vertices.size());
+        u32 indexCount    = static_cast<u32>(s.indices.size());
 
+        // MapSurfaceHeader
+        out.WriteUInt(textureIndex);
+        out.WriteUInt(lightmapIndex);
+        out.WriteUInt(vertexCount);
+        out.WriteUInt(indexCount);
 
-//     s32 textureID{ 0 };
-//     s32 lightmapID{ 0 };
-//     std::vector<Vec2> uv0;
-//     std::vector<Vec2> uv1;
-//     std::vector<Vec3> normals;
-//     std::vector<Vec3> vertices;
-//     std::vector<u16> indices;
- 
- 
-// };
+        // Vertices
+        for (u32 i = 0; i < vertexCount; ++i)
+        {
+            const Vec3& p  = s.vertices[i];
+            const Vec3& n  = s.normals[i];
+            const Vec2& uv0 = s.uv0[i];
+            const Vec2& uv1 = s.uv1[i];
 
-    MeshManager::Instance().Save(filePath, mesh);
-    delete mesh;
-    return false;
+            out.WriteFloat(p.x);
+            out.WriteFloat(p.y);
+            out.WriteFloat(p.z);
+
+            out.WriteFloat(n.x);
+            out.WriteFloat(n.y);
+            out.WriteFloat(n.z);
+
+            out.WriteFloat(uv0.x);
+            out.WriteFloat(uv0.y);
+
+            out.WriteFloat(uv1.x);
+            out.WriteFloat(uv1.y);
+        }
+
+        // Índices (u32)
+        for (u16 idx : s.indices)   // se indices forem u16
+        {
+            out.WriteUInt(static_cast<u32>(idx));
+        }
+    }
+
+    out.Close();
+    return true;
 }
+
 
 BSP::BSP()
 {

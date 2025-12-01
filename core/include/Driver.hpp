@@ -30,6 +30,10 @@ public:
     void release();
     void render(float x, float y, float w, float h, int screenWidth, int screenHeight);
     void render();
+    void renderFlip();
+    void renderBillboard(const Vec3& worldPos, const Vec3& cameraPos, 
+                                  const Mat4& view, const Mat4& proj, 
+                                  float size);
     
 };
 
@@ -136,7 +140,10 @@ public:
 
 
     void DrawScreenQuad(float x, float y, float w, float h);
-    void DrawScreenQuad();
+    void DrawScreenQuad(bool flip = false);
+    void DrawBillboard(const Vec3& worldPos, const Vec3& cameraPos,                                  const Mat4& view, const Mat4& proj, 
+                                  float size);
+    
 
     
     Frustum *GetFrustum() { return m_frustum; }

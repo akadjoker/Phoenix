@@ -666,9 +666,21 @@ void Driver::DrawScreenQuad(float x, float y, float w, float h)
     m_quadRenderer.render(x, y, w, h, m_viewport.width, m_viewport.height);
 }
 
-void Driver::DrawScreenQuad()
+void Driver::DrawScreenQuad(bool flip)
 {
-    m_quadRenderer.render();
+    if (flip)
+    {
+        m_quadRenderer.renderFlip();
+    }
+    else 
+    {
+        m_quadRenderer.render();
+    }
+}
+
+void Driver::DrawBillboard(const Vec3 &worldPos, const Vec3 &cameraPos, const Mat4 &view, const Mat4 &proj, float size)
+{
+    m_quadRenderer.renderBillboard(worldPos, cameraPos, view, proj, size);
 }
 
 void Driver::SetCamera(Camera *camera)
@@ -738,6 +750,25 @@ void ScreenQuad::release()
     glDeleteBuffers(1, &quadVBO);
 }
 
+void ScreenQuad::renderFlip()
+{
+   float quadVertices[] = {
+        // positions        // texture coords
+        -1.0f,  1.0f, 0.0f,    0.0f, 1.0f,  // Top-left
+        -1.0f, -1.0f, 0.0f,    0.0f, 0.0f,  // Bottom-left
+         1.0f,  1.0f, 0.0f,    1.0f, 1.0f,  // Top-right
+         1.0f, -1.0f, 0.0f,    1.0f, 0.0f,  // Bottom-right
+    };
+
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quadVertices), quadVertices);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindVertexArray(0);
+}
+
 void ScreenQuad::render(float x, float y, float w, float h, int screenWidth, int screenHeight)
 {
     float left = (2.0f * x) / screenWidth - 1.0f;
@@ -778,8 +809,81 @@ void ScreenQuad::render(float x, float y, float w, float h, int screenWidth, int
     glBindVertexArray(0);
 }
 
+void ScreenQuad::renderBillboard(const Vec3& worldPos, const Vec3& cameraPos, 
+                                  const Mat4& view, const Mat4& proj, 
+                                  float size)
+{
+    // Extrair vetores da câmera
+    Vec3 cameraRight = Vec3(view.m[0], view.m[4], view.m[8]);
+    Vec3 cameraUp = Vec3(view.m[1], view.m[5], view.m[9]);
+    
+    // Criar 4 cantos do billboard no espaço 3D
+    Vec3 v0 = worldPos - cameraRight * size + cameraUp * size;  // Top-left
+    Vec3 v1 = worldPos - cameraRight * size - cameraUp * size;  // Bottom-left
+    Vec3 v2 = worldPos + cameraRight * size + cameraUp * size;  // Top-right
+    Vec3 v3 = worldPos + cameraRight * size - cameraUp * size;  // Bottom-right
+    
+    // Projetar para clip space
+    Mat4 vp = proj * view;
+    Vec4 p0 = vp * Vec4(v0.x, v0.y, v0.z, 1.0f);
+    Vec4 p1 = vp * Vec4(v1.x, v1.y, v1.z, 1.0f);
+    Vec4 p2 = vp * Vec4(v2.x, v2.y, v2.z, 1.0f);
+    Vec4 p3 = vp * Vec4(v3.x, v3.y, v3.z, 1.0f);
+    
+    // Converter para NDC
+    p0 = p0 / p0.w;
+    p1 = p1 / p1.w;
+    p2 = p2 / p2.w;
+    p3 = p3 / p3.w;
+    
+    float quadVertices[] = {
+        // positions (NDC)        // texture coords
+        p0.x, p0.y, p0.z,         0.0f, 1.0f,  // Top-left
+        p1.x, p1.y, p1.z,         0.0f, 0.0f,  // Bottom-left
+        p2.x, p2.y, p2.z,         1.0f, 1.0f,  // Top-right
+        p3.x, p3.y, p3.z,         1.0f, 0.0f,  // Bottom-right
+    };
+
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quadVertices), quadVertices);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindVertexArray(0);
+}
+
 void ScreenQuad::render()
 {
+   float quadVertices[] = {
+        // positions        // texture coords
+        -1.0f,
+        1.0f,
+        0.0f,
+        0.0f,
+        1.0f, // Top-left
+        -1.0f,
+        -1.0f,
+        0.0f,
+        0.0f,
+        0.0f, // Bottom-left
+        1.0f,
+        1.0f,
+        0.0f,
+        1.0f,
+        1.0f, // Top-right
+        1.0f,
+        -1.0f,
+        0.0f,
+        1.0f,
+        0.0f, // Bottom-right
+    };
+
+
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quadVertices), quadVertices);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
     glBindVertexArray(quadVAO);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glBindVertexArray(0);

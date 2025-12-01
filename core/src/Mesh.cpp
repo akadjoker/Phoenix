@@ -1598,7 +1598,8 @@ Mesh *MeshManager::CreateSphere(const std::string &name, float radius, int segme
             buffer->AddFace(i1, i2, i3);
         }
     }
-
+    mesh->m_boundBox.clear();
+    mesh->m_boundBox.merge(buffer->m_boundBox);
     buffer->CalculateNormals();
     buffer->Build();
 

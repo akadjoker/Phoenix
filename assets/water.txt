@@ -8,35 +8,24 @@ scene
     {
         object
         {
-            name "water"
+            name "sun"
             type 5
             scale 1 1 1
             rotation 0 0 0
-            position 0 0 0
+            position -5.1 34.1 10.2
             flags 1
-            renderType 5
+            renderType 3
             active true
         }
         object
         {
-            name "skyBOx"
+            name "spomnsa"
             type 5
-            scale 1 1 1
+            scale 0.04 0.04 0.04
             rotation 0 0 0
             position 0 0 0
             flags 1
-            renderType 6
-            active true
-        }
-        object
-        {
-            name "terrain"
-            type 5
-            scale 1 1 1
-            rotation 0 0 0
-            position 0 -5 0
-            flags 1
-            renderType 1
+            renderType 0
             active true
         }
         object
@@ -66,8 +55,8 @@ scene
             name "Tree"
             type 5
             scale 1 1 1
-            rotation 0 0 0
-            position -0.2 -2.3 17.7
+            rotation -0.00349066 0 0
+            position 0.2 -2.3 17.7
             flags 1
             renderType 0
             active true
@@ -178,6 +167,17 @@ scene
             scale 1 1 1
             rotation 0 -2.71669 0
             position -2.1 7.45058e-09 6.9
+            flags 1
+            renderType 0
+            active true
+        }
+        object
+        {
+            name "Cube"
+            type 5
+            scale 100 0.1 100
+            rotation 0 0 0
+            position -1.4 0 0
             flags 1
             renderType 0
             active true

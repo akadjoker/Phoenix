@@ -54,14 +54,13 @@ int main(int argc, char** argv)
     // bsp.loadFromFile(inputFile);
     // bsp.saveToFile(outputFile);
 
-    Device::Instance().Create(1,1,"test");
+ 
 
      BSP bsp;
     bsp.loadFromFile("/media/djoker/code/projects/cpp/Phoenix/bin/oa_rpg3dm2.bsp");
     bsp.saveToFile("/media/djoker/code/projects/cpp/Phoenix/bin/oa_rpg3dm2.h3d");
 
-    Device::Instance().Close();
-
+ 
 
     return 0;
 }
