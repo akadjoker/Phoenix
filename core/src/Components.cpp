@@ -100,50 +100,7 @@ void MeshM3DRenderer::attach()
         }
     }
 }
-
-//******************************************* */
-
-void Rotator::update(float deltaTime)
-{
-    if (!isEnabled())
-        return;
-
-    // Rotate GameObject
-    GameObject *owner = getOwner();
-    if (owner)
-    {
-        owner->rotateXDeg(rotationSpeed.x * deltaTime);
-        owner->rotateYDeg(rotationSpeed.y * deltaTime);
-        owner->rotateZDeg(rotationSpeed.z * deltaTime);
-    }
-}
-
-void Oscillator::start()
-
-{
-    // Store initial position
-    GameObject *owner = getOwner();
-    if (owner)
-    {
-        startPosition = owner->getPosition();
-    }
-}
-void Oscillator::update(float deltaTime)
-{
-    if (!isEnabled())
-        return;
-
-    time += deltaTime;
-
-    GameObject *owner = getOwner();
-    if (owner)
-    {
-        // Sine wave oscillation
-        float wave = std::sin(time * frequency * 2.0f * 3.14159f);
-        Vec3 offset = amplitude * wave;
-        owner->setPosition(startPosition + offset);
-    }
-}
+ 
 
 void LookAtCamera::lateUpdate(float deltaTime)
 {

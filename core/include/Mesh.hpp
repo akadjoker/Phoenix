@@ -21,7 +21,7 @@ class Object;
 class Driver;
 class RenderBatch;
 class MeshWriter;
-class MeshLoader;
+ 
 class Animator;
 class Pixmap;
 class Terrain;
@@ -38,7 +38,7 @@ struct Bone
     friend class Mesh;
     friend class MeshBuffer;
     friend class MeshWriter;
-    friend class MeshLoader;
+ 
     friend class MeshReader;
     bool hasAnimation;
     s32 parentIndex; // -1 = root
@@ -359,141 +359,7 @@ private:
     void SortByMaterial();
 };
 
-class MeshLoader
-{
-public:
-    virtual ~MeshLoader() = default;
-    virtual bool Load(Stream *stream, Mesh *mesh) = 0;
-    virtual std::vector<std::string> GetExtensions() const = 0;
-    virtual bool CanLoad(const std::string &filename) const;
-    virtual bool CanLoad(Stream *stream) const { return false; }
-
-protected:
-    bool HasExtension(const std::string &filename, const std::string &ext) const;
-    std::string m_basePath;
-};
-
-struct OBJMaterial
-{
-    std::string name;
-    Vec3 diffuse;
-    Vec3 specular;
-    float shininess;
-    std::string texture;
-};
-
-class OBJMeshLoader : public MeshLoader
-{
-public:
-    virtual bool Load(Stream *stream, Mesh *mesh) override;
-    virtual std::vector<std::string> GetExtensions() const override;
-
-private:
-    struct TempVertex
-    {
-        float x, y, z;
-    };
-    struct TempTexCoord
-    {
-        float u, v;
-    };
-    struct TempNormal
-    {
-        float nx, ny, nz;
-    };
-
-    struct FaceIndex
-    {
-        int v, vt, vn;
-        bool operator==(const FaceIndex &other) const
-        {
-            return v == other.v && vt == other.vt && vn == other.vn;
-        }
-    };
-
-    struct FaceIndexHash
-    {
-        size_t operator()(const FaceIndex &fi) const
-        {
-            return ((size_t)fi.v << 32) ^ ((size_t)fi.vt << 16) ^ (size_t)fi.vn;
-        }
-    };
-
-    void ParseLine(const std::string &line, MeshBuffer *buffer,
-                   std::vector<TempVertex> &positions,
-                   std::vector<TempTexCoord> &texcoords,
-                   std::vector<TempNormal> &normals,
-                   std::unordered_map<FaceIndex, u32, FaceIndexHash> &vertexCache,
-                   bool &hasNormals);
-
-    void ParseFace(const std::string &line, MeshBuffer *buffer,
-                   const std::vector<TempVertex> &positions,
-                   const std::vector<TempTexCoord> &texcoords,
-                   const std::vector<TempNormal> &normals,
-                   std::unordered_map<FaceIndex, u32, FaceIndexHash> &vertexCache);
-
-    bool LoadMTL(const std::string &mtlPath);
-    u32 FindMaterialID(const std::string &name);
-    std::string GetDirectory(const std::string &filepath);
-
-    std::vector<OBJMaterial> m_materials;
-    std::map<std::string, u32> m_materialMap;
-};
-
-class Loader3DS : public MeshLoader
-{
-public:
-    virtual bool Load(Stream *stream, Mesh *mesh) override;
-    virtual std::vector<std::string> GetExtensions() const override;
-
-private:
-    struct Chunk
-    {
-        u16 id;
-        u32 length;
-        u32 bytesRead;
-    };
-
-    struct Material3DS
-    {
-        std::string name;
-        float ambient[3];
-        float diffuse[3];
-        float specular[3];
-        std::string textureName;
-        u32 materialID;
-    };
-
-    struct Object3DS
-    {
-        std::string name;
-        std::vector<float> vertices;        // x,y,z
-        std::vector<u16> indices;           // triangulos
-        std::vector<float> texCoords;       // u,v
-        std::vector<std::string> materials; // material por face
-        std::vector<u32> smoothGroups;      // smooth groups
-    };
-
-    Stream *m_stream;
-    std::vector<Material3DS> m_materials;
-    std::vector<Object3DS> m_objects;
-
-    Chunk ReadChunk();
-    void SkipChunk(const Chunk &chunk);
-
-    void ProcessMainChunk();
-    void ProcessEditChunk(const Chunk &parent);
-    void ProcessObjectChunk(const Chunk &parent);
-    void ProcessMaterialChunk(const Chunk &parent);
-    void ProcessMeshChunk(Object3DS &obj, const Chunk &parent);
-
-    std::string ReadString();
-    void ReadColorChunk(float *color);
-    float ReadPercentage();
-
-    void BuildMesh(Mesh *mesh);
-    u32 FindMaterialID(const std::string &name);
-};
+ 
 
 class MeshWriter
 {
@@ -582,10 +448,7 @@ public:
 
     Mesh *Load(const std::string &name, const std::string &filename);
     bool Save(const std::string &filename, const Mesh *mesh);
-
-    void RegisterImporter(MeshLoader *loader);
-    Mesh *Import(const std::string &name, const std::string &filename);
-    Mesh *ImportFromStream(const std::string &name, Stream *stream, const std::string &extension);
+ 
 
     MeshM3D *LoadM3D(const std::string &name, const std::string &filename);
     MeshM3D *GetM3D(const std::string &name);
@@ -599,5 +462,5 @@ private:
     std::unordered_map<std::string, Mesh *> m_meshes;
     std::unordered_map<std::string, MeshM3D*> m_m3d_meshes;
 
-    std::vector<MeshLoader *> m_loaders;
+  
 };

@@ -1351,34 +1351,7 @@ void Mesh::Build()
         buffer->Build();
     }
 }
-
-bool MeshLoader::CanLoad(const std::string &filename) const
-{
-    auto extensions = GetExtensions();
-    for (const auto &ext : extensions)
-    {
-        if (HasExtension(filename, ext))
-            return true;
-    }
-    return false;
-}
-
-bool MeshLoader::HasExtension(const std::string &filename, const std::string &ext) const
-{
-    if (filename.length() < ext.length() + 1)
-        return false;
-
-    size_t pos = filename.rfind('.');
-    if (pos == std::string::npos)
-        return false;
-
-    std::string fileExt = filename.substr(pos + 1);
-
-    // Comparação case-insensitive
-    return std::equal(fileExt.begin(), fileExt.end(), ext.begin(), ext.end(),
-                      [](char a, char b)
-                      { return tolower(a) == tolower(b); });
-}
+ 
 
 MeshManager &MeshManager::Instance()
 {
@@ -2126,15 +2099,13 @@ void MeshManager::UnloadAll()
 
 MeshManager::MeshManager()
 {
-    RegisterImporter(new OBJMeshLoader());
-    RegisterImporter(new Loader3DS());
+   
 }
 
 MeshManager::~MeshManager()
 {
-    for (auto *loader : m_loaders)
-        delete loader;
-    m_loaders.clear();
+     
+ 
 }
 
 Mesh *MeshManager::Load(const std::string &name, const std::string &filename)
@@ -2155,101 +2126,8 @@ bool MeshManager::Save(const std::string &filename, const Mesh *mesh)
     return writer.Save(mesh, filename);
 }
 
-void MeshManager::RegisterImporter(MeshLoader *loader)
-{
-    m_loaders.push_back(loader);
-}
-
-Mesh *MeshManager::Import(const std::string &name, const std::string &filename)
-{
-    if (Exists(name))
-    {
-        LogWarning("[MeshManager] Mesh already exists: %s", name.c_str());
-        return Get(name);
-    }
-
-    // Encontra o loader apropriado
-    MeshLoader *loader = nullptr;
-    for (auto *l : m_loaders)
-    {
-        if (l->CanLoad(filename))
-        {
-            loader = l;
-            break;
-        }
-    }
-
-    if (!loader)
-    {
-        LogError("[MeshManager] No loader found for: %s", filename.c_str());
-        return nullptr;
-    }
-
-    // Abre o arquivo
-    FileStream stream(filename, "rb");
-    if (!stream.IsOpen())
-    {
-        LogError("[MeshManager] Failed to open file: %s", filename.c_str());
-        return nullptr;
-    }
-
-    // Cria a mesh
-    Mesh *mesh = Create(name);
-
-    // Carrega
-    if (!loader->Load(&stream, mesh))
-    {
-        delete mesh;
-        m_meshes.erase(name);
-        LogError("[MeshManager] Failed to load mesh: %s", filename.c_str());
-        return nullptr;
-    }
-
-    LogInfo("[MeshManager] Loaded: %s from: %s", name.c_str(), filename.c_str());
-
-    return mesh;
-}
-
-Mesh *MeshManager::ImportFromStream(const std::string &name, Stream *stream, const std::string &extension)
-{
-    if (Exists(name))
-        return Get(name);
-
-    MeshLoader *loader = nullptr;
-    for (auto *l : m_loaders)
-    {
-        auto exts = l->GetExtensions();
-        for (const auto &ext : exts)
-        {
-            if (ext == extension)
-            {
-                loader = l;
-                break;
-            }
-        }
-        if (loader)
-            break;
-    }
-
-    if (!loader)
-    {
-        LogError("[MeshManager] No loader found for: %s", extension.c_str());
-        return nullptr;
-    }
-
-    Mesh *mesh = Create(name);
-    if (!loader->Load(stream, mesh))
-    {
-        delete mesh;
-        m_meshes.erase(name);
-        LogError("[MeshManager] Failed to load mesh: %s", extension.c_str());
-        return nullptr;
-    }
-
-    LogInfo("[MeshManager] Loaded: %s from stream", name.c_str());
-
-    return mesh;
-}
+ 
+  
 
 MeshM3D *MeshManager::LoadM3D(const std::string &name, const std::string &filename)
 {
