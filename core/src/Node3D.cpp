@@ -121,6 +121,7 @@ void Node3D::UpdateChildren(float dt)
     {
         child->update(dt);
     }
+ 
 }
 
 void Node3D::RenderChildren(Shader *shader) const
@@ -128,6 +129,10 @@ void Node3D::RenderChildren(Shader *shader) const
     for (Node3D *child : m_children)
     {
         child->render(shader);
+    }
+    for (Node3D *joint : m_joints)
+    {
+     //   joint->render(shader);
     }
 }
 
@@ -268,6 +273,10 @@ void Node3D::markWorldDirty()
     for (Node3D *child : m_children)
     {
         child->markWorldDirty();
+    }
+    for (Node3D *joint : m_joints)
+    {
+        joint->markWorldDirty();
     }
 }
 

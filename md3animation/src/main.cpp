@@ -50,62 +50,8 @@ int main()
     }
 
 
-    MeshM3D *meshPlayerLower = MeshManager::Instance().LoadM3D("PlayerLower","assets/md3/orion/lower.md3", 1.0f);
-
-    if (!meshPlayerLower)
-    {
-        LogError("Failed to load player");
-        return false;
-    }
-
-    MeshM3D *meshPlayerUpper = MeshManager::Instance().LoadM3D("PlayerUpper","assets/md3/orion/upper.md3", 1.0f);
-
-    if (!meshPlayerUpper)
-    {
-        LogError("Failed to load player");
-        return false;
-    }
-
-    MeshM3D *meshPlayerHead = MeshManager::Instance().LoadM3D("PlayerHead","assets/md3/orion/head.md3", 0.4f);
-
-    if (!meshPlayerHead)
-    {
-        LogError("Failed to load player");
-        return false;
-    }
-
-// upper tag_head (0)
-// upper tag_fun (1)
-// upper tag_weapon (2)
-// upper tag_back (3)
-// upper tag_primary (4)
-// upper tag_second (5)
-// upper tag_funback (6)
-// upper tag_flag (7)
-// upper tag_torso (8)
-
-    GameObject player("Player");
-    GameObject playerLower("PlayerLegs");
-    playerLower.setParent(&player);
-    playerLower.rotateDeg(Vec3(0.0f, 0.0f, 1.0f), 90.0f);
-    playerLower.rotateDeg(Vec3(0.0f, 1.0f, 0.0f), 90.0f);
-    playerLower.addComponent<MeshM3DRenderer>(meshPlayerLower);
-    VertexAnimator *lowerAnimation = playerLower.addComponent<VertexAnimator>();
-    lowerAnimation->AddAnimation("WALK", 385, 385 + 20, 11.0f, true);
-    lowerAnimation->PlayAnimation("WALK");
-    
-    GameObject playerUpper("PlayerTorso");
-    playerUpper.setParent(playerLower.getJoint(1));
-    playerUpper.addComponent<MeshM3DRenderer>(meshPlayerUpper);
-    VertexAnimator *upperAnimation = playerUpper.addComponent<VertexAnimator>();
-    upperAnimation->AddAnimation("STAND_PISTOL", 458, 458, 15, true);
-    upperAnimation->AddAnimation("POINT", 653, 653 + 38, 15.0f, true);
-    upperAnimation->PlayAnimation("STAND_PISTOL");
-
-    GameObject playerHead("PlayerHead");
-    playerHead.setParent(playerUpper.getJoint(1));
-    playerHead.addComponent<MeshM3DRenderer>(meshPlayerHead);
-
+  
+ 
     
 
 
@@ -117,43 +63,24 @@ int main()
         return false;
     }
 
-    MeshM3D *cigar = MeshManager::Instance().LoadM3D("Cigar","assets/md3/cigar/cigar_r_3_1.md3", 0.5f);
+ 
 
-    MeshM3D *specs[5];
+    MeshM3D *specs[8];
 
-    specs[0] = MeshManager::Instance().LoadM3D("Main","assets/md3/beretta/beretta.md3", 30.0f);
+    specs[0] = MeshManager::Instance().LoadM3D("Main","assets/md3/beretta/beretta_view_main.md3", 30.0f);
     specs[1] = MeshManager::Instance().LoadM3D("Slide","assets/md3/beretta/beretta_view_slide.md3", 25.0f);
     specs[2] = MeshManager::Instance().LoadM3D("Clip","assets/md3/beretta/beretta_view_clip.md3", 6.0f);
     specs[3] = MeshManager::Instance().LoadM3D("Safety","assets/md3/beretta/beretta_view_safety.md3", 1.0f);
     specs[4] = MeshManager::Instance().LoadM3D("Sliderel","assets/md3/beretta/beretta_view_sliderel.md3", 1.0f);
+    specs[5] = MeshManager::Instance().LoadM3D("cock","assets/md3/beretta/beretta_view_cock.md3", 1.0f);
+    specs[6] = MeshManager::Instance().LoadM3D("trigger","assets/md3/beretta/beretta_view_trigger.md3", 1.0f);
+
 
     
-
-    
-
  
 
     TextureManager::Instance().SetLoadPath("assets/");
     TextureManager::Instance().SetFlipVerticalOnLoad(false);
-
-    {
-        Material *material = meshPlayerHead->GetMaterial(0);
-        material->SetTexture(0, TextureManager::Instance().Add("md3/orion/head_free_b.png"));
-        
-    }
-    {
-        Material *material = meshPlayerUpper->GetMaterial(0);
-        material->SetTexture(0, TextureManager::Instance().Add("md3/orion/upper_free_b.png"));
-        
-    }
-    {
-        Material *material = meshPlayerLower->GetMaterial(0);
-        material->SetTexture(0, TextureManager::Instance().Add("md3/orion/lower_free_b.png"));
-    }
-    {
-        Material *material = cigar->GetMaterial(0);
-       material->SetTexture(0, TextureManager::Instance().Add("md3/cigar/cigar1.png"));
-    }
     
     Material *mat = berreta->GetMaterial(0);
     mat->SetTexture(0, TextureManager::Instance().Add("md3/hand_free.tga"));
@@ -171,45 +98,19 @@ int main()
     mat->SetTexture(0, TextureManager::Instance().Add("md3/beretta/beretta.tga"));
     mat = specs[4]->GetMaterial(0);
     mat->SetTexture(0, TextureManager::Instance().Add("md3/beretta/beretta.tga"));
+    mat = specs[5]->GetMaterial(0);
+    mat->SetTexture(0, TextureManager::Instance().Add("md3/beretta/beretta.tga"));
+    mat = specs[6]->GetMaterial(0);
+    mat->SetTexture(0, TextureManager::Instance().Add("md3/beretta/beretta.tga"));
     
-    GameObject playerGunHold("playergunhold");
-    playerGunHold.setParent(playerUpper.getJoint(2));
-  //  playerGunHold.setScale(0.010f);
-    
-    
-    GameObject playrgun("playergun");
-    playrgun.setParent(&playerGunHold);
-    playrgun.addComponent<MeshM3DRenderer>(specs[0]);
-    playrgun.setScale(0.0115f);
-    playrgun.setPosition(-0.055f, 0.0f, 0.025f);
-
-    GameObject playerCigarHold("playergunhold");
-    playerCigarHold.setParent(playerUpper.getJoint(1));
-
-    GameObject playCigar("playercigar");
-    playCigar.setParent(&playerCigarHold);
-    playCigar.addComponent<MeshM3DRenderer>(cigar);
-    playCigar.setPosition(-0.05f, 0.0f, -0.025f);
-    playCigar.setScale(0.6f);
-    //playCigar.rotateDeg(Vec3(0.0f, 0.0f, 1.0f), 90.0f);
-   // playCigar.rotateDeg(Vec3(0.0f, 1.0f, 0.0f), 90.0f);
-
-    //playCigar.setScale(0.0115f);
-    //playCigar.setPosition(-0.055f, 0.0f, 0.025f);
-    
-// INFO: [18:33:18]: Tag: tag_head (0)
-// INFO: [18:33:18]: Tag: tag_fun (1)
-// INFO: [18:33:18]: Tag: tag_weapon (2)
-// INFO: [18:33:18]: Tag: tag_back (3)
-// INFO: [18:33:18]: Tag: tag_primary (4)
-// INFO: [18:33:18]: Tag: tag_second (5)
-// INFO: [18:33:18]: Tag: tag_funback (6)
-// INFO: [18:33:18]: Tag: tag_flag (7)
-// INFO: [18:33:18]: Tag: tag_torso (8)
+    GameObject mainGgun("gun");
+   // mainGgun.setParent(&camera);
 
     GameObject gun("gun");
-    gun.setParent(&camera);
+    gun.setParent(&mainGgun);
     gun.addComponent<MeshM3DRenderer>(berreta);
+
+
     VertexAnimator *animator = gun.addComponent<VertexAnimator>();
     animator->AddAnimation("draw", 0, 54,15, false);
     animator->AddAnimation("idle", 44,45,10, true);
@@ -217,24 +118,49 @@ int main()
     animator->AddAnimation("reload", 75,75 +48,28, false);
     animator->PlayAnimationThen("draw", "idle", false);
 
+
     GameObject gunMain("gunMain");
     gunMain.setParent(gun.getJoint(7));
     gunMain.addComponent<MeshM3DRenderer>(specs[0]);
+//    gunMain.scale(Vec3(0.2f));
 
     GameObject gunSlide("gunSlide");
     gunSlide.setParent(gun.getJoint(5));
     gunSlide.addComponent<MeshM3DRenderer>(specs[1]);
+    gunSlide.scale(Vec3(0.2f));
+    gunSlide.translate(Vec3(0.0f, 0.0f,-1.4f));
+
 
     GameObject gunClip("gunClip");
     gunClip.setParent(gun.getJoint(2));
     gunClip.addComponent<MeshM3DRenderer>(specs[2]);
+    gunClip.scale(Vec3(0.3f));
+    gunClip.translate(Vec3(0.0f, 0.0f,-1.5f));
 
+    
     GameObject gunSafety("gunSafety");
     gunSafety.setParent(gun.getJoint(4));
     gunSafety.addComponent<MeshM3DRenderer>(specs[3]);
+    
 
+    
+    GameObject sliderel("sliderel");
+    sliderel.setParent(gun.getJoint(1));
+    sliderel.addComponent<MeshM3DRenderer>(specs[4]);
 
+    
 
+    
+    GameObject cock("cock");
+    cock.setParent(gun.getJoint(0));
+    cock.addComponent<MeshM3DRenderer>(specs[5]);
+
+    
+    
+    GameObject trigger("trigger");
+    trigger.setParent(gun.getJoint(3));
+    trigger.addComponent<MeshM3DRenderer>(specs[6]);
+    
 
 
         //  Tag: tag_cock (0)
@@ -253,7 +179,7 @@ int main()
 
 
 
-    gun.scale(Vec3(0.01f));
+    gun.scale(Vec3(0.1f));
     gun.rotateDeg(Vec3(0.0f, 0.0f, 1.0f), 90.0f);
     gun.rotateDeg(Vec3(0.0f, 1.0f, 0.0f), 90.0f);
     gun.setPosition(Vec3(0.0f, -0.08f, -0.3f));
@@ -299,7 +225,9 @@ int main()
         }
 
         camera.update(dt);
- 
+        mainGgun.update(dt);
+        // sliderel.update(dt);
+        // trigger.update(dt);
  
         const Mat4 &view = camera.getViewMatrix();
         const Mat4 &proj = camera.getProjectionMatrix();
@@ -327,17 +255,11 @@ int main()
         sceneShader->SetUniform("diffuse", 0);
 
  
-        player.update(dt);
-   
         
         
-      
-  
-        {
-        const Mat4 &model = gun.getWorldTransform();
-        sceneShader->SetUniformMat4("model", model.m);
-        gun.render(sceneShader);
-        }
+       
+        mainGgun.render(sceneShader);
+ 
  
        
 

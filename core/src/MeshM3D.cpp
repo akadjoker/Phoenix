@@ -96,9 +96,9 @@ bool MeshM3D::Load(const std::string &filename, float scale)
             file.Read(&strName[0], 64);
             tag.name = strName;
 
-            tag.position.x = file.ReadFloat() * m_scale;
-            tag.position.y = file.ReadFloat() * m_scale;
-            tag.position.z = file.ReadFloat() * m_scale;
+            tag.position.x = file.ReadFloat() ;
+            tag.position.y = file.ReadFloat() ;
+            tag.position.z = file.ReadFloat() ;
             tag.axes[0].x = file.ReadFloat();
             tag.axes[0].y = file.ReadFloat();
             tag.axes[0].z = file.ReadFloat();
@@ -183,8 +183,9 @@ bool MeshM3D::Load(const std::string &filename, float scale)
 
                 Vec3 normal = DecodeNormal(lat, lng);
                 surface.normals.push_back(normal);
-                surface.positions.push_back(Vec3(x * m_scale, y * m_scale, z * m_scale));
-                m_boundBox.expand(Vec3(x * m_scale, y * m_scale, z * m_scale));
+                Vec3 position = Vec3(x , y , z );
+                surface.positions.push_back(position);
+                m_boundBox.expand(position);
             }
 
             //  surface.bounds.min = surface.vertices[0];
