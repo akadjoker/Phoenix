@@ -2,6 +2,8 @@
 #include "Shader.hpp"
 #include "Driver.hpp"
 
+const char* MODEL = "model";
+
 u32 CompileShader(GLenum stage, const char *source)
 {
     u32 s = glCreateShader(stage);
@@ -203,6 +205,13 @@ void Shader::SetUniformMat4(const char *name, const float *m, bool transpose) co
     GLint loc = GetUniformLocation(name);
     if (loc >= 0)
         glUniformMatrix4fv(loc, 1, transpose ? GL_TRUE : GL_FALSE, m);
+}
+
+void Shader::SetModelMat4( const float *m) const
+{
+    GLint loc = GetUniformLocation(MODEL);
+    if (loc >= 0)
+        glUniformMatrix4fv(loc, 1,  GL_FALSE, m);
 }
 
 void Shader::SetTexture2D(const char *samplerName, u32 texture, int unit) const

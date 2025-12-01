@@ -219,14 +219,12 @@ public:
     void SetTexture(u32 layer, Texture *texture);
     void SetMaterialTexture(u32 material, u32 layer, Texture *texture);
     u32 GetMaterialCount() const { return materials.size(); }
-
-    const BoundingBox &GetBoundingBox() const { return m_boundBox; }
-    BoundingBox &GetBoundingBox() { return m_boundBox; }
+ 
 
     virtual void Clear() {};
     virtual void Build() {};
     virtual void Render() {};
-    virtual void CalculateBoundingBox() {};
+
     virtual void Debug(RenderBatch *batch) { (void)batch; };
 };
 

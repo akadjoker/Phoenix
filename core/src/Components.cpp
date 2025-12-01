@@ -8,7 +8,7 @@
 #include "GameObject.hpp"
 #include "Mesh.hpp"
 
-void MeshRenderer::render()
+void MeshRenderer::render(Shader *shader)
 {
     if (!visible || !isEnabled())
         return;
@@ -16,6 +16,9 @@ void MeshRenderer::render()
     {
         if (mesh->IsSkinned())
             UpdateSkinning();
+
+        const Mat4 &mat =m_owner->getWorldTransform(); 
+        shader->SetModelMat4(mat.m);
 
         // LogInfo("[MeshRenderer] render %s", mesh->getName().c_str());
         Driver::Instance().DrawMesh(mesh);
@@ -60,12 +63,15 @@ void MeshRenderer::attach()
 
 //******************************************* */
 
-void MeshM3DRenderer::render()
+void MeshM3DRenderer::render( Shader *shader)
 {
     if (!visible || !isEnabled())
         return;
     if (mesh)
     {
+        const Mat4 &mat =m_owner->getWorldTransform(); 
+        shader->SetModelMat4(mat.m);
+
         mesh->Render();
     }
 }

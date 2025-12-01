@@ -18,6 +18,7 @@ class Animator;
 class Node3D;
 class Joint3D;
 class Mesh;
+class Shader;
 
 enum class TransformSpace
 {
@@ -85,7 +86,7 @@ protected:
     void CreateJoints(Mesh *mesh);
 
     void UpdateChildren(float dt);
-    void RenderChildren() const;
+    void RenderChildren(Shader *shader) const;
 public:
     Node3D(const std::string &name = "Node3D");
     virtual ~Node3D();
@@ -158,8 +159,8 @@ public:
     virtual const Mat4 &getWorldTransform() const;
 
 
-    virtual void update(float deltaTime) override {};
-    virtual void render() override {}
+    virtual void update(float deltaTime) override ;
+    virtual void render(Shader *shader) override ;
 
     void setParent(Node3D *parent);
     Node3D *getParent() const { return m_parent; }

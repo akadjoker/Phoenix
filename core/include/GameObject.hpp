@@ -14,6 +14,9 @@
  * GameObject extends Node3D and adds a component system for composition.
  * Components can be added/removed dynamically to add functionality.
  */
+
+class Shader;
+
 class GameObject : public Node3D
 {
 private:
@@ -124,7 +127,7 @@ private:
     /**
      * @brief Renders GameObject and all components
      */
-    void render() override;
+    void render(Shader *shader) override;
 
 private:
     void destroyComponent(Component* component);

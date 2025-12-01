@@ -427,7 +427,7 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
       //  Mat4 model = Mat4::Identity();
         const Mat4 model = object->getWorldTransform();
         shader->SetUniformMat4("model", model.m);
-        object->render();
+        object->render(shader);
     }
 
     // Restaura depth func

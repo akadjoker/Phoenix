@@ -36,9 +36,7 @@ void Animator::attach()
     meshRenderer = m_owner->getComponent<MeshRenderer>();
     m_mesh = meshRenderer->getMesh();
 }
-void Animator::render()
-{
-}
+ 
 
 void Animator::update(float deltaTime)
 {

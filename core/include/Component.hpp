@@ -4,6 +4,7 @@
 
 
 class GameObject;
+class Shader;
 
 class Component
 {
@@ -59,7 +60,7 @@ public:
     /**
      * @brief Called every frame for rendering
      */
-    virtual void render() {}
+    virtual void render(Shader *shader) { (void)shader; }
     
     /**
      * @brief Called when component is enabled

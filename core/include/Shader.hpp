@@ -4,6 +4,10 @@
 #include <unordered_map>
 #include <cstdint>
 
+
+
+
+
 class Shader
 {
 public:
@@ -37,6 +41,7 @@ public:
 
     void SetUniformMat3(const char *name, const float *m, bool transpose = false) const;
     void SetUniformMat4(const char *name, const float *m, bool transpose = false) const;
+    void SetModelMat4(  const float *m ) const;
 
     void SetTexture2D(const char *samplerName, u32 texture, int unit) const;
 

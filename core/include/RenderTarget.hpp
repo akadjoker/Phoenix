@@ -402,10 +402,7 @@ private:
     std::unordered_map<std::string, ArrayRenderTarget *> m_arrayTargets;
 };
 
-#pragma once
-#include "Core.hpp"
-#include <limits>
-#include <vector>
+ 
 
 class ShadowMapManager
 {

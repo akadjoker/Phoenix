@@ -13,6 +13,8 @@
  * All objects in the scene (3D objects, cameras, lights, UI elements) inherit from Node.
  */
 
+ class Shader;
+
 enum class RenderType : u8
 {
     Solid = 0,
@@ -29,12 +31,16 @@ enum class RenderType : u8
 class Spatial : public Object
 {
 protected:
-    BoundingBox m_boundBox;
+   mutable BoundingBox m_boundBox;
+    mutable BoundingBox m_boundTransBox;
 public:
     Spatial(const std::string &name = "Spatial") : Object(name) {}
     virtual ~Spatial() = default;
     BoundingBox getBoundingBox() { return m_boundBox; }
     const BoundingBox &getBoundingBox() const { return m_boundBox; }
+    
+    const BoundingBox &getTransformedBoundingBox() const { return m_boundTransBox; }
+    virtual void CalculateBoundingBox() {};
 };
 
 class Node : public Spatial
@@ -52,7 +58,7 @@ public:
 
     virtual void ready() {}
     virtual void update(float deltaTime) {}
-    virtual void render() {}
+    virtual void render(Shader *shader) {(void)shader;}
 
     void show();
     void hide();

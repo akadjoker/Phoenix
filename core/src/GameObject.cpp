@@ -78,10 +78,10 @@ void GameObject::start()
 void GameObject::update(float deltaTime)
 {
     
-    updateWorldTransform();
+   
     
     
-    UpdateChildren(deltaTime);
+   Node3D::update(deltaTime);
 
    // LogInfo("[GameObject] update %s", getName().c_str());
     
@@ -113,10 +113,10 @@ void GameObject::lateUpdate(float deltaTime)
     }
 }
 
-void GameObject::render()
+void GameObject::render(Shader *shader)
 {
      
-    Node3D::render();
+    Node3D::render(shader);
 
     //LogInfo("[GameObject] render %s", getName().c_str());
     
@@ -125,7 +125,7 @@ void GameObject::render()
     {
         if (component->isEnabled())
         {
-            component->render();
+            component->render(shader);
         }
     }
 }

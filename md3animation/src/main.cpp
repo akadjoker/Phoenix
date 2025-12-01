@@ -131,8 +131,7 @@ int main()
 
     
 
-
-    Mesh *cube = MeshManager::Instance().CreateCube("Cube", 0.1f);
+ 
 
     TextureManager::Instance().SetLoadPath("assets/");
     TextureManager::Instance().SetFlipVerticalOnLoad(false);
@@ -259,6 +258,7 @@ int main()
     gun.rotateDeg(Vec3(0.0f, 1.0f, 0.0f), 90.0f);
     gun.setPosition(Vec3(0.0f, -0.08f, -0.3f));
 
+ 
 
     int shots = 0; 
 
@@ -326,68 +326,20 @@ int main()
         sceneShader->SetUniform("useClipPlane", 0);
         sceneShader->SetUniform("diffuse", 0);
 
-        gun.update(dt);
+ 
         player.update(dt);
-        playerLower.update(dt);
-        playerUpper.update(dt);
-        playerHead.update(dt);
+   
         
         
+      
   
-        
+        {
         const Mat4 &model = gun.getWorldTransform();
         sceneShader->SetUniformMat4("model", model.m);
-        gun.render();
-        
-
-        {
-        const Mat4& model = gunMain.getWorldTransform();
-        sceneShader->SetUniformMat4("model", model.m);
-        gunMain.render();
+        gun.render(sceneShader);
         }
-
-        {
-            const Mat4& model = gunSlide.getWorldTransform();
-            sceneShader->SetUniformMat4("model", model.m);
-            gunSlide.render();
-        }
-        
-        {
-            const Mat4& model = gunClip.getWorldTransform();
-            sceneShader->SetUniformMat4("model", model.m);
-            gunClip.render();
-        }
-    
-        {
-            const Mat4& model = gunSafety.getWorldTransform();
-            sceneShader->SetUniformMat4("model", model.m);
-            gunSafety.render();
-        }
-        {
-            const Mat4& model = playerLower.getWorldTransform();
-            sceneShader->SetUniformMat4("model", model.m);
-            playerLower.render();
-        }
-        {
-            const Mat4& model = playerUpper.getWorldTransform();
-            sceneShader->SetUniformMat4("model", model.m);
-            playerUpper.render();
-        }
-        {
-            const Mat4& model = playerHead.getWorldTransform();
-            sceneShader->SetUniformMat4("model", model.m);
-            playerHead.render();
-        }
-        {
-            const Mat4& model = playrgun.getWorldTransform();
-            sceneShader->SetUniformMat4("model", model.m);
-            playrgun.render();
-        }
-        {
-            const Mat4& model = playCigar.getWorldTransform();
-            sceneShader->SetUniformMat4("model", model.m);
-            playCigar.render();
-        }
+ 
+       
 
 
         if(Input::IsMouseDown(MouseButton::LEFT))

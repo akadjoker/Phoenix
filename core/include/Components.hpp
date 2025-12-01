@@ -8,6 +8,7 @@ class Mesh;
 class Terrain;
 class Animator;
 class M3dMesh;
+class Shader;
 
 // ============================================================================
 // MeshRenderer - Renders a mesh
@@ -31,7 +32,7 @@ public:
 
     void attach() override;
 
-    void render() override;
+    void render(Shader *shader) override;
 
     
 
@@ -62,7 +63,7 @@ public:
 
     void attach() override;
 
-    void render() override;
+    void render( Shader *shader) override;
 
     
 

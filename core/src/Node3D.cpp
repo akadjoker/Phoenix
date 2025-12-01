@@ -2,6 +2,7 @@
 #include "Node3D.hpp"
 #include "Mesh.hpp"
 #include "Utils.hpp"
+#include "Shader.hpp"
 
 Joint3D *Node3D::addJoint(const std::string &name)
 {
@@ -122,11 +123,11 @@ void Node3D::UpdateChildren(float dt)
     }
 }
 
-void Node3D::RenderChildren() const
+void Node3D::RenderChildren(Shader *shader) const
 {
     for (Node3D *child : m_children)
     {
-        child->render();
+        child->render(shader);
     }
 }
 
@@ -636,6 +637,18 @@ const Mat4 &Node3D::getWorldTransform() const
         updateWorldTransform();
 
     return m_worldTransform;
+}
+
+void Node3D::update(float deltaTime)
+{
+    UpdateChildren(deltaTime);
+}
+
+void Node3D::render(Shader *shader)
+{
+    const Mat4 &mat = getWorldTransform(); 
+    shader->SetModelMat4(mat.m);
+    RenderChildren( shader);
 }
 
 // Hierarquia

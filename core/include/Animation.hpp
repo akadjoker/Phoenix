@@ -214,7 +214,7 @@ public:
 
     void attach() override;
 
-    void render() override;
+ 
 
 
     AnimationLayer *AddLayer();

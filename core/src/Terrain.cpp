@@ -235,7 +235,7 @@ void Terrain::ApplyMaterial()
     }
 }
 
-void Terrain::render()
+void Terrain::render(Shader *shader)
 {
     if (m_blocks.empty())
         return;
@@ -245,6 +245,11 @@ void Terrain::render()
 
     // if (!frustum->intersectsAABB(box))
     //     return;
+
+
+    const Mat4 &mat = getWorldTransform(); 
+    shader->SetModelMat4(mat.m);
+
 
     ApplyMaterial();
 
@@ -945,7 +950,7 @@ bool TerrainLod::ValidateTerrainData() const
     return true;
 }
 
-void TerrainLod::render()
+void TerrainLod::render(Shader *shader)
 {
     if (!ValidateTerrainData())
     {
@@ -958,6 +963,8 @@ void TerrainLod::render()
 
         return;
     }
+    const Mat4 &mat = getWorldTransform(); 
+    shader->SetModelMat4(mat.m);
 
     ApplyMaterial();
     Driver::Instance().DrawMeshBuffer(meshBuffer, PrimitiveType::PT_TRIANGLES, m_indicesToRender);
