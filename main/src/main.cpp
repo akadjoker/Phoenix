@@ -38,12 +38,12 @@ public:
         sceneShader->SetUniform("lightPos", lightPos.x, lightPos.y, lightPos.z);
         sceneShader->SetUniform("viewPos", cameraPos.x, cameraPos.y, cameraPos.z);
  
-        renderPass(sceneShader, RenderType::Solid);
+        renderPass(sceneShader, RenderType::Solid,false);
 
        // renderAll(sceneShader);
    
 
-        
+         
 
 
 

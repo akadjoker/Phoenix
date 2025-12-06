@@ -8,7 +8,7 @@
 #include "GameObject.hpp"
 #include "Mesh.hpp"
 
-void MeshRenderer::render(Shader *shader)
+void MeshRenderer::render(Shader *shader, bool useMaterial)
 {
     if (!visible || !isEnabled())
         return;
@@ -21,7 +21,7 @@ void MeshRenderer::render(Shader *shader)
         shader->SetModelMat4(mat.m);
 
         // LogInfo("[MeshRenderer] render %s", mesh->getName().c_str());
-        Driver::Instance().DrawMesh(mesh);
+        Driver::Instance().DrawMesh(mesh, useMaterial);
     }
 }
 
@@ -63,7 +63,7 @@ void MeshRenderer::attach()
 
 //******************************************* */
 
-void MeshM3DRenderer::render( Shader *shader)
+void MeshM3DRenderer::render( Shader *shader, bool useMaterial)
 {
     if (!visible || !isEnabled())
         return;

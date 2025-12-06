@@ -235,7 +235,7 @@ void Terrain::ApplyMaterial()
     }
 }
 
-void Terrain::render(Shader *shader)
+void Terrain::render(Shader *shader, bool useMaterial)
 {
     if (m_blocks.empty())
         return;
@@ -250,8 +250,8 @@ void Terrain::render(Shader *shader)
     const Mat4 &mat = getWorldTransform(); 
     shader->SetModelMat4(mat.m);
 
-
-    ApplyMaterial();
+    if (useMaterial)
+        ApplyMaterial();
 
     for (auto *block : m_blocks)
     {
@@ -950,7 +950,7 @@ bool TerrainLod::ValidateTerrainData() const
     return true;
 }
 
-void TerrainLod::render(Shader *shader)
+void TerrainLod::render(Shader *shader, bool useMaterial)
 {
     if (!ValidateTerrainData())
     {
@@ -966,7 +966,9 @@ void TerrainLod::render(Shader *shader)
     const Mat4 &mat = getWorldTransform(); 
     shader->SetModelMat4(mat.m);
 
-    ApplyMaterial();
+    if (useMaterial)
+        ApplyMaterial();
+    
     Driver::Instance().DrawMeshBuffer(meshBuffer, PrimitiveType::PT_TRIANGLES, m_indicesToRender);
 }
 

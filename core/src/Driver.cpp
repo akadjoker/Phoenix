@@ -76,8 +76,7 @@ Driver &Driver::Instance()
     return instance;
 }
 
-
-void Driver::DrawVertexArray(VertexArray *buffer,u32 vertex,u32 count,PrimitiveType type)
+void Driver::DrawVertexArray(VertexArray *buffer, u32 vertex, u32 count, PrimitiveType type)
 {
     m_countDrawCall++;
     m_countVertex += vertex;
@@ -103,32 +102,29 @@ void Driver::DrawMeshBuffer(MeshBuffer *meshBuffer, PrimitiveType type, u32 coun
     meshBuffer->Render(type, count);
 }
 
-void Driver::DrawMesh(Mesh *mesh)
+void Driver::DrawMesh(Mesh *mesh, bool use_material)
 {
     m_countMesh++;
 
     const u32 count = mesh->GetBufferCount();
     for (u32 i = 0; i < count; i++)
     {
-        const int materialID = mesh->GetBuffer(i)->GetMaterial();
-        if (materialID >= 0 && materialID < (int)mesh->GetMaterialCount())
+        if (use_material)
         {
-            const u8 layer = mesh->GetMaterial(materialID)->GetLayers();
-            for (u8 i = 0; i < layer; i++)
+
+            const int materialID = mesh->GetBuffer(i)->GetMaterial();
+            if (materialID >= 0 && materialID < (int)mesh->GetMaterialCount())
             {
-                const Texture *texture = mesh->GetMaterial(materialID)->GetTexture(i);
-                if (texture)
+                const u8 layer = mesh->GetMaterial(materialID)->GetLayers();
+                for (u8 i = 0; i < layer; i++)
                 {
-                   // glActiveTexture(GL_TEXTURE0 + i);
-                   // glBindTexture(GL_TEXTURE_2D, texture->GetHandle());
-
-
-                    
-                    texture->Bind(i);
+                    const Texture *texture = mesh->GetMaterial(materialID)->GetTexture(i);
+                    if (texture)
+                    {
+                        texture->Bind(i);
+                    }
                 }
             }
-           // if (layer>1)
-          //      LogInfo("[Mesh] Using material %u layer %u", materialID, layer);
         }
         DrawMeshBuffer(mesh->GetBuffer(i));
     }
@@ -139,7 +135,7 @@ void Driver::DrawElements(u32 mode, u32 count, u32 type, const void *indices)
     m_countDrawCall++;
 
     m_countTriangle += CalculatePrimitiveCount(static_cast<PrimitiveType>(mode), count);
-    
+
     CHECK_GL_ERROR(glDrawElements(mode, count, type, indices));
 }
 
@@ -154,7 +150,6 @@ void Driver::DrawArrays(u32 mode, u32 first, u32 count)
 Driver::Driver()
 {
     m_frustum = new Frustum();
-    
 }
 
 Driver::~Driver()
@@ -490,10 +485,9 @@ void Driver::BindTexture(u32 unit, u32 target, u32 tex)
 
     ActiveTextureUnit(unit);
 
-    //glActiveTexture(GL_TEXTURE0 + unit);
-    // glBindTexture(GL_TEXTURE_2D, tex);
-    // m_countTextures++;
-                
+    // glActiveTexture(GL_TEXTURE0 + unit);
+    //  glBindTexture(GL_TEXTURE_2D, tex);
+    //  m_countTextures++;
 
     u32 *cachedTex = nullptr;
     switch (target)
@@ -503,7 +497,7 @@ void Driver::BindTexture(u32 unit, u32 target, u32 tex)
         break;
     case GL_TEXTURE_CUBE_MAP:
     {
-       // LogInfo("[TEXTURE] ? [ID %i] Bound to unit %i", tex, unit);
+        // LogInfo("[TEXTURE] ? [ID %i] Bound to unit %i", tex, unit);
         cachedTex = &m_textureUnits[unit].texCube;
         break;
     }
@@ -513,7 +507,7 @@ void Driver::BindTexture(u32 unit, u32 target, u32 tex)
     default:
     {
         glBindTexture(target, tex);
-     //   LogInfo("[TEXTURE] ? [ID %i] Bound to unit %i", tex, unit);
+        //   LogInfo("[TEXTURE] ? [ID %i] Bound to unit %i", tex, unit);
 
         return;
     }
@@ -672,7 +666,7 @@ void Driver::DrawScreenQuad(bool flip)
     {
         m_quadRenderer.renderFlip();
     }
-    else 
+    else
     {
         m_quadRenderer.render();
     }
@@ -752,12 +746,28 @@ void ScreenQuad::release()
 
 void ScreenQuad::renderFlip()
 {
-   float quadVertices[] = {
+    float quadVertices[] = {
         // positions        // texture coords
-        -1.0f,  1.0f, 0.0f,    0.0f, 1.0f,  // Top-left
-        -1.0f, -1.0f, 0.0f,    0.0f, 0.0f,  // Bottom-left
-         1.0f,  1.0f, 0.0f,    1.0f, 1.0f,  // Top-right
-         1.0f, -1.0f, 0.0f,    1.0f, 0.0f,  // Bottom-right
+        -1.0f,
+        1.0f,
+        0.0f,
+        0.0f,
+        1.0f, // Top-left
+        -1.0f,
+        -1.0f,
+        0.0f,
+        0.0f,
+        0.0f, // Bottom-left
+        1.0f,
+        1.0f,
+        0.0f,
+        1.0f,
+        1.0f, // Top-right
+        1.0f,
+        -1.0f,
+        0.0f,
+        1.0f,
+        0.0f, // Bottom-right
     };
 
     glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
@@ -809,39 +819,55 @@ void ScreenQuad::render(float x, float y, float w, float h, int screenWidth, int
     glBindVertexArray(0);
 }
 
-void ScreenQuad::renderBillboard(const Vec3& worldPos, const Vec3& cameraPos, 
-                                  const Mat4& view, const Mat4& proj, 
-                                  float size)
+void ScreenQuad::renderBillboard(const Vec3 &worldPos, const Vec3 &cameraPos,
+                                 const Mat4 &view, const Mat4 &proj,
+                                 float size)
 {
     // Extrair vetores da câmera
     Vec3 cameraRight = Vec3(view.m[0], view.m[4], view.m[8]);
     Vec3 cameraUp = Vec3(view.m[1], view.m[5], view.m[9]);
-    
+
     // Criar 4 cantos do billboard no espaço 3D
-    Vec3 v0 = worldPos - cameraRight * size + cameraUp * size;  // Top-left
-    Vec3 v1 = worldPos - cameraRight * size - cameraUp * size;  // Bottom-left
-    Vec3 v2 = worldPos + cameraRight * size + cameraUp * size;  // Top-right
-    Vec3 v3 = worldPos + cameraRight * size - cameraUp * size;  // Bottom-right
-    
+    Vec3 v0 = worldPos - cameraRight * size + cameraUp * size; // Top-left
+    Vec3 v1 = worldPos - cameraRight * size - cameraUp * size; // Bottom-left
+    Vec3 v2 = worldPos + cameraRight * size + cameraUp * size; // Top-right
+    Vec3 v3 = worldPos + cameraRight * size - cameraUp * size; // Bottom-right
+
     // Projetar para clip space
     Mat4 vp = proj * view;
     Vec4 p0 = vp * Vec4(v0.x, v0.y, v0.z, 1.0f);
     Vec4 p1 = vp * Vec4(v1.x, v1.y, v1.z, 1.0f);
     Vec4 p2 = vp * Vec4(v2.x, v2.y, v2.z, 1.0f);
     Vec4 p3 = vp * Vec4(v3.x, v3.y, v3.z, 1.0f);
-    
+
     // Converter para NDC
     p0 = p0 / p0.w;
     p1 = p1 / p1.w;
     p2 = p2 / p2.w;
     p3 = p3 / p3.w;
-    
+
     float quadVertices[] = {
         // positions (NDC)        // texture coords
-        p0.x, p0.y, p0.z,         0.0f, 1.0f,  // Top-left
-        p1.x, p1.y, p1.z,         0.0f, 0.0f,  // Bottom-left
-        p2.x, p2.y, p2.z,         1.0f, 1.0f,  // Top-right
-        p3.x, p3.y, p3.z,         1.0f, 0.0f,  // Bottom-right
+        p0.x,
+        p0.y,
+        p0.z,
+        0.0f,
+        1.0f, // Top-left
+        p1.x,
+        p1.y,
+        p1.z,
+        0.0f,
+        0.0f, // Bottom-left
+        p2.x,
+        p2.y,
+        p2.z,
+        1.0f,
+        1.0f, // Top-right
+        p3.x,
+        p3.y,
+        p3.z,
+        1.0f,
+        0.0f, // Bottom-right
     };
 
     glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
@@ -855,7 +881,7 @@ void ScreenQuad::renderBillboard(const Vec3& worldPos, const Vec3& cameraPos,
 
 void ScreenQuad::render()
 {
-   float quadVertices[] = {
+    float quadVertices[] = {
         // positions        // texture coords
         -1.0f,
         1.0f,
@@ -878,7 +904,6 @@ void ScreenQuad::render()
         1.0f,
         0.0f, // Bottom-right
     };
-
 
     glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(quadVertices), quadVertices);

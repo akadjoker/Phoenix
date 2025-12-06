@@ -183,7 +183,7 @@ public:
     
  
     void update(float deltaTime) override;
-    void render(Shader* shader) override;
+    void render(Shader* shader, bool useMaterial=false) override;
     
     
     void RenderParticles(const Mat4& view, const Mat4& proj);

@@ -124,11 +124,11 @@ void Node3D::UpdateChildren(float dt)
  
 }
 
-void Node3D::RenderChildren(Shader *shader) const
+void Node3D::RenderChildren(Shader *shader, bool useMaterial) const
 {
     for (Node3D *child : m_children)
     {
-        child->render(shader);
+        child->render(shader, useMaterial);
     }
 }
 
@@ -649,11 +649,11 @@ void Node3D::update(float deltaTime)
     UpdateChildren(deltaTime);
 }
 
-void Node3D::render(Shader *shader)
+void Node3D::render(Shader *shader, bool useMaterial)
 {
     const Mat4 &mat = getWorldTransform(); 
     shader->SetModelMat4(mat.m);
-    RenderChildren( shader);
+    RenderChildren( shader, useMaterial);
 }
 
 // Hierarquia

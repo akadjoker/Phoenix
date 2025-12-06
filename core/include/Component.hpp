@@ -60,7 +60,7 @@ public:
     /**
      * @brief Called every frame for rendering
      */
-    virtual void render(Shader *shader) { (void)shader; }
+    virtual void render(Shader *shader, bool useMaterial) { (void)shader; (void)useMaterial; }
     
     /**
      * @brief Called when component is enabled

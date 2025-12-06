@@ -32,7 +32,7 @@ public:
 
     void attach() override;
 
-    void render(Shader *shader) override;
+    void render(Shader *shader, bool useMaterial) override;
 
     
 
@@ -63,7 +63,7 @@ public:
 
     void attach() override;
 
-    void render( Shader *shader) override;
+    void render( Shader *shader, bool useMaterial) override;
 
     
 
