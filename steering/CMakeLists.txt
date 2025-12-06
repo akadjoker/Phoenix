@@ -57,7 +57,7 @@ endif()
 
 
 if (UNIX)
-    target_link_libraries(steering core  m SDL2 GL)
+    target_link_libraries(steering core  m SDL2_image SDL2  GL)
 endif()
 
 #message(STATUS "SDL2 Library Dir: ${LIB_DIR}/")

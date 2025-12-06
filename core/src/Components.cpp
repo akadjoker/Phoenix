@@ -84,6 +84,16 @@ MeshM3DRenderer::~MeshM3DRenderer()
 {
 }
 
+void MeshM3DRenderer::setMesh(MeshM3D *m)
+{
+    mesh = m;
+}
+
+MeshM3D *MeshM3DRenderer::getMesh() const
+{
+    return mesh;
+}
+
 void MeshM3DRenderer::attach()
 {
 

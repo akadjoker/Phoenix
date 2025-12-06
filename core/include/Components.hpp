@@ -1,6 +1,7 @@
 #pragma once
 #include "Config.hpp"
 #include "Component.hpp"
+#include "Mesh.hpp"
 
 
 
@@ -9,6 +10,7 @@ class Terrain;
 class Animator;
 class M3dMesh;
 class Shader;
+class Camera;
 
 // ============================================================================
 // MeshRenderer - Renders a mesh
@@ -58,8 +60,8 @@ public:
     void setVisible(bool v) { visible = v; }
     bool isVisible() const { return visible; }
 
-    void setMesh(MeshM3D *m) { mesh = m; }
-    MeshM3D *getMesh() const { return mesh; }
+    void setMesh(MeshM3D *m) ; 
+    MeshM3D *getMesh() const ;
 
     void attach() override;
 
