@@ -205,8 +205,6 @@ public:
 protected:
     virtual void OnUpdate(float deltaTime) = 0;
     virtual void OnStart() {}
-    virtual void OnDisable() {}
-    virtual void OnDestroy() {}
     virtual void OnDestroy() {}
 
 };
