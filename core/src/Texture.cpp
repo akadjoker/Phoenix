@@ -699,7 +699,7 @@ bool Texture::LoadCubeFromFiles(const std::vector<std::string> &paths)
     bool created = CreateCube((u32)w[0], fmt, faces);
  
 
-    return false;
+    return created;
 }
 
 void Texture::SetMinFilter(FilterMode f)
