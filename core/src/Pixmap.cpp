@@ -685,6 +685,145 @@ void Pixmap::DrawPixmap(const Pixmap &source, int x, int y, const IntRect &srcRe
     }
 }
 
+
+ 
+Pixmap* Pixmap::Crop(const IntRect &rect) const
+{
+    if (!pixels) 
+    {
+        LogError("Cannot crop: pixels is null");
+        return nullptr;
+    }
+    
+    // Validar e ajustar rect aos limites da imagem
+    int x = rect.x;
+    int y = rect.y;
+    int w = rect.width;
+    int h = rect.height;
+    
+    // Clamp aos limites
+    if (x < 0) { w += x; x = 0; }
+    if (y < 0) { h += y; y = 0; }
+    if (x >= width || y >= height)
+    {
+        LogWarning("Crop rect is outside image bounds");
+        return nullptr;
+    }
+    if (x + w > width) w = width - x;
+    if (y + h > height) h = height - y;
+    
+    // Verificar se o rect resultante é válido
+    if (w <= 0 || h <= 0)
+    {
+        LogWarning("Invalid crop rect: width=%d, height=%d", w, h);
+        return nullptr;
+    }
+    
+    // Criar nova pixmap
+    Pixmap* result = new Pixmap(w, h, components);
+    if (!result || !result->pixels)
+    {
+        LogError("Failed to create cropped pixmap");
+        if (result) delete result;
+        return nullptr;
+    }
+    
+    // Copiar dados linha por linha (otimizado)
+    int bytesPerRow = w * components;
+    
+    for (int row = 0; row < h; row++)
+    {
+        unsigned char* srcRow = pixels + ((y + row) * width + x) * components;
+        unsigned char* dstRow = result->pixels + row * bytesPerRow;
+        memcpy(dstRow, srcRow, bytesPerRow);
+    }
+    
+    return result;
+}
+ 
+Pixmap* Pixmap::Crop(int x, int y, int w, int h) const
+{
+    IntRect rect;
+    rect.x = x;
+    rect.y = y;
+    rect.width = w;
+    rect.height = h;
+    
+    return Crop(rect);
+}
+
+ 
+Pixmap* Pixmap::CropExtended(const IntRect &rect, bool fillTransparent) const
+{
+    if (!pixels) 
+    {
+        LogError("Cannot crop: pixels is null");
+        return nullptr;
+    }
+    
+    int x = rect.x;
+    int y = rect.y;
+    int w = rect.width;
+    int h = rect.height;
+    
+    if (w <= 0 || h <= 0)
+    {
+        LogWarning("Invalid crop dimensions: width=%d, height=%d", w, h);
+        return nullptr;
+    }
+    
+    // Criar nova pixmap
+    Pixmap* result = new Pixmap(w, h, components);
+    if (!result || !result->pixels)
+    {
+        LogError("Failed to create cropped pixmap");
+        if (result) delete result;
+        return nullptr;
+    }
+    
+    // Preencher com cor padrão
+    if (fillTransparent && (components == 4 || components == 2))
+    {
+        result->Clear(); // Preencher com transparente (0,0,0,0)
+    }
+    else
+    {
+        result->Fill(0, 0, 0, 255); // Preencher com preto opaco
+    }
+    
+    // Calcular região de overlap (área que realmente existe na imagem fonte)
+    int srcStartX = std::max(0, x);
+    int srcStartY = std::max(0, y);
+    int srcEndX = std::min(width, x + w);
+    int srcEndY = std::min(height, y + h);
+    
+    // Se não há overlap, retornar imagem vazia preenchida
+    if (srcStartX >= srcEndX || srcStartY >= srcEndY)
+    {
+        return result;
+    }
+    
+    // Calcular offset no destino
+    int dstOffsetX = srcStartX - x;
+    int dstOffsetY = srcStartY - y;
+    
+    // Dimensões da área a copiar
+    int copyWidth = srcEndX - srcStartX;
+    int copyHeight = srcEndY - srcStartY;
+    
+    // Copiar linha por linha (otimizado)
+    int bytesPerRow = copyWidth * components;
+    
+    for (int row = 0; row < copyHeight; row++)
+    {
+        unsigned char* srcRow = pixels + ((srcStartY + row) * width + srcStartX) * components;
+        unsigned char* dstRow = result->pixels + ((dstOffsetY + row) * w + dstOffsetX) * components;
+        memcpy(dstRow, srcRow, bytesPerRow);
+    }
+    
+    return result;
+}
+
 // Box Blur
 Pixmap* Pixmap::ApplyBlur(int radius) const
 {
@@ -934,143 +1073,6 @@ Pixmap* Pixmap::ApplyEmboss() const
             Color original = GetPixelColor(x, y);
             result->SetPixel(x, y, (u8)r, (u8)g, (u8)b, original.a);
         }
-    }
-    
-    return result;
-}
- 
-Pixmap* Pixmap::Crop(const IntRect &rect) const
-{
-    if (!pixels) 
-    {
-        LogError("Cannot crop: pixels is null");
-        return nullptr;
-    }
-    
-    // Validar e ajustar rect aos limites da imagem
-    int x = rect.x;
-    int y = rect.y;
-    int w = rect.width;
-    int h = rect.height;
-    
-    // Clamp aos limites
-    if (x < 0) { w += x; x = 0; }
-    if (y < 0) { h += y; y = 0; }
-    if (x >= width || y >= height)
-    {
-        LogWarning("Crop rect is outside image bounds");
-        return nullptr;
-    }
-    if (x + w > width) w = width - x;
-    if (y + h > height) h = height - y;
-    
-    // Verificar se o rect resultante é válido
-    if (w <= 0 || h <= 0)
-    {
-        LogWarning("Invalid crop rect: width=%d, height=%d", w, h);
-        return nullptr;
-    }
-    
-    // Criar nova pixmap
-    Pixmap* result = new Pixmap(w, h, components);
-    if (!result || !result->pixels)
-    {
-        LogError("Failed to create cropped pixmap");
-        if (result) delete result;
-        return nullptr;
-    }
-    
-    // Copiar dados linha por linha (otimizado)
-    int bytesPerRow = w * components;
-    
-    for (int row = 0; row < h; row++)
-    {
-        unsigned char* srcRow = pixels + ((y + row) * width + x) * components;
-        unsigned char* dstRow = result->pixels + row * bytesPerRow;
-        memcpy(dstRow, srcRow, bytesPerRow);
-    }
-    
-    return result;
-}
- 
-Pixmap* Pixmap::Crop(int x, int y, int w, int h) const
-{
-    IntRect rect;
-    rect.x = x;
-    rect.y = y;
-    rect.width = w;
-    rect.height = h;
-    
-    return Crop(rect);
-}
-
- 
-Pixmap* Pixmap::CropExtended(const IntRect &rect, bool fillTransparent) const
-{
-    if (!pixels) 
-    {
-        LogError("Cannot crop: pixels is null");
-        return nullptr;
-    }
-    
-    int x = rect.x;
-    int y = rect.y;
-    int w = rect.width;
-    int h = rect.height;
-    
-    if (w <= 0 || h <= 0)
-    {
-        LogWarning("Invalid crop dimensions: width=%d, height=%d", w, h);
-        return nullptr;
-    }
-    
-    // Criar nova pixmap
-    Pixmap* result = new Pixmap(w, h, components);
-    if (!result || !result->pixels)
-    {
-        LogError("Failed to create cropped pixmap");
-        if (result) delete result;
-        return nullptr;
-    }
-    
-    // Preencher com cor padrão
-    if (fillTransparent && (components == 4 || components == 2))
-    {
-        result->Clear(); // Preencher com transparente (0,0,0,0)
-    }
-    else
-    {
-        result->Fill(0, 0, 0, 255); // Preencher com preto opaco
-    }
-    
-    // Calcular região de overlap (área que realmente existe na imagem fonte)
-    int srcStartX = std::max(0, x);
-    int srcStartY = std::max(0, y);
-    int srcEndX = std::min(width, x + w);
-    int srcEndY = std::min(height, y + h);
-    
-    // Se não há overlap, retornar imagem vazia preenchida
-    if (srcStartX >= srcEndX || srcStartY >= srcEndY)
-    {
-        return result;
-    }
-    
-    // Calcular offset no destino
-    int dstOffsetX = srcStartX - x;
-    int dstOffsetY = srcStartY - y;
-    
-    // Dimensões da área a copiar
-    int copyWidth = srcEndX - srcStartX;
-    int copyHeight = srcEndY - srcStartY;
-    
-    // Copiar linha por linha (otimizado)
-    int bytesPerRow = copyWidth * components;
-    
-    for (int row = 0; row < copyHeight; row++)
-    {
-        unsigned char* srcRow = pixels + ((srcStartY + row) * width + srcStartX) * components;
-        unsigned char* dstRow = result->pixels + ((dstOffsetY + row) * w + dstOffsetX) * components;
-        memcpy(dstRow, srcRow, bytesPerRow);
     }
     
     return result;
