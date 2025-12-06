@@ -595,3 +595,8 @@ bool VertexAnimator::HasQueuedAnimation() const
 {
     return !queuedAnimation.empty();
 }
+
+void Controller::update(float deltaTime)
+{
+    OnUpdate(deltaTime);
+}

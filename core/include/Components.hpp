@@ -190,7 +190,26 @@ public:
 };
 
 
+class Controller : public Component
+{
+public:
+    Controller();
+    virtual ~Controller() = default;
 
+    const char* getTypeName() const override { return "Controller"; }
+
+    void onDestroy() override;
+    void start() override;
+    void update(float deltaTime) override;
+
+protected:
+    virtual void OnUpdate(float deltaTime) = 0;
+    virtual void OnStart() {}
+    virtual void OnDisable() {}
+    virtual void OnDestroy() {}
+    virtual void OnDestroy() {}
+
+};
  
  
 

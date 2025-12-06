@@ -20,7 +20,7 @@ add_subdirectory(md3animation)
 add_subdirectory(template)
 add_subdirectory(deferred)
 add_subdirectory(basic_ssao)
-add_subdirectory(particles)
+add_subdirectory(steering)
 
 add_subdirectory(exporter)
 
