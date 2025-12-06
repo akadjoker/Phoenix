@@ -8,7 +8,7 @@
 #include "GameObject.hpp"
 #include "Mesh.hpp"
 
-void MeshRenderer::render(Shader *shader)
+void MeshRenderer::render(Shader *shader, bool useMaterial)
 {
     if (!visible || !isEnabled())
         return;
@@ -21,7 +21,7 @@ void MeshRenderer::render(Shader *shader)
         shader->SetModelMat4(mat.m);
 
         // LogInfo("[MeshRenderer] render %s", mesh->getName().c_str());
-        Driver::Instance().DrawMesh(mesh);
+        Driver::Instance().DrawMesh(mesh, useMaterial);
     }
 }
 
@@ -63,7 +63,7 @@ void MeshRenderer::attach()
 
 //******************************************* */
 
-void MeshM3DRenderer::render( Shader *shader)
+void MeshM3DRenderer::render( Shader *shader, bool useMaterial)
 {
     if (!visible || !isEnabled())
         return;
@@ -82,6 +82,16 @@ MeshM3DRenderer::MeshM3DRenderer(MeshM3D *m) : mesh(m), visible(true)
 
 MeshM3DRenderer::~MeshM3DRenderer()
 {
+}
+
+void MeshM3DRenderer::setMesh(MeshM3D *m)
+{
+    mesh = m;
+}
+
+MeshM3D *MeshM3DRenderer::getMesh() const
+{
+    return mesh;
 }
 
 void MeshM3DRenderer::attach()
@@ -594,4 +604,9 @@ void VertexAnimator::SetTransitionDuration(float duration)
 bool VertexAnimator::HasQueuedAnimation() const
 {
     return !queuedAnimation.empty();
+}
+
+void Controller::update(float deltaTime)
+{
+    OnUpdate(deltaTime);
 }

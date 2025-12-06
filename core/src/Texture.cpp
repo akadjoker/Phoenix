@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "Texture.hpp"
-#include "stb_image.h"
+#include "stb_image.h" 
 #include "Driver.hpp"
 
 // --- GL helpers (assinaturas no header como friend)
@@ -496,38 +496,32 @@ bool Texture::Create3D(u32 width, u32 height, u32 depth, TextureFormat format, c
 
 bool Texture::LoadFromFile(const char *path)
 {
-    const bool isHDR = stbi_is_hdr(path) != 0;
+ 
     int w, h, ch;
     void *img = nullptr;
+    Pixmap pixmap;
 
- 
-    if (isHDR)
-        img = stbi_loadf(path, &w, &h, &ch, 0);
-    else
-        img = stbi_load(path, &w, &h, &ch, 0);
-
-    if (!img)
+    if (!pixmap.Load(path))
     {
-        LogError("[Texture] load failed: %s (%s)", path, stbi_failure_reason());
+        LogError("[Texture] load failed: %s", path);
         return false;
     }
+ 
+    ch = pixmap.components;
+    w = pixmap.width;
+    h = pixmap.height;
+ 
+    img = pixmap.pixels;
+    
+ 
 
-    TextureFormat fmt;
-    if (isHDR)
-    {
-        fmt = (ch == 1) ? TextureFormat::R16F : (ch == 2) ? TextureFormat::RG16F
-                                            : (ch == 3)   ? TextureFormat::RGB16F
-                                                          : TextureFormat::RGBA16F;
-    }
-    else
-    {
-        fmt = (ch == 1) ? TextureFormat::R8 : (ch == 2) ? TextureFormat::RG8
+    TextureFormat fmt = (ch == 1) ? TextureFormat::R8 : (ch == 2) ? TextureFormat::RG8
                                           : (ch == 3)   ? TextureFormat::RGB8
                                                         : TextureFormat::RGBA8;
-    }
+    
 
     const bool ok = Create((u32)w, (u32)h, fmt, img);
-    stbi_image_free(img);
+    
     return ok;
 }
  
@@ -623,17 +617,29 @@ bool Texture::LoadCubeFromFiles(const std::vector<std::string> &paths)
         return false;
     }
 
-    // ✓ Inicializa array com nullptr
-    stbi_uc *data[6] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
+    void *data[6] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
     int w[6]{}, h[6]{}, ch[6]{};
     bool ok = true;
  
-   // stbi_set_flip_vertically_on_load(false);
+    stbi_set_flip_vertically_on_load(false);
     
     // Carrega todas as faces
     for (int i = 0; i < 6; i++)
     {
-        data[i] = stbi_load(paths[i].c_str(), &w[i], &h[i], &ch[i], 0);
+        Pixmap pixmap;
+
+        if (!pixmap.Load(paths[i].c_str()))
+        {
+            LogError("[Texture] cube face %d load failed: %s", i, paths[i].c_str());
+            ok = false;
+            break;
+        }
+
+        data[i] = pixmap.pixels;
+        w[i] = pixmap.width;
+        h[i] = pixmap.height;
+        ch[i] = pixmap.components;
+    
         if (!data[i])
         {
             LogError("[Texture] cube face %d load failed: %s", i, paths[i].c_str());
@@ -641,7 +647,7 @@ bool Texture::LoadCubeFromFiles(const std::vector<std::string> &paths)
             break;
         }
         
-        // ✓ Validação: cubemap deve ser QUADRADO
+        
         if (w[i] != h[i])
         {
             LogError("[Texture] cube face %d not square (%dx%d): %s", i, w[i], h[i], paths[i].c_str());
@@ -649,7 +655,7 @@ bool Texture::LoadCubeFromFiles(const std::vector<std::string> &paths)
             break;
         }
         
-        // ✓ Todas as faces devem ter mesmo tamanho
+ 
         if (i > 0 && (w[i] != w[0] || h[i] != h[0]))
         {
             LogError("[Texture] cube face %d size mismatch (%dx%d vs %dx%d)",
@@ -658,7 +664,7 @@ bool Texture::LoadCubeFromFiles(const std::vector<std::string> &paths)
             break;
         }
         
-        // ✓ Mesmo número de canais
+   
         if (i > 0 && ch[i] != ch[0])
         {
             LogError("[Texture] cube face %d channel mismatch (%d vs %d)", i, ch[i], ch[0]);
@@ -667,14 +673,10 @@ bool Texture::LoadCubeFromFiles(const std::vector<std::string> &paths)
         }
     }
 
-    // ✓ Cleanup se falhou
+    
     if (!ok)
     {
-        for (int i = 0; i < 6; i++)
-        {
-            if (data[i])
-                stbi_image_free(data[i]);
-        }
+        
         return false;
     }
 
@@ -688,24 +690,16 @@ bool Texture::LoadCubeFromFiles(const std::vector<std::string> &paths)
         case 4: fmt = TextureFormat::RGBA8; break;
         default:
             LogError("[Texture] unsupported channel count: %d", ch[0]);
-            for (int i = 0; i < 6; i++)
-                if (data[i])
-                    stbi_image_free(data[i]);
+             
             return false;
     }
 
     // Cria cubemap
     const void *faces[6] = {data[0], data[1], data[2], data[3], data[4], data[5]};
     bool created = CreateCube((u32)w[0], fmt, faces);
+ 
 
-    // Limpa memória
-    for (int i = 0; i < 6; i++)
-    {
-        if (data[i])
-            stbi_image_free(data[i]);
-    }
-
-    return created;
+    return false;
 }
 
 void Texture::SetMinFilter(FilterMode f)

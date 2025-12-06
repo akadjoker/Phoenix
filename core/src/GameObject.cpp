@@ -113,10 +113,10 @@ void GameObject::lateUpdate(float deltaTime)
     }
 }
 
-void GameObject::render(Shader *shader)
+void GameObject::render(Shader *shader, bool useMaterial)
 {
      
-    Node3D::render(shader);
+    Node3D::render(shader, useMaterial);
 
     //LogInfo("[GameObject] render %s", getName().c_str());
     
@@ -125,7 +125,7 @@ void GameObject::render(Shader *shader)
     {
         if (component->isEnabled())
         {
-            component->render(shader);
+            component->render(shader, useMaterial);
         }
     }
 }

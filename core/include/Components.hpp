@@ -1,6 +1,7 @@
 #pragma once
 #include "Config.hpp"
 #include "Component.hpp"
+#include "Mesh.hpp"
 
 
 
@@ -9,6 +10,7 @@ class Terrain;
 class Animator;
 class M3dMesh;
 class Shader;
+class Camera;
 
 // ============================================================================
 // MeshRenderer - Renders a mesh
@@ -32,7 +34,7 @@ public:
 
     void attach() override;
 
-    void render(Shader *shader) override;
+    void render(Shader *shader, bool useMaterial) override;
 
     
 
@@ -58,12 +60,12 @@ public:
     void setVisible(bool v) { visible = v; }
     bool isVisible() const { return visible; }
 
-    void setMesh(MeshM3D *m) { mesh = m; }
-    MeshM3D *getMesh() const { return mesh; }
+    void setMesh(MeshM3D *m) ; 
+    MeshM3D *getMesh() const ;
 
     void attach() override;
 
-    void render( Shader *shader) override;
+    void render( Shader *shader, bool useMaterial) override;
 
     
 
@@ -190,7 +192,24 @@ public:
 };
 
 
+class Controller : public Component
+{
+public:
+    Controller();
+    virtual ~Controller() = default;
 
+    const char* getTypeName() const override { return "Controller"; }
+
+    void onDestroy() override;
+    void start() override;
+    void update(float deltaTime) override;
+
+protected:
+    virtual void OnUpdate(float deltaTime) = 0;
+    virtual void OnStart() {}
+    virtual void OnDestroy() {}
+
+};
  
  
 

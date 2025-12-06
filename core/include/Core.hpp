@@ -36,5 +36,6 @@
 #include "GUI.hpp"
 #include "Effects.hpp"
 #include "ParticleSystem.hpp" 
-
-
+#include "Steering.hpp"
+#include "StateMachine.hpp"
+#include "StateMachineComponent.hpp"

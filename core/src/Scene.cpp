@@ -380,7 +380,7 @@ void Scene::rebuildRenderLists()
     m_needRebuildLists = false;
 }
 
-void Scene::renderPass(Shader *shader, RenderType renderPass)
+void Scene::renderPass(Shader *shader, RenderType renderPass,bool useMaterial)
 {
  
     rebuildRenderLists();
@@ -423,19 +423,23 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
     if (!renderList || renderList->empty())
         return;
 
-    // Sky precisa de depth func especial
+
+    if(!useMaterial)
+     {
+        Driver::Instance().BindTexture(0,GL_TEXTURE_2D, TextureManager::Instance().GetDefault()->GetHandle());
+     }    
+  
     if (useSpecialDepth)
         glDepthFunc(GL_LEQUAL);
 
  
     for (Node3D *object : *renderList)
     {
-       ///const Mat4 model = object->getWorldTransform();
-       // shader->SetUniformMat4("model", model.m);
-        object->render(shader);
+       
+        object->render(shader,useMaterial);
     }
 
-    // Restaura depth func
+ 
     if (useSpecialDepth)
         glDepthFunc(GL_LESS);
 }
@@ -528,13 +532,6 @@ static std::vector<std::string> Split(const std::string &str, char delimiter)
     return result;
 }
 
-static std::string TrimLeft(const std::string &str)
-{
-    size_t start = 0;
-    while (start < str.length() && std::isspace(str[start]))
-        start++;
-    return str.substr(start);
-}
 
 static bool ParseVector3(const std::string &value, Vec3 &vec)
 {

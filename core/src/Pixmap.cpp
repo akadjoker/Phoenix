@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "Pixmap.hpp"
 #include "stb_image.h"
 #include "stb_image_write.h"

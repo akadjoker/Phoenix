@@ -653,11 +653,11 @@ void ParticleSystem::update(float deltaTime)
 // NODE3D OVERRIDE - RENDER
 // ==========================================
 
-void ParticleSystem::render(Shader* shader)
+void ParticleSystem::render(Shader* shader, bool useMaterial)
 {
     // Partículas são renderizadas no RenderParticles
     // Apenas renderizar filhos aqui
-    RenderChildren(shader);
+    RenderChildren(shader, useMaterial);
 }
 
 void ParticleSystem::RenderParticles(const Mat4& view, const Mat4& proj)

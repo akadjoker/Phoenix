@@ -113,7 +113,7 @@ public:
 
     void DrawMeshBuffer( MeshBuffer *meshBuffer);
     void DrawMeshBuffer( MeshBuffer *meshBuffer , PrimitiveType type, u32 count);
-    void DrawMesh(Mesh *mesh);
+    void DrawMesh(Mesh *mesh, bool use_material = true);
     void DrawVertexArray(VertexArray *buffer,u32 vertex,u32 count,PrimitiveType type);
  
 

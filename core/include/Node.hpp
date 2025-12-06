@@ -58,7 +58,7 @@ public:
 
     virtual void ready() {}
     virtual void update(float deltaTime) {}
-    virtual void render(Shader *shader) {(void)shader;}
+    virtual void render(Shader *shader, bool useMaterial) {(void)shader; (void)useMaterial;}
 
     void show();
     void hide();
