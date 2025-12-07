@@ -464,24 +464,12 @@ void Scene::Update(float dt)
         ActiveCamera->update(dt);
     }
 
-    const std::vector<Node3D *> *updateLists[] =
-        {
-            &m_render_terrains,
-            &m_render_lights,
-            &m_render_skyes,
-            &m_render_solids,
-            &m_render_trasparent,
-            &m_render_special,
-            &m_render_waters,
-            &m_render_mirrors};
-
-    for (const auto *list : updateLists)
+  
+    for (Node3D *object : m_objects)
     {
-        for (Node3D *object : *list)
-        {
-            object->update(dt);
-        }
+        object->update(dt);
     }
+    
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------

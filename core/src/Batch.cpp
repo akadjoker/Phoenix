@@ -707,6 +707,69 @@ void RenderBatch::Cube(const Vec3 &position, float w, float h, float d,
     }
 }
 
+void RenderBatch::Circle3D(const Vec3& center, float radius, 
+                           const Vec3& normal, int segments)
+{
+    SetMode(LINES);
+    
+    if (segments < 3) segments = 32;  
+    
+ 
+    Vec3 tangent, bitangent;
+    
+    // Encontra um vetor não paralelo ao normal
+    if (fabs(normal.x) > 0.9f)
+        tangent = Vec3(0, 1, 0).cross(normal);
+    else
+        tangent = Vec3(1, 0, 0).cross(normal);
+    
+    tangent = tangent.normalized();
+    bitangent = normal.cross(tangent).normalized();
+    
+    
+    const float angleStep = (2.0f * 3.14159f) / segments;
+    
+    for (int i = 0; i < segments; i++)
+    {
+        float angle1 = angleStep * i;
+        float angle2 = angleStep * (i + 1);
+        
+        // Ponto atual
+        Vec3 p1 = center + (tangent * cos(angle1) + bitangent * sin(angle1)) * radius;
+        // Próximo ponto
+        Vec3 p2 = center + (tangent * cos(angle2) + bitangent * sin(angle2)) * radius;
+        
+        Vertex3f(p1.x, p1.y, p1.z);
+        Vertex3f(p2.x, p2.y, p2.z);
+    }
+}
+void RenderBatch::CircleXZ(const Vec3& center, float radius, int segments)
+{
+    SetMode(LINES);
+    
+    if (segments < 3) segments = 32;
+    const float angleStep = (2.0f * 3.14159f) / segments;
+    
+    for (int i = 0; i < segments; i++)
+    {
+        float angle1 = angleStep * i;
+        float angle2 = angleStep * (i + 1);
+        
+        Vec3 p1(center.x + radius * cos(angle1), 
+                center.y, 
+                center.z + radius * sin(angle1));
+                
+        Vec3 p2(center.x + radius * cos(angle2), 
+                center.y, 
+                center.z + radius * sin(angle2));
+        
+        Vertex3f(p1.x, p1.y, p1.z);
+        Vertex3f(p2.x, p2.y, p2.z);
+    }
+}
+
+
+
 void RenderBatch::Sphere(const Vec3 &position, float radius, int rings,
                          int slices, bool wire)
 {

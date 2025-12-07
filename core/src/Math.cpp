@@ -993,6 +993,48 @@ Mat3 Mat3::Identity()
 {
     return Mat3();
 }
+Mat3 Mat3::FromAxes(const Vec3& right, const Vec3& up, const Vec3& forward)
+{
+    Mat3 result;
+
+    // Column-major:
+    // coluna 0 = right
+    result.m[0] = right.x;
+    result.m[1] = right.y;
+    result.m[2] = right.z;
+
+    // coluna 1 = up
+    result.m[3] = up.x;
+    result.m[4] = up.y;
+    result.m[5] = up.z;
+
+    // coluna 2 = forward
+    result.m[6] = forward.x;
+    result.m[7] = forward.y;
+    result.m[8] = forward.z;
+
+    return result;
+}
+
+Mat3 Mat3::LookAtDirection(const Vec3& forwardDir, const Vec3& upHint)
+{
+    Vec3 f = forwardDir.normalized();
+    Vec3 u = upHint.normalized();
+
+    // Evitar up quase paralelo ao forward
+    if (fabs(Vec3::Dot(f, u)) > 0.999f)
+    {
+ 
+        u = Vec3(0, 0, 1);
+    }
+ 
+    Vec3 right = Vec3::Cross(f, u).normalized();
+    Vec3 newUp = Vec3::Cross(right, f).normalized();
+
+ 
+    return FromAxes(right, newUp, -f);
+}
+
 
 Mat3 Mat3::Scale(float sx, float sy, float sz)
 {
