@@ -103,14 +103,22 @@ public:
         GameObject *plane = createGameObject("Plane");
         plane->addComponent<MeshRenderer>(mesh);
 
+<<<<<<< HEAD
         mesh = MeshManager::Instance().CreateCube("Cube", 1);
         mesh->AddMaterial("wall")->SetTexture(0, TextureManager::Instance().Get("wall"));
+=======
+        // mesh = MeshManager::Instance().CreateCube("Cube", 1);
+        // mesh->AddMaterial("wall")->SetTexture(0, TextureManager::Instance().Get("wall"));
+>>>>>>> 836b69f (test ai)
 
         TextureManager::Instance().Add("sinbad/sinbad_body.tga", true);
         TextureManager::Instance().Add("sinbad/sinbad_clothes.tga", true);
         TextureManager::Instance().Add("sinbad/sinbad_sword.tga", true);
 
-        Mesh *cube = MeshManager::Instance().CreateCube("cube", 1.0f);
+        
+
+        // dummy = createGameObject("Dummy");
+        // dummy->addComponent<MeshRenderer>(cube);
 
         dummy = createGameObject("Dummy");
         dummy->addComponent<MeshRenderer>(cube);
@@ -231,147 +239,158 @@ public:
 
         cameraMove->setMoveInput(moveInput);
 
-        Vec3 currCamPos = camera->getPosition();
-        if (dt > 0.0f)
-            cameraVelocity = (currCamPos - cameraPrevPos) / dt;
-        else
-            cameraVelocity = Vec3(0);
-        cameraPrevPos = currCamPos;
+
+        if (Input::IsKeyDown(KEY_ONE))
+        {
+                torsoLayer->Play("sliceVertical", PlayMode::Once);
+        }
+        if (Input::IsKeyDown(KEY_TWO))
+        {
+                torsoLayer->Play("sliceHorizontal", PlayMode::Once);
+        }
+    
+
+    //     Vec3 currCamPos = camera->getPosition();
+    //     if (dt > 0.0f)
+    //         cameraVelocity = (currCamPos - cameraPrevPos) / dt;
+    //     else
+    //         cameraVelocity = Vec3(0);
+    //     cameraPrevPos = currCamPos;
 
       
-        Vec3 sinbadPos = sinbad->getPosition();
-        Vec3 toCam = currCamPos - sinbadPos;
-        distanceToTarget = toCam.length();
-        angleToTarget = 0;
+    //     Vec3 sinbadPos = sinbad->getPosition();
+    //     Vec3 toCam = currCamPos - sinbadPos;
+    //     distanceToTarget = toCam.length();
+    //     angleToTarget = 0;
 
        
-        if (aiAttackCooldown > 0.0f)
-            aiAttackCooldown -= dt;
+    //     if (aiAttackCooldown > 0.0f)
+    //         aiAttackCooldown -= dt;
 
      
-    switch (aiState)
-    {
-        case AIState::Stop:
-        {
-            if (distanceToTarget < aiAttackRadius && aiAttackCooldown <= 0.0f)
-                aiState = AIState::Attack;
-            else if (distanceToTarget < aiPursueRadius)
-                aiState = AIState::Pursue;
-            break;
-        }
+    // switch (aiState)
+    // {
+    //     case AIState::Stop:
+    //     {
+    //         if (distanceToTarget < aiAttackRadius && aiAttackCooldown <= 0.0f)
+    //             aiState = AIState::Attack;
+    //         else if (distanceToTarget < aiPursueRadius)
+    //             aiState = AIState::Pursue;
+    //         break;
+    //     }
 
-        case AIState::Pursue:
-        {
-            if (distanceToTarget < aiAttackRadius && aiAttackCooldown <= 0.0f)
-                aiState = AIState::Attack;
-            else if (distanceToTarget > aiPursueRadius * 1.5f)
-                aiState = AIState::Stop;
-            break;
-        }
+    //     case AIState::Pursue:
+    //     {
+    //         if (distanceToTarget < aiAttackRadius && aiAttackCooldown <= 0.0f)
+    //             aiState = AIState::Attack;
+    //         else if (distanceToTarget > aiPursueRadius * 1.5f)
+    //             aiState = AIState::Stop;
+    //         break;
+    //     }
 
-        case AIState::Evade:
-        {
-            if (distanceToTarget > aiEvadeRadius * 1.5f)
-            {
-                if (distanceToTarget < aiPursueRadius)
-                    aiState = AIState::Pursue;
-                else
-                    aiState = AIState::Stop;
-            }
-            break;
-        }
+    //     case AIState::Evade:
+    //     {
+    //         if (distanceToTarget > aiEvadeRadius * 1.5f)
+    //         {
+    //             if (distanceToTarget < aiPursueRadius)
+    //                 aiState = AIState::Pursue;
+    //             else
+    //                 aiState = AIState::Stop;
+    //         }
+    //         break;
+    //     }
 
-        case AIState::Attack:
-        {
-            // Quando terminar o ataque (cooldown), volta a perseguir ou a vaguear
-            if (aiAttackCooldown <= 0.0f)
-            {
-                 if (distanceToTarget < aiPursueRadius)
-                     aiState = AIState::Pursue;
-                 else
-                     aiState = AIState::Stop;
-            }
-            break;
-        }
-    }
+    //     case AIState::Attack:
+    //     {
+    //         // Quando terminar o ataque (cooldown), volta a perseguir ou a vaguear
+    //         if (aiAttackCooldown <= 0.0f)
+    //         {
+    //              if (distanceToTarget < aiPursueRadius)
+    //                  aiState = AIState::Pursue;
+    //              else
+    //                  aiState = AIState::Stop;
+    //         }
+    //         break;
+    //     }
+    // }
 
-        Vec3 force(0.0f);
+    //     Vec3 force(0.0f);
 
-    switch (aiState)
-    {
-        case AIState::Stop:
-        {
-               force = Vec3(0.0f);
+    // switch (aiState)
+    // {
+    //     case AIState::Stop:
+    //     {
+    //            force = Vec3(0.0f);
             
-            if (torsoLayer->GetCurrentAnimation() != "topIdle") 
-                torsoLayer->Play("topIdle", PlayMode::Loop);
-            if (legsLayer->GetCurrentAnimation() != "legsIdle")  
-                legsLayer->Play("legsIdle", PlayMode::Loop);
-            break;
-        }
+    //         if (torsoLayer->GetCurrentAnimation() != "topIdle") 
+    //             torsoLayer->Play("topIdle", PlayMode::Loop);
+    //         if (legsLayer->GetCurrentAnimation() != "legsIdle")  
+    //             legsLayer->Play("legsIdle", PlayMode::Loop);
+    //         break;
+    //     }
 
-        case AIState::Pursue:
-        {
+    //     case AIState::Pursue:
+    //     {
          
-            force = steering->pursue(currCamPos, cameraVelocity, 1.0f);
+    //         force = steering->pursue(currCamPos, cameraVelocity, 1.0f);
 
-            if (torsoLayer->GetCurrentAnimation() != "topRun")
-                 torsoLayer->Play("topRun", PlayMode::Loop);
+    //         if (torsoLayer->GetCurrentAnimation() != "topRun")
+    //              torsoLayer->Play("topRun", PlayMode::Loop);
             
-            if (legsLayer->GetCurrentAnimation() != "legsRun"   )  
-                legsLayer->Play("legsRun", PlayMode::Loop);
+    //         if (legsLayer->GetCurrentAnimation() != "legsRun"   )  
+    //             legsLayer->Play("legsRun", PlayMode::Loop);
          
-            break;
-        }
+    //         break;
+    //     }
 
-        case AIState::Evade:
-        {
-            // Se já tens evade, usa-o; senão, flee:
-            force = steering->flee(currCamPos, 1.0f);
+    //     case AIState::Evade:
+    //     {
+    //         // Se já tens evade, usa-o; senão, flee:
+    //         force = steering->flee(currCamPos, 1.0f);
 
-            // if (torsoLayer) torsoLayer->Play("topRun", PlayMode::Loop);
-            // if (legsLayer)  legsLayer->Play("legsRun", PlayMode::Loop);
-            break;
-        }
+    //         // if (torsoLayer) torsoLayer->Play("topRun", PlayMode::Loop);
+    //         // if (legsLayer)  legsLayer->Play("legsRun", PlayMode::Loop);
+    //         break;
+    //     }
 
-        case AIState::Attack:
-        {
+    //     case AIState::Attack:
+    //     {
            
-            force =Vec3::Zero;
+    //         force =Vec3::Zero;
 
            
-                steering->stop();
+    //             steering->stop();
         
-            // Olhar para a câmara
-            {
-                Vec3 dir = currCamPos - sinbadPos;
-                dir.y = 0.0f;
-                if (dir.lengthSquared() > 0.0001f)
-                {
-                    dir = dir.normalized();
-                    Vec3 lookTarget = sinbadPos + dir;
-                    sinbad->lookAt(lookTarget, TransformSpace::World, Vec3(0,1,0));
-                }
-            }
+    //         // Olhar para a câmara
+    //         {
+    //             Vec3 dir = currCamPos - sinbadPos;
+    //             dir.y = 0.0f;
+    //             if (dir.lengthSquared() > 0.0001f)
+    //             {
+    //                 dir = dir.normalized();
+    //                 Vec3 lookTarget = sinbadPos + dir;
+    //                 sinbad->lookAt(lookTarget, TransformSpace::World, Vec3(0,1,0));
+    //             }
+    //         }
 
            
-            if (torsoLayer->GetCurrentAnimation() != "sliceVertical")
-                torsoLayer->Play("sliceVertical", PlayMode::Loop);
+    //         if (torsoLayer->GetCurrentAnimation() != "sliceVertical")
+    //             torsoLayer->Play("sliceVertical", PlayMode::Loop);
            
-            if (legsLayer->GetCurrentAnimation() != "legsIdle")
-                legsLayer->Play("legsIdle", PlayMode::Loop);
+    //         if (legsLayer->GetCurrentAnimation() != "legsIdle")
+    //             legsLayer->Play("legsIdle", PlayMode::Loop);
             
 
-            // Começa cooldown para não spammar ataques
-            if (aiAttackCooldown <= 0.0f)
-                aiAttackCooldown = aiAttackCooldownTime;
+    //         // Começa cooldown para não spammar ataques
+    //         if (aiAttackCooldown <= 0.0f)
+    //             aiAttackCooldown = aiAttackCooldownTime;
 
                 
-                break;
-            }
-        }
+    //             break;
+    //         }
+    //     }
         
-        steering->addForce(force);
+    //     steering->addForce(force);
 
     }
     void OnResize(u32 w, u32 h) override
