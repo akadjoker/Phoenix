@@ -103,13 +103,10 @@ public:
         GameObject *plane = createGameObject("Plane");
         plane->addComponent<MeshRenderer>(mesh);
 
-<<<<<<< HEAD
-        mesh = MeshManager::Instance().CreateCube("Cube", 1);
-        mesh->AddMaterial("wall")->SetTexture(0, TextureManager::Instance().Get("wall"));
-=======
         // mesh = MeshManager::Instance().CreateCube("Cube", 1);
         // mesh->AddMaterial("wall")->SetTexture(0, TextureManager::Instance().Get("wall"));
->>>>>>> 836b69f (test ai)
+        // mesh = MeshManager::Instance().CreateCube("Cube", 1);
+        // mesh->AddMaterial("wall")->SetTexture(0, TextureManager::Instance().Get("wall"));
 
         TextureManager::Instance().Add("sinbad/sinbad_body.tga", true);
         TextureManager::Instance().Add("sinbad/sinbad_clothes.tga", true);
@@ -119,9 +116,7 @@ public:
 
         // dummy = createGameObject("Dummy");
         // dummy->addComponent<MeshRenderer>(cube);
-
-        dummy = createGameObject("Dummy");
-        dummy->addComponent<MeshRenderer>(cube);
+ 
 
         Mesh *meshSword = MeshManager::Instance().Load("sinbad_sword", "assets/sinbad/sword.h3d");
 
