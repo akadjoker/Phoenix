@@ -99,7 +99,10 @@ AnimationLayer *Animator::GetLayer(u32 index)
 }
 
 AnimationLayer::AnimationLayer()
-    : m_currentAnim(nullptr), m_previousAnim(nullptr), m_playTo(nullptr), m_currentTime(0.0f), m_currentTimeBlend(0.0f), m_globalSpeed(1.0f), m_isPaused(false), m_isBlending(false), m_blendTime(0.0f), m_blendDuration(0.9f), m_shouldReturn(false), m_currentMode(PlayMode::Loop), m_defaultBlendTime(0.3f), m_isPingPongReverse(false)
+    : m_currentAnim(nullptr), m_previousAnim(nullptr),
+     m_playTo(nullptr), m_currentTime(0.0f), m_currentTimeBlend(0.0f), m_globalSpeed(1.0f), m_isPaused(false), m_isBlending(false), m_blendTime(0.0f), m_blendDuration(0.9f), m_shouldReturn(false), m_currentMode(PlayMode::Loop), 
+     m_defaultBlendTime(0.3f), m_isPingPongReverse(false),m_freezePoseBlend(false),m_poseBlendTime(0.15f)  
+
 {
 }
 
@@ -112,10 +115,7 @@ AnimationLayer::~AnimationLayer()
     m_animations.clear();
 }
 
-// ============================================================================
-// GERENCIAMENTO DE ANIMAÇÕES
-// ============================================================================
-
+ 
 void AnimationLayer::AddAnimation(const std::string &name, Animation *anim)
 {
     m_animations[name] = anim;
@@ -148,84 +148,13 @@ Animation *AnimationLayer::LoadAnimation(const std::string &name, const std::str
     return anim;
 }
 
-// ============================================================================
-// CONTROLE DE PLAYBACK (ANIMAÇÃO ÚNICA)
-// ============================================================================
-
-void AnimationLayer::Play(const std::string &animName, PlayMode mode, float blendTime)
-{
-    Animation *anim = GetAnimation(animName);
-    if (!anim)
-        return;
-
-    if (m_currentAnimName == animName && !m_isBlending)
-        return;
-
-    if (m_currentAnim && blendTime > 0.0f)
-    {
-        m_isBlending = true;
-        m_blendTime = 0.0f;
-        m_blendDuration = blendTime;
-    }
-    else
-    {
-        m_isBlending = false;
-        m_blendTime = 0.0f;
-        m_blendDuration = 0.0f;
-    }
-
-    if (!m_playTo)
-    {
-        m_previousAnim = anim;
-        m_previousAnimName = animName;
-    }
-
-    m_playTo = anim;
-    m_currentMode = mode;
-    m_shouldReturn = false;
-    m_isPingPongReverse = false;
-}
-
-void AnimationLayer::PlayOneShot(const std::string &animName, const std::string &returnTo, float blendTime, PlayMode toMode)
-{
-    m_returnToAnim = returnTo;
-    m_toReturnMode = toMode;
-    Play(animName, PlayMode::Once, blendTime);
-    m_shouldReturn = true;
-}
 
 void AnimationLayer::CrossFade(const std::string &toAnim, float duration)
 {
     Play(toAnim, m_currentMode, duration);
 }
 
-void AnimationLayer::Stop(float blendOutTime)
-{
-    if (blendOutTime > 0.0f && m_currentAnim)
-    {
-        // Blend out para bind pose
-        m_previousAnim = m_currentAnim;
-        m_previousAnimName = m_currentAnimName;
-        m_currentAnim = nullptr;
-        m_currentAnimName = "";
 
-        m_isBlending = true;
-        m_blendTime = 0.0f;
-        m_blendDuration = blendOutTime;
-    }
-    else
-    {
-        // Stop imediato
-        if (!m_isPaused)
-        {
-            m_currentAnim = nullptr;
-            m_currentAnimName = "";
-            m_currentTime = 0.0f;
-            m_isPaused = false;
-            m_isBlending = false;
-        }
-    }
-}
 
 void AnimationLayer::Pause()
 {
@@ -237,114 +166,353 @@ void AnimationLayer::Resume()
     m_isPaused = false;
 }
 
-bool AnimationLayer::IsPlaying(const std::string &animName) const
+ 
+ 
+void AnimationLayer::Bind(Node3D *parent)
 {
-    if (m_currentAnimName == animName && m_currentAnim && !m_isPaused)
-        return true;
+    for (auto &Animation : m_animations)
+    {
+        Animation.second->Bind(parent);
+    }
+}
+ 
+bool AnimationLayer::CheckAnimationEnd()
+{
+    if (!m_currentAnim)
+        return false;
+
+    float duration = m_currentAnim->GetDuration();
+
+    switch (m_currentMode)
+    {
+        case PlayMode::Once:
+            if (m_currentTime >= duration)
+            {
+                m_currentTime = duration;
+                m_isPaused = true;
+                return true;
+            }
+            break;
+
+        case PlayMode::Backward:   
+            if (m_currentTime <= 0.0f)   
+            {
+                m_currentTime = 0.0f;
+                m_isPaused = true;
+                return true;   
+            }
+            break;
+
+        case PlayMode::Loop:
+            if (m_currentTime >= duration)
+            {
+                m_currentTime = fmod(m_currentTime, duration);
+            }
+            break;
+
+        case PlayMode::PingPong:
+            // PingPong nunca "termina", então não retorna true
+            if (m_currentTime >= duration)
+            {
+                m_currentTime = duration;
+            }
+            else if (m_currentTime < 0.0f)
+            {
+                m_currentTime = 0.0f;
+            }
+            break;
+    }
 
     return false;
+}
+ 
+void AnimationLayer::Play(const std::string &animName, PlayMode mode, float blendTime)
+{
+    Animation *anim = GetAnimation(animName);
+    if (!anim)
+        return;
+
+ 
+    if (m_currentAnimName == animName && m_currentAnim == anim)
+    {
+        // Se está pausada (animação terminou), reinicia
+        if (m_isPaused)
+        {
+            if (mode == PlayMode::Backward)
+                m_currentTime = anim->GetDuration();
+            else
+                m_currentTime = 0.0f;
+            
+            m_isPaused = false;
+            m_isPingPongReverse = false;
+            m_currentMode = mode;
+            m_freezePoseBlend = false; // ✅ RESET!
+            return;
+        }
+        return;
+    }
+
+    //  Só faz blend se temos animação diferente a decorrer
+    bool needsBlend = (m_currentAnim != nullptr && 
+                       m_currentAnimName != animName && 
+                       blendTime > 0.0f &&
+                       !m_isPaused);
+
+    if (needsBlend)
+    {
+        // Guarda animação atual para blend
+        m_previousAnim = m_currentAnim;
+        m_previousAnimName = m_currentAnimName;
+        m_currentTimeBlend = m_currentTime; // ✅ CONGELA frame atual!
+        
+        m_isBlending = true;
+        m_blendTime = 0.0f;
+        
+        //   Usa tempo específico para pose blend (mais rápido!)
+        m_blendDuration = m_poseBlendTime; // Rápido (0.15s default)
+        m_freezePoseBlend = true;
+    }
+    else
+    {
+        m_isBlending = false;
+        m_previousAnim = nullptr;
+        m_freezePoseBlend = false;  
+    }
+
+    // Define nova animação
+    m_currentAnim = anim;
+    m_currentAnimName = animName;
+    m_currentMode = mode;
+    m_shouldReturn = false;
+    m_isPingPongReverse = false;
+    m_isPaused = false;
+ 
+    if (mode == PlayMode::Backward)
+        m_currentTime = anim->GetDuration();
+    else
+        m_currentTime = 0.0f;
+}
+
+
+void AnimationLayer::PlayOneShot(const std::string &animName, const std::string &returnTo, 
+                                  float blendTime, PlayMode toMode)
+{
+    m_returnToAnim = returnTo;
+    m_toReturnMode = toMode;
+    m_shouldReturn = true;
+    Play(animName, PlayMode::Once, blendTime);
+}
+
+ 
+void AnimationLayer::PlayAction(const std::string &actionName, float blendTime)
+{
+    // Guarda animação atual para voltar depois
+    if (!m_currentAnimName.empty() && !m_isPaused)
+    {
+        PlayOneShot(actionName, m_currentAnimName, blendTime, m_currentMode);
+    }
+    else
+    {
+        // Sem animação atual, só toca a ação
+        Play(actionName, PlayMode::Once, blendTime);
+    }
+}
+
+// ✅  (útil para IK, ragdoll, etc)
+bool AnimationLayer::GetAnimationFrame(const std::string &animName, float time, 
+                                       const std::string &boneName,
+                                       Vec3 &outPos, Quat &outRot)
+{
+    Animation *anim = GetAnimation(animName);
+    if (!anim)
+        return false;
+
+    AnimationChannel *channel = anim->FindChannel(boneName);
+    if (!channel)
+        return false;
+
+    outPos = anim->InterpolatePosition(*channel, time);
+    outRot = anim->InterpolateRotation(*channel, time);
+    return true;
+}
+
+//  Devolve progresso da animação atual (0.0 a 1.0)
+float AnimationLayer::GetNormalizedTime() const
+{
+    if (!m_currentAnim)
+        return 0.0f;
+    
+    float duration = m_currentAnim->GetDuration();
+    if (duration <= 0.0f)
+        return 0.0f;
+    
+    return m_currentTime / duration;
+}
+
+ 
+bool AnimationLayer::HasFinished() const
+{
+    if (!m_currentAnim || m_currentMode != PlayMode::Once)
+        return false;
+    
+    return m_isPaused; // Once pausa quando termina
 }
 
 void AnimationLayer::Update(float deltaTime, const std::vector<Joint3D *> &bones)
 {
-    if (m_isPaused)
+    if (m_isPaused || !m_currentAnim)
         return;
 
     float dt = deltaTime * m_globalSpeed;
-    bool isOnBlend = false;
 
-    if (m_playTo)
+    // ========================================================================
+    // FASE 1: BLENDING
+    // ========================================================================
+    if (m_isBlending && m_previousAnim)
     {
+        m_blendTime += dt;
+        float blend = Min(m_blendTime / m_blendDuration, 1.0f);
 
-        if (m_currentAnim)
+ 
+        if (m_freezePoseBlend)
         {
-            m_previousAnim = m_currentAnim;
-            m_previousAnimName = m_currentAnim->GetName();
-        }
-
-        if (m_isBlending)
-        {
-            // LogInfo("[ANIMATOR] Blending from %s to %s", m_currentAnimName.c_str(), m_playTo->GetName().c_str());
-            m_blendTime += dt;
-            float blend = Min(m_blendTime / m_blendDuration, 1.0f);
-
-            if (blend >= 1.0f || !m_currentAnim)
+            
+            
+            for (const auto &channel : m_currentAnim->m_channels)
             {
-                m_currentTime = m_currentTimeBlend;
-                m_currentTimeBlend = 0.0f;
+                if (channel.boneIndex == (u32)-1)
+                    continue;
+
+                // Pose da animação nova (frame inicial, congelado)
+                Vec3 pos2 = m_currentAnim->InterpolatePosition(channel, m_currentTime);
+                Quat rot2 = m_currentAnim->InterpolateRotation(channel, m_currentTime);
+
+                // Pose da animação anterior (frame onde parou, congelado)
+                AnimationChannel *prevCh = m_previousAnim->FindChannel(channel.boneName);
+                
+                if (prevCh)
+                {
+                    Vec3 pos1 = m_previousAnim->InterpolatePosition(*prevCh, m_currentTimeBlend);
+                    Quat rot1 = m_previousAnim->InterpolateRotation(*prevCh, m_currentTimeBlend);
+
+                    // ✅ Interpolação PURA entre duas poses estáticas
+                    Vec3 finalPos = Vec3::Lerp(pos1, pos2, blend);
+                    Quat finalRot = Quat::Slerp(rot1, rot2, blend);
+
+                    bones[channel.boneIndex]->SetAnimationFrame(finalPos, finalRot);
+                }
+                else
+                {
+                    bones[channel.boneIndex]->SetAnimationFrame(pos2, rot2);
+                }
+            }
+
+          
+            if (blend >= 1.0f)
+            {
                 m_isBlending = false;
+                m_previousAnim = nullptr;
                 m_blendTime = 0.0f;
-                m_blendDuration = 0.0f;
-                isOnBlend = false;
-                m_currentAnimName = m_playTo->GetName();
-                m_currentAnim = m_playTo;
-                m_playTo = nullptr;
+                m_freezePoseBlend = false;  
+                // Agora m_currentAnim começa a animar normalmente
+            }
+
+            return; // Durante pose blend, não faz mais nada
+        }
+        
+     
+        m_currentTime += dt * m_currentAnim->GetTicksPerSecond();
+        m_currentTimeBlend += dt * m_previousAnim->GetTicksPerSecond();
+        
+        float duration = m_currentAnim->GetDuration();
+        if (m_currentMode == PlayMode::Loop && m_currentTime >= duration)
+            m_currentTime = fmod(m_currentTime, duration);
+        else if (m_currentTime >= duration)
+            m_currentTime = duration;
+
+        float prevDuration = m_previousAnim->GetDuration();
+        if (m_currentTimeBlend >= prevDuration)
+            m_currentTimeBlend = fmod(m_currentTimeBlend, prevDuration);
+
+        for (const auto &channel : m_currentAnim->m_channels)
+        {
+            if (channel.boneIndex == (u32)-1)
+                continue;
+
+            Vec3 pos2 = m_currentAnim->InterpolatePosition(channel, m_currentTime);
+            Quat rot2 = m_currentAnim->InterpolateRotation(channel, m_currentTime);
+
+            AnimationChannel *prevCh = m_previousAnim->FindChannel(channel.boneName);
+            
+            if (prevCh)
+            {
+                Vec3 pos1 = m_previousAnim->InterpolatePosition(*prevCh, m_currentTimeBlend);
+                Quat rot1 = m_previousAnim->InterpolateRotation(*prevCh, m_currentTimeBlend);
+
+                Vec3 finalPos = Vec3::Lerp(pos1, pos2, blend);
+                Quat finalRot = Quat::Slerp(rot1, rot2, blend);
+
+                bones[channel.boneIndex]->SetAnimationFrame(finalPos, finalRot);
             }
             else
             {
-
-                //  LogInfo("[ANIMATOR]  Blending %f - %f - Blend %f ", m_blendTime, m_blendDuration,blend);
-
-                m_currentAnimName = m_playTo->GetName();
-                m_currentTimeBlend += dt * m_playTo->GetTicksPerSecond();
-
-                while (m_currentTimeBlend >= m_playTo->GetDuration())
-                    m_currentTimeBlend -= m_playTo->GetDuration();
-
-                isOnBlend = true;
-
-                for (const auto &channel : m_currentAnim->m_channels)
-                {
-                    if (channel.boneIndex == -1)
-                        continue;
-
-                    Vec3 pos1, pos2;
-                    Quat rot1, rot2;
-
-                    pos1 = m_currentAnim->InterpolatePosition(channel, m_currentTime);
-                    rot1 = m_currentAnim->InterpolateRotation(channel, m_currentTime);
-
-                    AnimationChannel *newCh = m_playTo->FindChannel(channel.boneName);
-                    if (newCh)
-                    {
-                        pos2 = m_playTo->InterpolatePosition(*newCh, m_currentTimeBlend);
-                        rot2 = m_playTo->InterpolateRotation(*newCh, m_currentTimeBlend);
-
-                        Vec3 finalPos = Vec3::Lerp(pos1, pos2, blend);
-                        Quat finalRot = Quat::Slerp(rot1, rot2, blend);
-
-                        bones[channel.boneIndex]->SetAnimationFrame(finalPos, finalRot);
-                    }
-                    else
-                    {
-                        // LogWarning("Channel not found: %s", channel.boneName.c_str());
-                        bones[channel.boneIndex]->SetAnimationFrame(pos1, rot1);
-                    }
-                }
+                bones[channel.boneIndex]->SetAnimationFrame(pos2, rot2);
             }
         }
-        else
-        {
-            //   LogInfo("[ANIMATOR] no Blending from %s to %s", m_currentAnimName.c_str(), m_playTo->GetName().c_str());
 
-            m_currentTime = 0.0f;
+        if (blend >= 1.0f)
+        {
             m_isBlending = false;
+            m_previousAnim = nullptr;
             m_blendTime = 0.0f;
-            m_blendDuration = 0.0f;
-            m_currentAnimName = m_playTo->GetName();
-            m_currentAnim = m_playTo;
-            m_playTo = nullptr;
         }
+
+        return;
     }
 
-    if (isOnBlend)
-        return;
+    // ========================================================================
+    // FASE 2: PLAYBACK NORMAL (sem blend)
+    // ========================================================================
+    
+    float duration = m_currentAnim->GetDuration();
+    bool animationEnded = false;
 
-    if (m_currentAnim)
+    // Update do tempo baseado no modo
+    switch (m_currentMode)
     {
-        float duration = m_currentAnim->GetDuration();
+        case PlayMode::Once:
+        {
+            m_currentTime += dt * m_currentAnim->GetTicksPerSecond();
+            if (m_currentTime >= duration)
+            {
+                m_currentTime = duration;
+                animationEnded = true;
+                m_isPaused = true;  
+            }
+            break;
+        }
 
-        if (m_currentMode == PlayMode::PingPong)
+        case PlayMode::Backward:   
+        {
+            m_currentTime -= dt * m_currentAnim->GetTicksPerSecond();
+            if (m_currentTime <= 0.0f)
+            {
+                m_currentTime = 0.0f;
+                animationEnded = true;
+                m_isPaused = true;
+            }
+            break;
+        }
+
+        case PlayMode::Loop:
+        {
+            m_currentTime += dt * m_currentAnim->GetTicksPerSecond();
+            while (m_currentTime >= duration)
+                m_currentTime -= duration;
+            break;
+        }
+
+        case PlayMode::PingPong:
         {
             if (!m_isPingPongReverse)
             {
@@ -364,86 +532,65 @@ void AnimationLayer::Update(float deltaTime, const std::vector<Joint3D *> &bones
                     m_isPingPongReverse = false;
                 }
             }
+            break;
         }
-        else
-        {
-            m_currentTime += dt * m_currentAnim->GetTicksPerSecond();
+    }
 
-            if (CheckAnimationEnd())
-            {
-                if (m_shouldReturn && !m_returnToAnim.empty())
-                {
-                    // LogInfo("Returning to previous animation: %s from %s", m_returnToAnim.c_str(), m_currentAnimName.c_str());
-                    m_currentAnimName = "";
-                    m_isBlending = false;
-                    m_currentTime = 0.0f;
-                    m_isPaused = false;
-                    Play(m_returnToAnim, m_toReturnMode, m_defaultBlendTime);
-                    m_shouldReturn = false;
-                    return;
-                }
-            }
-        }
+   
+    for (const auto &channel : m_currentAnim->m_channels)
+    {
+        if (channel.boneIndex == (u32)-1)
+            continue;
 
-        // Sample da animação
-        for (const auto &channel : m_currentAnim->m_channels)
-        {
-            if (channel.boneIndex == (u32)-1)
-                continue;
+        Vec3 pos = m_currentAnim->InterpolatePosition(channel, m_currentTime);
+        Quat rot = m_currentAnim->InterpolateRotation(channel, m_currentTime);
+        bones[channel.boneIndex]->SetAnimationFrame(pos, rot);
+    }
 
-            Vec3 pos = m_currentAnim->InterpolatePosition(channel, m_currentTime);
-            Quat rot = m_currentAnim->InterpolateRotation(channel, m_currentTime);
-            bones[channel.boneIndex]->SetAnimationFrame(pos, rot);
-        }
+    // ========================================================================
+    // FASE 3: HANDLE ANIMATION END (OneShot return)
+    // ========================================================================
+    
+    if (animationEnded && m_shouldReturn && !m_returnToAnim.empty())
+    {
+        m_shouldReturn = false;
+        Play(m_returnToAnim, m_toReturnMode, m_defaultBlendTime);
     }
 }
-void AnimationLayer::Bind(Node3D *parent)
+
+// ============================================================================
+// UTILITIES
+// ============================================================================
+
+void AnimationLayer::Stop(float blendOutTime)
 {
-    for (auto &Animation : m_animations)
+    if (blendOutTime > 0.0f && m_currentAnim)
     {
-        Animation.second->Bind(parent);
+        m_previousAnim = m_currentAnim;
+        m_previousAnimName = m_currentAnimName;
+        m_currentTimeBlend = m_currentTime;
+        
+        m_currentAnim = nullptr;
+        m_currentAnimName = "";
+        m_currentTime = 0.0f;
+
+        m_isBlending = true;
+        m_blendTime = 0.0f;
+        m_blendDuration = blendOutTime;
+        m_freezePoseBlend = false;  
+    }
+    else
+    {
+        m_currentAnim = nullptr;
+        m_currentAnimName = "";
+        m_currentTime = 0.0f;
+        m_isPaused = false;
+        m_isBlending = false;
+        m_freezePoseBlend = false;  
     }
 }
-// ============================================================================
-// CHECK ANIMATION END
-// ============================================================================
 
-bool AnimationLayer::CheckAnimationEnd()
+bool AnimationLayer::IsPlaying(const std::string &animName) const
 {
-    if (!m_currentAnim)
-        return false;
-
-    float duration = m_currentAnim->GetDuration();
-
-    switch (m_currentMode)
-    {
-    case PlayMode::Once:
-        if (m_currentTime >= duration)
-        {
-            m_currentTime = duration;
-            m_isPaused = true;
-            return true;
-        }
-        break;
-
-    case PlayMode::Loop:
-        if (m_currentTime >= duration)
-        {
-            m_currentTime = fmod(m_currentTime, duration);
-        }
-        break;
-
-    case PlayMode::PingPong:
-        if (m_currentTime >= duration)
-        {
-            m_currentTime = duration;
-        }
-        else if (m_currentTime < 0.0f)
-        {
-            m_currentTime = 0.0f;
-        }
-        break;
-    }
-
-    return false;
+    return (m_currentAnimName == animName && m_currentAnim != nullptr && !m_isPaused);
 }

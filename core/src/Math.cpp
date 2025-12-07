@@ -397,6 +397,13 @@ void Vec3::normalize()
     }
 }
 
+void Vec3::inverse()
+{
+    x = -x;
+    y = -y;
+    z = -z;
+}
+
 float Vec3::dot(const Vec3 &other) const
 {
     return x * other.x + y * other.y + z * other.z;

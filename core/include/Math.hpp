@@ -351,6 +351,7 @@ public:
     float length() const;
     Vec3 normalized() const;
     void normalize();
+    void inverse();
     float dot(const Vec3 &other) const;
     Vec3 cross(const Vec3 &other) const;
 
