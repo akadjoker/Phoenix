@@ -57,7 +57,7 @@ public:
 
     u32 GetBlockCount() const { return m_blocks.size(); }
 
-    void render(Shader *shader) override;
+    void render(Shader *shader, bool useMaterial) override;
 
     void renderDebug(RenderBatch *batch);
 
@@ -169,7 +169,7 @@ public:
     BoundingBox GetBoundingBox(int patchX, int patchZ) const;
 
     void update(float dt) override;
-    void render(Shader *shader) override;
+    void render(Shader *shader, bool useMaterial) override;
     void debug(RenderBatch *batch);
 
  

@@ -127,7 +127,7 @@ private:
     /**
      * @brief Renders GameObject and all components
      */
-    void render(Shader *shader) override;
+    void render(Shader *shader, bool useMaterial=true) override;
 
 private:
     void destroyComponent(Component* component);

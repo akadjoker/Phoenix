@@ -124,11 +124,11 @@ void Node3D::UpdateChildren(float dt)
  
 }
 
-void Node3D::RenderChildren(Shader *shader) const
+void Node3D::RenderChildren(Shader *shader, bool useMaterial) const
 {
     for (Node3D *child : m_children)
     {
-        child->render(shader);
+        child->render(shader, useMaterial);
     }
 }
 
@@ -337,7 +337,7 @@ void Node3D::setPosition(float x, float y, float z, TransformSpace space)
         {
             m_localPosition.x = x;
             m_localPosition.y = y;
-            m_localPosition.z = x;
+            m_localPosition.z = z;
         }
         break;
     }
@@ -649,11 +649,11 @@ void Node3D::update(float deltaTime)
     UpdateChildren(deltaTime);
 }
 
-void Node3D::render(Shader *shader)
+void Node3D::render(Shader *shader, bool useMaterial)
 {
     const Mat4 &mat = getWorldTransform(); 
     shader->SetModelMat4(mat.m);
-    RenderChildren( shader);
+    RenderChildren( shader, useMaterial);
 }
 
 // Hierarquia
@@ -777,17 +777,13 @@ Vec3 Node3D::getUp(TransformSpace space) const
     return up;
 }
 
-// LookAt
+ 
 void Node3D::lookAt(const Vec3 &target, TransformSpace targetSpace, const Vec3 &up)
 {
     Vec3 worldTarget = target;
 
-    // Converter target para world space se necessário
-    if (targetSpace == TransformSpace::Local && m_parent)
-    {
-        worldTarget = m_parent->getWorldTransform().TransformPoint(target);
-    }
-    else if (targetSpace == TransformSpace::Parent && m_parent)
+   
+    if ((targetSpace == TransformSpace::Local || targetSpace == TransformSpace::Parent) && m_parent)
     {
         worldTarget = m_parent->getWorldTransform().TransformPoint(target);
     }
@@ -795,28 +791,45 @@ void Node3D::lookAt(const Vec3 &target, TransformSpace targetSpace, const Vec3 &
     Vec3 worldPos = getPosition(TransformSpace::World);
     Vec3 forward = (worldTarget - worldPos).normalized();
 
-    // Evitar lookAt quando target == position
+ 
     if (forward.lengthSquared() < 0.0001f)
         return;
 
-    Vec3 right = Vec3::Cross(up, forward).normalized();
-    Vec3 newUp = Vec3::Cross(forward, right);
+  
+    Vec3 upNorm = up.normalized();
+    if (fabs(Vec3::Dot(upNorm, forward)) > 0.999f)
+    {
+         
+        upNorm = Vec3(0, 0, 1);
+    }
 
-    // Criar matriz de rotação
+  
+    Vec3 right = Vec3::Cross(forward, upNorm).normalized();
+    Vec3 newUp = Vec3::Cross(right, forward).normalized();
+
     Mat4 lookAtMat = Mat4::Identity();
+
+    // MATRIX COLUMN-MAJOR:
+    // Coluna 0 = right
     lookAtMat[0] = right.x;
-    lookAtMat[4] = right.y;
-    lookAtMat[8] = right.z;
-    lookAtMat[1] = newUp.x;
+    lookAtMat[1] = right.y;
+    lookAtMat[2] = right.z;
+
+    // Coluna 1 = up
+    lookAtMat[4] = newUp.x;
     lookAtMat[5] = newUp.y;
-    lookAtMat[9] = newUp.z;
-    lookAtMat[2] = -forward.x;
-    lookAtMat[6] = -forward.y;
+    lookAtMat[6] = newUp.z;
+
+    // Coluna 2 = -forward (porque o forward local é (0,0,-1))
+    lookAtMat[8]  = -forward.x;
+    lookAtMat[9]  = -forward.y;
     lookAtMat[10] = -forward.z;
 
     Quat worldRot = Quat::FromMat4(lookAtMat);
     setRotation(worldRot, TransformSpace::World);
 }
+
+
 
 const BoundingBox Node3D::getTransformedBoundingBox() const
 {

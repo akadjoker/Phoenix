@@ -380,7 +380,7 @@ void Scene::rebuildRenderLists()
     m_needRebuildLists = false;
 }
 
-void Scene::renderPass(Shader *shader, RenderType renderPass)
+void Scene::renderPass(Shader *shader, RenderType renderPass,bool useMaterial)
 {
  
     rebuildRenderLists();
@@ -423,19 +423,23 @@ void Scene::renderPass(Shader *shader, RenderType renderPass)
     if (!renderList || renderList->empty())
         return;
 
-    // Sky precisa de depth func especial
+
+    if(!useMaterial)
+     {
+        Driver::Instance().BindTexture(0,GL_TEXTURE_2D, TextureManager::Instance().GetDefault()->GetHandle());
+     }    
+  
     if (useSpecialDepth)
         glDepthFunc(GL_LEQUAL);
 
  
     for (Node3D *object : *renderList)
     {
-       ///const Mat4 model = object->getWorldTransform();
-       // shader->SetUniformMat4("model", model.m);
-        object->render(shader);
+       
+        object->render(shader,useMaterial);
     }
 
-    // Restaura depth func
+ 
     if (useSpecialDepth)
         glDepthFunc(GL_LESS);
 }
@@ -460,24 +464,12 @@ void Scene::Update(float dt)
         ActiveCamera->update(dt);
     }
 
-    const std::vector<Node3D *> *updateLists[] =
-        {
-            &m_render_terrains,
-            &m_render_lights,
-            &m_render_skyes,
-            &m_render_solids,
-            &m_render_trasparent,
-            &m_render_special,
-            &m_render_waters,
-            &m_render_mirrors};
-
-    for (const auto *list : updateLists)
+  
+    for (Node3D *object : m_objects)
     {
-        for (Node3D *object : *list)
-        {
-            object->update(dt);
-        }
+        object->update(dt);
     }
+    
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------
@@ -528,13 +520,6 @@ static std::vector<std::string> Split(const std::string &str, char delimiter)
     return result;
 }
 
-static std::string TrimLeft(const std::string &str)
-{
-    size_t start = 0;
-    while (start < str.length() && std::isspace(str[start]))
-        start++;
-    return str.substr(start);
-}
 
 static bool ParseVector3(const std::string &value, Vec3 &vec)
 {

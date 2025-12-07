@@ -561,4 +561,20 @@ namespace Utils
             return fileStat.st_mtime;
         return 0;
     }
+
+    std::string TrimLeft(const std::string &str)
+    {
+        size_t start = 0;
+        while (start < str.length() && std::isspace(str[start]))
+            start++;
+        return str.substr(start);
+    }
+
+    std::string TrimRight(const std::string &str)
+    {
+        size_t end = str.length();
+        while (end > 0 && std::isspace(str[end - 1]))
+            end--;
+        return str.substr(0, end);
+    }
 }

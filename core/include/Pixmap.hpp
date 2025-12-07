@@ -3,7 +3,7 @@
 #include "Config.hpp"
 #include "Math.hpp"
 #include "Color.hpp"
-#include "glad/glad.h"
+ 
 
 class Pixmap
 {

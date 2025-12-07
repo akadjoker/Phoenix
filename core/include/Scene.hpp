@@ -64,7 +64,7 @@ public:
 
     bool isVisible(Node3D *node);
 
-    void renderPass(Shader *shader, RenderType renderPass);
+    void renderPass(Shader *shader, RenderType renderPass, bool useMaterial = true);
     void renderAll(Shader *shader);
 
     void Render();

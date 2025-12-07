@@ -86,7 +86,7 @@ protected:
     void CreateJoints(Mesh *mesh);
 
     void UpdateChildren(float dt);
-    void RenderChildren(Shader *shader) const;
+    void RenderChildren(Shader *shader, bool useMaterial) const;
 public:
     Node3D(const std::string &name = "Node3D");
     virtual ~Node3D();
@@ -160,7 +160,7 @@ public:
 
 
     virtual void update(float deltaTime) override ;
-    virtual void render(Shader *shader) override ;
+    virtual void render(Shader *shader,bool useMaterial) override ;
 
     void setParent(Node3D *parent);
     Node3D *getParent() const { return m_parent; }
@@ -169,9 +169,9 @@ public:
     void removeChild(Node3D *child);
     void removeFromParent();
 
-    Vec3 getForward(TransformSpace space = TransformSpace::Local) const;
-    Vec3 getRight(TransformSpace space = TransformSpace::Local) const;
-    Vec3 getUp(TransformSpace space = TransformSpace::Local) const;
+    Vec3 getForward(TransformSpace space = TransformSpace::Parent) const;
+    Vec3 getRight(TransformSpace space = TransformSpace::Parent) const;
+    Vec3 getUp(TransformSpace space = TransformSpace::Parent) const;
 
     virtual void lookAt(const Vec3 &target, TransformSpace targetSpace = TransformSpace::World, const Vec3 &up = Vec3(0, 1, 0));
 

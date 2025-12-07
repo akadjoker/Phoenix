@@ -10,8 +10,7 @@
 #include "RenderTarget.hpp"
 #include "glad/glad.h"
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+
 
 extern "C" const char *__lsan_default_suppressions()
 {

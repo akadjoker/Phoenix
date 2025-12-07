@@ -487,6 +487,8 @@ public:
     float determinant() const;
     Mat3 inverse() const;
 
+    static Mat3 FromAxes(const Vec3& right, const Vec3& up, const Vec3& forward);
+    static Mat3 LookAtDirection(const Vec3& forward, const Vec3& up);
 
     static Mat3 Identity();
     static Mat3 Scale(float sx, float sy, float sz);

@@ -94,6 +94,9 @@ public:
     void Box(const BoundingBox &box);
     void Box(const BoundingBox &box, const Mat4 &transform);
 
+    void Circle3D(const Vec3& center, float radius, const Vec3& normal, int segments);
+    void CircleXZ(const Vec3& center, float radius, int segments);
+
     void Cube(const Vec3 &position, float width, float height, float depth, bool wire = true);
     void Sphere(const Vec3 &position, float radius, int rings, int slices, bool wire = true);
     void Cone(const Vec3 &position, float radius, float height, int segments, bool wire);
