@@ -42,5 +42,12 @@ void main()
     vec3 specular = spec * lightColor * 0.3;
     
     vec3 lighting = (ambient + diffuse + specular) * color;    
+
+// vec3 u_fogColor = vec3(1.0);
+
+//    float fogDist = length(FragPos - viewPos);
+//   float fogFactor = clamp(fogDist / 6000.0, 0.0, 1.0);
+//   vec3 finalColor = mix(color, u_fogColor, fogFactor);
+
     FragColor = vec4(lighting, 1.0);
 }

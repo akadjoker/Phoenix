@@ -43,8 +43,12 @@ class MainScene : public Scene
     AnimationLayer *npcTorso;
     AnimationLayer *npcLegs;
 
+    
 public:
-    void OnDebug(RenderBatch *batch) override {
+    void OnDebug(RenderBatch *batch) override 
+    {
+
+    //    terrain->debug(batch);
 
     };
     void OnRender() override
@@ -67,6 +71,9 @@ public:
         sceneShader->SetUniform("lightPos", lightPos.x, lightPos.y, lightPos.z);
         sceneShader->SetUniform("viewPos", cameraPos.x, cameraPos.y, cameraPos.z);
 
+ 
+
+        renderPass(sceneShader, RenderType::Terrain);
         renderPass(sceneShader, RenderType::Solid);
 
         // Mat4  model = Mat4::Translation(Vec3(-2.0f, 0.5f, 0.0f)) * Mat4::Scale(Vec3(0.1f));
@@ -90,9 +97,9 @@ public:
         cameraMove->setMouseSensitivity(0.15f);
         cameraMove->setSprintMultiplier(3.0f);
         camera->setAspectRatio((float)screenWidth / (float)screenHeight);
-        camera->setFOV(45.0f);
+        camera->setFOV(70.0f);
         camera->setNearPlane(0.1f);
-        camera->setFarPlane(1000.0f);
+        camera->setFarPlane(5000.0f);
         camera->setPosition(0.0f, 0.5f, 10.0f);
 
         TextureManager::Instance().SetLoadPath("assets/");
@@ -102,9 +109,9 @@ public:
         Mesh *mesh = MeshManager::Instance().CreatePlane("Plane", 10, 10);
         mesh->AddMaterial("wall")->SetTexture(0, TextureManager::Instance().Get("marm"));
 
-        GameObject *plane = createGameObject("Plane");
-        plane->addComponent<MeshRenderer>(mesh);
-        plane->setPosition(0.0f, 0.0f, 0.0f);
+        // GameObject *plane = createGameObject("Plane");
+        // plane->addComponent<MeshRenderer>(mesh);
+        // plane->setPosition(0.0f, 0.0f, 0.0f);
 
         mesh = MeshManager::Instance().CreateCube("Cube", 1);
         mesh->AddMaterial("wall")->SetTexture(0, TextureManager::Instance().Get("wall"));
@@ -221,6 +228,14 @@ public:
             legsLayer->Play("legsRun", PlayMode::Loop);
         }
 
+        Pixmap tiles;
+        tiles.Load("assets/tiles.png");
+
+        TiledTerrain *terrain = createTiledTerrain("Terrain",8,5,8,16,1);
+        terrain->LoadTilemap(&tiles);
+        terrain->GetMaterial()->SetTexture(0, TextureManager::Instance().Add("circleTextures64.jpg"));
+ 
+
         return true;
     }
     void OnDestroy() override
@@ -265,6 +280,8 @@ public:
             legsLayer->Play("idle", PlayMode::Once, 0.5f);
 
         cameraMove->setMoveInput(moveInput);
+
+        camera->update(dt  * 25.0f);
         // animator->Update(dt);
         //  soldierAnimator->Update(dt);
 
@@ -280,7 +297,7 @@ public:
         dirToCamera.normalize();
 
         const float ATTACK_RANGE = 1.0f;
-        //const float RETREAT_RANGE = 2.0f;
+        // const float RETREAT_RANGE = 2.0f;
         const float MOVE_SPEED = 2.0f;
         const float ROTATE_SPEED = 3.0f;
 
@@ -290,11 +307,11 @@ public:
 
         // Rotaciona NPC para olhar para câmera
         Vec3 forward = npcSinbad->getBackward();
-        
+
         forward.y = 0;
         forward.normalize();
         float angle = atan2(dirToCamera.x, dirToCamera.z) - atan2(forward.x, forward.z);
-        
+
         npcSinbad->rotateY(angle * ROTATE_SPEED * dt);
 
         // ===== MÁQUINA DE ESTADOS =====
@@ -425,7 +442,6 @@ public:
             break;
         }
         }
-
     }
     void OnResize(u32 w, u32 h) override
     {

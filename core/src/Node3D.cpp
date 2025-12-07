@@ -145,13 +145,15 @@ Node3D::~Node3D()
 
     for (Node3D *child : m_children)
     {
+
         child->m_parent = nullptr;
+        delete child;
     }
 
-    for (Node3D *joint : m_joints)
-    {
-        delete joint;
-    }
+    // for (Node3D *joint : m_joints)
+    // {
+    //   //  delete joint;
+    // }
 
     m_children.clear();
     m_joints.clear();
