@@ -170,6 +170,7 @@ public:
     void removeFromParent();
 
     Vec3 getForward(TransformSpace space = TransformSpace::Parent) const;
+    Vec3 getBackward(TransformSpace space = TransformSpace::Parent) const;
     Vec3 getRight(TransformSpace space = TransformSpace::Parent) const;
     Vec3 getUp(TransformSpace space = TransformSpace::Parent) const;
 

@@ -120,7 +120,8 @@ enum class PlayMode
 {
     Once,
     Loop,
-    PingPong
+    PingPong,
+    Backward
 };
 
 class AnimationLayer
@@ -138,6 +139,10 @@ public:
               float blendTime = 0.3f);
     void PlayOneShot(const std::string &animName, const std::string &returnTo, float blendTime = 0.3f, PlayMode toMode = PlayMode::Loop);
     void CrossFade(const std::string &toAnim, float duration);
+    void PlayAt(const std::string &animName, float startTime, PlayMode mode = PlayMode::Loop, float blendTime = 0.3f);
+    void PlayAction(const std::string &actionName, float blendTime);
+    void PlayWithMotionBlend(const std::string &animName, PlayMode mode = PlayMode::Loop, 
+                         float blendTime = 0.3f);
     void Stop(float blendOutTime = 0.3f);
     void Pause();
     void Resume();
@@ -153,6 +158,12 @@ public:
     bool IsPlaying(const std::string &animName) const;
     float GetCurrentTime() const { return m_currentTime; }
     const std::string &GetCurrentAnimation() const { return m_currentAnimName; }
+
+    bool HasFinished() const;
+    float GetNormalizedTime() const;
+    bool GetAnimationFrame(const std::string &animName, float time, 
+                                       const std::string &boneName,
+                                       Vec3 &outPos, Quat &outRot);
 
     // Settings
     void SetSpeed(float speed) { m_globalSpeed = speed; }
@@ -187,6 +198,9 @@ private:
     PlayMode m_toReturnMode;
     float m_defaultBlendTime;
     bool m_isPingPongReverse;
+ 
+    bool m_freezePoseBlend;
+    float m_poseBlendTime;
 
     void UpdateBlending(float deltaTime);
     void UpdateLayers(float deltaTime);

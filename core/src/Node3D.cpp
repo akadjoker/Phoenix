@@ -733,6 +733,28 @@ Vec3 Node3D::getForward(TransformSpace space) const
     return forward;
 }
 
+Vec3 Node3D::getBackward(TransformSpace space) const
+{
+     Vec3 forward(0, 0, 1);
+
+    switch (space)
+    {
+    case TransformSpace::Local:
+        return forward;
+
+    case TransformSpace::Parent:
+        return m_localRotation * forward;
+
+    case TransformSpace::World:
+    {
+        Quat worldRot = getRotation(TransformSpace::World);
+        return worldRot * forward;
+    }
+    }
+
+    return forward;
+}
+
 Vec3 Node3D::getRight(TransformSpace space) const
 {
     Vec3 right(1, 0, 0);
