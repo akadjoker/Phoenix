@@ -8,6 +8,10 @@ add_subdirectory(core)
 add_subdirectory(animation)
 
 add_subdirectory(long_terrain)
+
+add_subdirectory(test_map)
+
+add_subdirectory(bspTomap)
  
 add_subdirectory(md3animation)
  

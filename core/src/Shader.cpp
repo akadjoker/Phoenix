@@ -149,6 +149,14 @@ void Shader::Bind() const
     Driver::Instance().UseProgram(m_Program);
 }
 
+void Shader::Reset() const
+{
+    if (!m_Program)
+        return;
+    //glUseProgram(0);
+    Driver::Instance().UseProgram(0);
+}
+
 int Shader::GetUniformLocation(const char *name) const
 {
     auto it = m_UniformCache.find(name);

@@ -12,6 +12,7 @@
 #include "Mesh.hpp"
 #include "Pixmap.hpp"
 #include "Color.hpp"
+#include "Map.hpp"
 #include "Collision.hpp"
 #include "Tree.hpp"
 #include "Shader.hpp"

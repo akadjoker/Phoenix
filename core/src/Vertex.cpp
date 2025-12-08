@@ -214,7 +214,7 @@ void VertexBuffer::SetData(const void *data)
     CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, 0));
 }
 
-void VertexBuffer::SetSubData(u32 offset, u32 size, const void *data)
+void VertexBuffer::SetSubData(u32 firstVertex, u32 vertexCount, const void *data)
 {
     if (!IsValid() || !data)
     {
@@ -222,18 +222,42 @@ void VertexBuffer::SetSubData(u32 offset, u32 size, const void *data)
         return;
     }
 
-    if (offset + size > m_vertexSize * m_vertexCount)
+    if (firstVertex + vertexCount > m_vertexCount)
     {
-        LogError("VertexBuffer::setSubData - offset + size exceeds buffer size\n");
+        LogError("VertexBuffer::setSubData - firstVertex(%u) + vertexCount(%u) exceeds buffer vertexCount(%u)\n",
+                 firstVertex, vertexCount, m_vertexCount);
         return;
     }
-    u32 byteOffset = offset * m_vertexSize;
-    u32 byteSize = size * m_vertexSize;
-    CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, m_vbo));
-    //CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, offset, size, data));
-    CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, byteOffset, byteSize, data));
-    CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, 0));
+
+    u32 byteOffset = firstVertex  * m_vertexSize;
+    u32 byteSize   = vertexCount * m_vertexSize;
+
+    glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, byteOffset, byteSize, data);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
+
+
+// void VertexBuffer::SetSubData(u32 offset, u32 size, const void *data)
+// {
+//     if (!IsValid() || !data)
+//     {
+//         LogWarning("Invalid VertexBuffer or null data in setSubData\n");
+//         return;
+//     }
+
+//     if (offset + size > m_vertexSize * m_vertexCount)
+//     {
+//         LogError("VertexBuffer::setSubData - offset + size exceeds buffer size\n");
+//         return;
+//     }
+//     u32 byteOffset = offset * m_vertexSize;
+//     u32 byteSize = size * m_vertexSize;
+//     CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, m_vbo));
+//     //CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, offset, size, data));
+//     CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, byteOffset, byteSize, data));
+//     CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, 0));
+// }
 
 void VertexBuffer::Bind() const
 {
@@ -552,6 +576,54 @@ void VertexArray::Render(PrimitiveType type, u32 count) const
     CHECK_GL_ERROR(glBindVertexArray(0));
 }
 
+
+void VertexArray::Render(PrimitiveType type, u32 count, u32 startIndex) const
+{
+    if (!IsValid() || m_vertexBuffers.empty() || count == 0)
+    {
+        return;
+    }
+
+    ensureBuilt();
+    CHECK_GL_ERROR(glBindVertexArray(m_vao));
+ 
+
+    static const GLenum glPrimitiveTypes[] = {
+        GL_POINTS,         // PT_POINTS
+        GL_LINES,          // PT_LINES
+        GL_LINE_STRIP,     // PT_LINE_STRIP
+        GL_LINE_LOOP,      // PT_LINE_LOOP
+        GL_TRIANGLES,      // PT_TRIANGLES
+        GL_TRIANGLE_STRIP, // PT_TRIANGLE_STRIP
+        GL_TRIANGLE_FAN    // PT_TRIANGLE_FAN
+    };
+
+    const GLenum glMode = glPrimitiveTypes[type];
+
+    if (!ValidateVertexCount(type, count))
+    {
+        LogWarning("Invalid vertex count %u for primitive type %d\n", count, type);
+    }
+
+    if (m_indexBuffer && m_indexBuffer->IsValid())
+    {
+        const GLenum idxType = m_indexBuffer->GetIndexType();
+        
+        
+        size_t indexSize = (idxType == GL_UNSIGNED_SHORT) ? sizeof(u16) : sizeof(u32);
+        const void* offset = (const void*)(startIndex * indexSize);
+        
+        Driver::Instance().DrawElements(glMode, count, idxType, offset);
+    }
+    else
+    {
+         
+        Driver::Instance().DrawArrays(glMode, startIndex, count);
+    }
+
+    CHECK_GL_ERROR(glBindVertexArray(0));
+}
+
 void VertexArray::RenderInstanced(PrimitiveType type, u32 count, u32 instanceCount) const
 {
     if (!IsValid() || m_vertexBuffers.empty() || count == 0 || instanceCount == 0)
@@ -588,6 +660,47 @@ void VertexArray::RenderInstanced(PrimitiveType type, u32 count, u32 instanceCou
     else
     {
         CHECK_GL_ERROR(glDrawArraysInstanced(glMode, 0, count, instanceCount));
+    }
+
+    CHECK_GL_ERROR(glBindVertexArray(0));
+}
+
+
+void VertexArray::RenderInstanced(PrimitiveType type, u32 count, u32 instanceCount, u32 startIndex) const
+{
+    if (!IsValid() || m_vertexBuffers.empty() || count == 0 || instanceCount == 0)
+    {
+        return;
+    }
+
+ 
+    ensureBuilt();
+
+    CHECK_GL_ERROR(glBindVertexArray(m_vao));
+
+    static const GLenum glPrimitiveTypes[] = {
+        GL_POINTS, GL_LINES, GL_LINE_STRIP, GL_LINE_LOOP,
+        GL_TRIANGLES, GL_TRIANGLE_STRIP, GL_TRIANGLE_FAN
+    };
+
+    const GLenum glMode = glPrimitiveTypes[type];
+
+    if (!ValidateVertexCount(type, count))
+    {
+        LogWarning("Invalid vertex count %u for primitive type %d\n", count, type);
+    }
+
+    if (m_indexBuffer && m_indexBuffer->IsValid())
+    {
+        const GLenum idxType = m_indexBuffer->GetIndexType();
+        size_t indexSize = (idxType == GL_UNSIGNED_SHORT) ? sizeof(u16) : sizeof(u32);
+        const void* offset = (const void*)(startIndex * indexSize);
+        
+        CHECK_GL_ERROR(glDrawElementsInstanced(glMode, count, idxType, offset, instanceCount));
+    }
+    else
+    {
+        CHECK_GL_ERROR(glDrawArraysInstanced(glMode, startIndex, count, instanceCount));
     }
 
     CHECK_GL_ERROR(glBindVertexArray(0));

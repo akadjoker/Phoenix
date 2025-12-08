@@ -889,6 +889,42 @@ Texture *TextureManager::Add(const std::string &path, bool generateMipmaps)
     return defaultTexture;
 }
 
+
+std::string TextureManager::FindTextureFile(const std::string &name) const
+{
+    static const char *exts[] = { ".jpeg", ".jpg", ".png", ".tga", ".bmp" };
+
+    for (const char *ext : exts)
+    {
+        std::string finalPath = defaultPath + name + ext;
+
+        if (Utils::FileExists(finalPath.c_str()))
+            return finalPath;
+    }
+
+    return ""; // não encontrou nenhuma
+}
+
+
+Texture* TextureManager::TryLoad(const std::string &name)  
+{
+     static const char *exts[] = { ".jpeg", ".jpg", ".png", ".tga", ".bmp" };
+
+    for (const char *ext : exts)
+    {
+        std::string full = defaultPath + name + ext;
+
+        if (Utils::FileExists(full.c_str()))
+        {
+           return   Load(full, true);
+        }
+    }
+
+    return defaultTexture;
+}
+
+
+
 Texture *TextureManager::AddCube(const std::string &name, const std::string files[6], bool generateMipmaps)
 {
     auto it = m_textures.find(name);
@@ -972,6 +1008,7 @@ bool TextureManager::Exists(const std::string &name) const
 {
     return m_textures.find(name) != m_textures.end();
 }
+
 
 void TextureManager::PrintStats() const
 {

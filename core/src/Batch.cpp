@@ -1145,6 +1145,46 @@ void RenderBatch::Grid(int slices, float spacing, bool axes)
 //     Line3D(edges[5], edges[4]);
 // }
 
+ 
+void RenderBatch::DrawQuad(float x1, float y1, float x2, float y2,
+                           float u0, float v0, float u1, float v1)
+{
+    Vec2 coords[4] = {
+        {x1, y1},  // Top-left
+        {x1, y2},  // Bottom-left
+        {x2, y2},  // Bottom-right
+        {x2, y1}   // Top-right
+    };
+    
+    Vec2 texcoords[4] = {
+        {u0, v0},  // Top-left UV
+        {u0, v1},  // Bottom-left UV
+        {u1, v1},  // Bottom-right UV
+        {u1, v0}   // Top-right UV
+    };
+    
+    Quad(coords, texcoords);
+}
+
+ 
+void RenderBatch::DrawQuad(Texture* texture,
+                           float x1, float y1, float x2, float y2,
+                           float u0, float v0, float u1, float v1)
+{
+    if (texture)
+        SetTexture(texture->GetHandle());
+    
+    DrawQuad(x1, y1, x2, y2, u0, v0, u1, v1);
+}
+
+ 
+void RenderBatch::DrawQuad(float x1, float y1, float x2, float y2,
+                           float u0, float v0, float u1, float v1,
+                           const Color& color)
+{
+    SetColor(color);
+    DrawQuad(x1, y1, x2, y2, u0, v0, u1, v1);
+}
 
 void RenderBatch::QuadCentered(Texture *texture, float x, float y, 
                                float size, const FloatRect &clip)

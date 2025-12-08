@@ -15,12 +15,15 @@ class MainScene : public Scene
 
     float mouseSensitivity{0.8f};
 
-    InfiniteTerrain *terrain;
+        MapMesh *mapa;
+  
 
 public:
     void OnDebug(RenderBatch *batch) override {
 
         //    terrain->debug(batch);
+
+  //  mapa->Debug(batch);
 
     };
     void OnRender() override
@@ -37,19 +40,30 @@ public:
         const Mat4 proj = getProjectionMatrix();
         const Vec3 cameraPos = camera->getPosition();
 
+        const Mat4 model;
+
         sceneShader->Bind();
         sceneShader->SetUniformMat4("projection", proj.m);
         sceneShader->SetUniformMat4("view", view.m);
-        sceneShader->SetUniform("lightPos", lightPos.x, lightPos.y, lightPos.z);
-        sceneShader->SetUniform("viewPos", cameraPos.x, cameraPos.y, cameraPos.z);
+        sceneShader->SetUniformMat4("model", model.m);
+        sceneShader->SetUniform("uHasTexture",1);
+        sceneShader->SetUniform("uHasLightmap",1);
 
-        terrain->render(sceneShader, true);
+        sceneShader->SetUniform("uTexture",0);
+        sceneShader->SetUniform("uLightmap",1);
+
+
+
+        mapa->Render();
+     
+
+         
     }
     bool OnCreate() override
     {
 
         Utils::ChangeDirectory("../");
-        sceneShader = ShaderManager::Instance().Load("scene", "assets/shaders/basicLight.ps", "assets/shaders/basicLight.fs");
+        sceneShader = ShaderManager::Instance().Load("scene", "assets/shaders/detail.vs", "assets/shaders/detail.fs");
 
         if (!sceneShader)
             return false;
@@ -69,6 +83,21 @@ public:
 
         TextureManager::Instance().SetFlipVerticalOnLoad(true);
 
+
+        mapa = MapMesh::CreateTestPlane(100.0f, 100.0f, 20, 20);
+
+        // mapa->GetMaterial(0)->SetTexture(0, TextureManager::Instance().Add("terrain_texture.jpg"));
+        // mapa->GetMaterial(0)->SetTexture(1, TextureManager::Instance().Add("terrain_detail.jpg"));
+
+        TextureManager::Instance().SetLoadPath("assets/maps/textures/");
+
+        TextureManager::Instance().SetFlipVerticalOnLoad(true);
+
+     
+
+ 
+        mapa->Load("assets/maps/city.map");
+
         // Pixmap tiles;
         // tiles.Load("assets/tiles.png");
 
@@ -76,20 +105,13 @@ public:
         // terrain->LoadTilemap(&tiles);
         // terrain->GetMaterial()->SetTexture(0, TextureManager::Instance().Add("circleTextures64.jpg"));
 
-        terrain = createInfiniteTerrain("Terrain");
-        // terrain->LoadHeightmap("assets/D1.png",256.0f, 600.0f, 16);
-        // // = 24×24 patches × 400m = 9,600m = ~10km
-
-        terrain->SetPatchConfig(16, 33, 512.0f);
-
-        // Load base heightmap (vai repetir infinitamente)
-        terrain->LoadBaseHeightmap("assets/D1.png", 600.0f); // 100m max height
-        terrain->GetMaterial()->SetTexture(0, TextureManager::Instance().Add("C1W.png"));
+     
 
         return true;
     }
     void OnDestroy() override
     {
+        delete mapa;
     }
     void OnUpdate(float dt) override
     {
@@ -154,15 +176,7 @@ int main()
 
     TextureManager::Instance().SetFlipVerticalOnLoad(true);
 
-    Texture *texSun = TextureManager::Instance().Add("light.jpg");
-    Texture *texFlare = TextureManager::Instance().Add("lensflares.png");
-
-    LensFlareSystem *lensFlare = new LensFlareSystem(texSun->GetHandle(), texFlare->GetHandle(), 90.1f, 1000.0f);
-
-    lensFlare->setSunColor(1.0f, 0.95f, 0.8f);          // Amarelo quente
-    lensFlare->setSunDirection(Vec3(0.3f, 1.0f, 0.2f)); // Sol acima
-    lensFlare->setLensFlareEnabled(true);
-    lensFlare->setCheckOcclusion(false);
+  
 
     while (device.Run())
     {
@@ -181,7 +195,7 @@ int main()
         const Mat4 &proj = scene.getProjectionMatrix();
         const Mat4 &mvp = proj * view;
         const Vec3 &cameraPos = scene.getCamera()->getPosition();
-        const Vec3 &camDirection = scene.getCamera()->getDirection();
+ 
 
         const Mat4 ortho = Mat4::Ortho(0.0f, (float)screenWidth, (float)screenHeight, 0.0f, -1.0f, 1.0f);
 
@@ -189,14 +203,13 @@ int main()
 
         scene.Render();
 
-        lensFlare->checkOcclusion(view, proj, screenWidth, screenHeight);
-        lensFlare->render(view, proj, cameraPos, camDirection);
+        
 
         batch.SetMatrix(mvp);
         driver.SetDepthTest(true);
         driver.SetBlendEnable(false);
 
-        // batch.Grid(10, 1.0f, true);
+         batch.Grid(10, 1.0f, true);
 
         scene.Debug(&batch);
 
@@ -247,8 +260,7 @@ int main()
 
         device.Flip();
     }
-
-    delete lensFlare;
+ 
     scene.Release();
     font.Release();
     batch.Release();

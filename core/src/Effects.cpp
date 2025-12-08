@@ -1791,3 +1791,415 @@ DecalManager::Decal* DecalManager::GetDecal(int index)
         return &decals[index];
     return nullptr;
 }
+
+
+
+
+
+FlareElement::FlareElement()
+    : color(1,1,1), position(0.0f), size(1.0f)
+{}
+
+FlareElement::FlareElement(float pos, float sz, const Vec3 &col)
+    : color(col), position(pos), size(sz)
+{}
+
+ 
+
+bool LensFlareSystem::isFlareInScreen(const Vec3 &flareWorldPos,
+                                      const Mat4 &viewMatrix,
+                                      const Mat4 &projectionMatrix,
+                                      int viewportWidth, int viewportHeight)
+{
+    Mat4 viewProj = projectionMatrix * viewMatrix;
+    Vec4 clipPos  = viewProj * Vec4(flareWorldPos, 1.0f);
+
+    if (clipPos.w <= 0.0f)
+        return false;
+
+    float ndcX = clipPos.x / clipPos.w;
+    float ndcY = clipPos.y / clipPos.w;
+
+    return (ndcX >= -1.0f && ndcX <= 1.0f &&
+            ndcY >= -1.0f && ndcY <= 1.0f);
+}
+
+void LensFlareSystem::buildSunQuad(const Mat4 &viewMatrix,
+                                   std::vector<float> &vertexData)
+{
+    Vec3 right(viewMatrix.m[0], viewMatrix.m[4], viewMatrix.m[8]);
+    Vec3 up   (viewMatrix.m[1], viewMatrix.m[5], viewMatrix.m[9]);
+
+    Vec3 sunPos = m_sunDirection * m_cameraDistance;
+
+    Vec3 r = right * m_sunSize;
+    Vec3 u = up    * m_sunSize;
+
+    Vec3 v0 = sunPos - r - u;
+    Vec3 v1 = sunPos + r - u;
+    Vec3 v2 = sunPos - r + u;
+    Vec3 v3 = sunPos + r + u;
+
+    // pos(3) tex(2) col(3)
+    vertexData.insert(vertexData.end(), {
+        v0.x, v0.y, v0.z, 0.0f, 1.0f, m_sunColor.x, m_sunColor.y, m_sunColor.z,
+        v1.x, v1.y, v1.z, 1.0f, 1.0f, m_sunColor.x, m_sunColor.y, m_sunColor.z,
+        v2.x, v2.y, v2.z, 0.0f, 0.0f, m_sunColor.x, m_sunColor.y, m_sunColor.z,
+        v3.x, v3.y, v3.z, 1.0f, 0.0f, m_sunColor.x, m_sunColor.y, m_sunColor.z
+    });
+}
+
+void LensFlareSystem::buildFlareVertexData(const Mat4 &viewMatrix,
+                                           const Vec3 &cameraPos,
+                                           const Vec3 &cameraDir,
+                                           std::vector<float> &vertexData,
+                                           const Mat4 &projectionMatrix,
+                                           int viewportWidth, int viewportHeight)
+{
+    Vec3 lightDir = m_sunDirection.normalized();
+    Vec3 flareDir = cameraDir.normalized();
+
+    float lightDotFlare = Vec3::Dot(lightDir, flareDir);
+    if (lightDotFlare <= 0.0f)
+        return;
+
+    float luminosity = 0.333f * lightDotFlare;
+
+    Vec3 sunWorldPos  = m_sunDirection * m_cameraDistance;
+    Vec3 screenCenter = cameraPos + (cameraDir * m_cameraDistance);
+    Vec3 sunToCenter  = screenCenter - sunWorldPos;
+
+    Vec3 right(viewMatrix.m[0], viewMatrix.m[4], viewMatrix.m[8]);
+    Vec3 up   (viewMatrix.m[1], viewMatrix.m[5], viewMatrix.m[9]);
+
+    for (size_t i = 0; i < m_flares.size(); ++i)
+    {
+        const FlareElement &flare = m_flares[i];
+
+        float offU, offV;
+        switch (i % 4)
+        {
+        case 0: offU = 0.0f; offV = 0.0f; break;
+        case 1: offU = 0.5f; offV = 0.0f; break;
+        case 2: offU = 0.0f; offV = 0.5f; break;
+        default:offU = 0.5f; offV = 0.5f; break;
+        }
+
+        Vec3 flareColor = flare.color * luminosity * m_sunColor;
+        float flareSize = flare.size * m_flareBaseSize;
+
+        Vec3 flarePos = sunWorldPos + (sunToCenter * flare.position);
+
+        // opcional culling por ecrã:
+        // if (!isFlareInScreen(flarePos, viewMatrix, projectionMatrix,
+        //                      viewportWidth, viewportHeight))
+        //     continue;
+
+        Vec3 r = right * flareSize;
+        Vec3 u = up    * flareSize;
+
+        Vec3 v0 = flarePos - r - u;
+        Vec3 v1 = flarePos + r - u;
+        Vec3 v2 = flarePos - r + u;
+        Vec3 v3 = flarePos + r + u;
+
+        vertexData.insert(vertexData.end(), {
+            v0.x, v0.y, v0.z, offU,         offV+0.5f, flareColor.x, flareColor.y, flareColor.z,
+            v1.x, v1.y, v1.z, offU+0.5f,    offV+0.5f, flareColor.x, flareColor.y, flareColor.z,
+            v2.x, v2.y, v2.z, offU,         offV,      flareColor.x, flareColor.y, flareColor.z,
+            v3.x, v3.y, v3.z, offU+0.5f,    offV,      flareColor.x, flareColor.y, flareColor.z
+        });
+    }
+}
+
+void LensFlareSystem::createVertexArray()
+{
+    m_vao = new VertexArray();
+
+    u32 maxQuads    = 33;
+    u32 vertexSize  = 8 * sizeof(float);
+    u32 vertexCount = maxQuads * 4;
+
+    m_vbo = m_vao->AddVertexBuffer(vertexSize, vertexCount, true);
+
+    VertexDeclaration *decl = m_vao->GetVertexDeclaration();
+    decl->AddElement(0, 0,                 VET_FLOAT3, VES_POSITION, 0);
+    decl->AddElement(0, 3 * sizeof(float), VET_FLOAT2, VES_TEXCOORD, 0);
+    decl->AddElement(0, 5 * sizeof(float), VET_FLOAT3, VES_COLOR,   0);
+
+    std::vector<float> zeroVertices(vertexCount * 8, 0.0f);
+    m_vbo->SetData(zeroVertices.data());
+
+    u32 maxIndices = maxQuads * 6;
+    m_ibo = m_vao->CreateIndexBuffer(maxIndices, false, false);
+
+    std::vector<u32> indices;
+    indices.reserve(maxIndices);
+
+    for (u32 quad = 0; quad < maxQuads; ++quad)
+    {
+        u32 base = quad * 4;
+        indices.push_back(base+0);
+        indices.push_back(base+1);
+        indices.push_back(base+2);
+        indices.push_back(base+2);
+        indices.push_back(base+1);
+        indices.push_back(base+3);
+    }
+
+    m_ibo->SetData(indices.data());
+    m_vao->Build();
+}
+
+bool LensFlareSystem::isSunOnScreenWithSize(const Vec3 &sunWorldPos,
+                                            const Mat4 &viewMatrix,
+                                            const Mat4 &projectionMatrix,
+                                            float sunSizeWorld,
+                                            int viewportWidth, int viewportHeight)
+{
+    Mat4 viewProj = projectionMatrix * viewMatrix;
+    Vec4 clip     = viewProj * Vec4(sunWorldPos, 1.0f);
+
+    if (clip.w <= 0.0f)
+        return false;
+
+    float ndcX = clip.x / clip.w;
+    float ndcY = clip.y / clip.w;
+
+    Vec4 clipEdge = viewProj * Vec4(sunWorldPos + Vec3(sunSizeWorld,0,0), 1.0f);
+    float edgeNdcX    = clipEdge.x / clipEdge.w;
+    float sunRadiusNdc = fabs(edgeNdcX - ndcX);
+
+    return (ndcX + sunRadiusNdc >= -1.0f &&
+            ndcX - sunRadiusNdc <=  1.0f &&
+            ndcY + sunRadiusNdc >= -1.0f &&
+            ndcY - sunRadiusNdc <=  1.0f);
+}
+
+float LensFlareSystem::computeSunScreenFactor(const Vec3 &sunWorldPos,
+                                              const Mat4 &viewMatrix,
+                                              const Mat4 &projectionMatrix)
+{
+    Mat4 vp  = projectionMatrix * viewMatrix;
+    Vec4 clip = vp * Vec4(sunWorldPos, 1.0f);
+    if (clip.w <= 0.0f) return 0.0f;
+
+    float ndcX = clip.x / clip.w;
+    float ndcY = clip.y / clip.w;
+
+    float d = sqrtf(ndcX*ndcX + ndcY*ndcY);
+    float fadeStart = 0.8f;
+    float fadeEnd   = 1.1f;
+
+    if (d >= fadeEnd)   return 0.0f;
+    if (d <= fadeStart) return 1.0f;
+
+    return 1.0f - (d - fadeStart) / (fadeEnd - fadeStart);
+}
+
+// ============================================================================
+// PUBLIC
+// ============================================================================
+
+LensFlareSystem::LensFlareSystem(u32 sunTex, u32 flareTex,
+                                 float sunSz, float cameraDistance)
+    : m_vao(nullptr), m_vbo(nullptr), m_ibo(nullptr),
+      m_sunTexture(sunTex), m_flareTexture(flareTex),
+      m_sunColor(1,1,1), m_sunSize(sunSz),
+      m_flareBaseSize(sunSz * 0.8f),
+      m_shader(nullptr),
+      m_sunDirection(0,-1,0),
+      m_cameraDistance(cameraDistance),
+      m_checkOcclusion(true),
+      m_wasOccluded(false),
+      m_lensFlareEnabled(true)
+{
+    m_shader = ShaderManager::Instance().Load(
+        "lensFlare", "assets/shaders/flare.vs", "assets/shaders/flare.fs");
+    if (!m_shader)
+    {
+        LogError("Failed to load lens flare shader");
+        return;
+    }
+
+    createVertexArray();
+    initializeDefaultFlares(8);
+}
+
+LensFlareSystem::~LensFlareSystem()
+{
+    delete m_vao;
+}
+
+void LensFlareSystem::initializeDefaultFlares(int count)
+{
+    m_flares.clear();
+    m_flares.reserve(count);
+
+    for (int i = 0; i < count; ++i)
+    {
+        float t   = (i + 1) / (float)(count + 1);
+        float pos = t * t * 2.0f;
+
+        float size;
+        if (i == 0)
+            size = 1.2f;
+        else if (i == count / 2)
+            size = 1.5f;
+        else if (i < count / 3)
+            size = 0.8f + (rand() / (float)RAND_MAX) * 0.4f;
+        else
+            size = 0.3f + (rand() / (float)RAND_MAX) * 0.5f;
+
+        Vec3 color;
+        switch (i % 5)
+        {
+        case 0: color = Vec3(0.8f, 0.9f, 1.0f); break;
+        case 1: color = Vec3(1.0f, 0.8f, 0.7f); break;
+        case 2: color = Vec3(0.7f, 1.0f, 0.8f); break;
+        case 3: color = Vec3(1.0f, 0.9f, 0.8f); break;
+        default:color = Vec3(0.9f, 0.8f, 1.0f); break;
+        }
+
+        color.x *= 0.9f + (rand() / (float)RAND_MAX) * 0.2f;
+        color.y *= 0.9f + (rand() / (float)RAND_MAX) * 0.2f;
+        color.z *= 0.9f + (rand() / (float)RAND_MAX) * 0.2f;
+
+        m_flares.emplace_back(pos, size, color);
+    }
+}
+
+void LensFlareSystem::setSunColor(float r, float g, float b)
+{ m_sunColor = Vec3(r,g,b); }
+
+void LensFlareSystem::setSunColor(const Vec3 &color)
+{ m_sunColor = color; }
+
+void LensFlareSystem::setSunDirection(const Vec3 &dir)
+{ m_sunDirection = dir.normalized(); }
+
+void LensFlareSystem::setLensFlareEnabled(bool enabled)
+{ m_lensFlareEnabled = enabled; }
+
+void LensFlareSystem::setCheckOcclusion(bool check)
+{ m_checkOcclusion = check; }
+
+void LensFlareSystem::checkOcclusion(const Mat4 &viewMatrix,
+                                     const Mat4 &projectionMatrix,
+                                     int viewportWidth, int viewportHeight)
+{
+    m_wasOccluded = false;
+
+    if (!m_lensFlareEnabled || m_flares.empty())
+        return;
+
+    Vec3 sunWorldPos = m_sunDirection * m_cameraDistance;
+
+    Mat4 viewProj = projectionMatrix * viewMatrix;
+    Vec4 clipPos  = viewProj * Vec4(sunWorldPos, 1.0f);
+
+    if (clipPos.w <= 0.0f)
+    {
+        m_wasOccluded = true;
+        return;
+    }
+
+    float ndcX = clipPos.x / clipPos.w;
+    float ndcY = clipPos.y / clipPos.w;
+
+    if (ndcX < -1.0f || ndcX > 1.0f ||
+        ndcY < -1.0f || ndcY > 1.0f)
+    {
+        m_wasOccluded = true;
+        return;
+    }
+
+    if (!m_checkOcclusion)
+        return;
+
+    int winX = int((ndcX + 1.0f) * 0.5f * viewportWidth);
+    int winY = int((ndcY + 1.0f) * 0.5f * viewportHeight);
+
+    float depthValue;
+    glReadPixels(winX, winY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depthValue);
+
+    m_wasOccluded = (depthValue < 0.9999f);
+}
+
+void LensFlareSystem::render(const Mat4 &viewMatrix,
+                             const Mat4 &projectionMatrix,
+                             const Vec3 &cameraPos,
+                             const Vec3 &cameraDir)
+{
+    if (m_wasOccluded)
+        return;
+
+    Vec3 sunWorldPos = m_sunDirection * m_cameraDistance;
+
+    Driver &driver = Driver::Instance();
+
+    const IntRect viewport = driver.GetViewport();
+
+    if (!isSunOnScreenWithSize(sunWorldPos, viewMatrix, projectionMatrix,
+                               m_sunSize,  viewport.width, viewport.height))
+        return;
+
+    std::vector<float> vertexData;
+    vertexData.reserve((1 + m_flares.size()) * 4 * 8);
+
+    buildSunQuad(viewMatrix, vertexData);
+    u32 numQuads = 1;
+
+    if (m_lensFlareEnabled && !m_flares.empty())
+    {
+        size_t vertsBefore = vertexData.size() / 8;
+        buildFlareVertexData(viewMatrix, cameraPos, cameraDir,
+                             vertexData, projectionMatrix,
+                             viewport.width, viewport.height);
+        size_t vertsAfter = vertexData.size() / 8;
+        u32 flaresAdded   = (vertsAfter - vertsBefore) / 4;
+        numQuads += flaresAdded;
+    }
+
+    if (vertexData.empty())
+        return;
+
+    u32 totalVertices = vertexData.size() / 8;
+    Mat4 viewProj     = projectionMatrix * viewMatrix;
+
+    m_vbo->SetSubData(0, totalVertices, vertexData.data());
+
+    // glEnable(GL_BLEND);
+    // glBlendFunc(GL_ONE, GL_ONE);
+    // glDepthMask(GL_FALSE);
+    // glDisable(GL_DEPTH_TEST);
+
+    driver.SetDepthTest(false);
+    driver.SetBlendEnable(true);
+    driver.SetDepthWrite(false);
+    driver.SetBlendFunc(BlendFactor::One, BlendFactor::One);
+
+    m_shader->Bind();
+    m_shader->SetUniformMat4("uViewProjection", viewProj.m);
+    m_shader->SetUniform("uTexture", 0);
+
+
+    driver.BindTexture(0, GL_TEXTURE_2D,m_sunTexture);
+
+    
+    m_vao->Render(PrimitiveType::PT_TRIANGLES, 6);
+
+    if (numQuads > 1)
+    {
+        driver.BindTexture(0, GL_TEXTURE_2D,m_flareTexture);
+        u32 flareIndexCount = (numQuads - 1) * 6;
+        u32 flareIndexStart = 6;
+        m_vao->Render(PrimitiveType::PT_TRIANGLES, flareIndexCount, flareIndexStart);
+    }
+
+    m_shader->Reset();
+    // glBindTexture(GL_TEXTURE_2D, 0);
+    // glEnable(GL_DEPTH_TEST);
+    // glDepthMask(GL_TRUE);
+    // glDisable(GL_BLEND);
+}

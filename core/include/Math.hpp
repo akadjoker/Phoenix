@@ -551,12 +551,19 @@ public:
     bool operator==(const Mat4 &other) const;
     bool operator!=(const Mat4 &other) const;
 
+
+    
+
     // Operações de matriz
     Mat4 transposed() const;
     void identity();
     void transpose();
     float determinant() const;
     Mat4 inverse() const;
+
+    Vec4 transform(const Vec4 &vec) const;
+    Vec3 transform(const Vec3 &vec) const;
+    Vec3 transformDirection(const Vec3& vec) const; 
 
     Vec3 TransformPoint(const Vec3 &point) const;
     Vec3 TransformVector(const Vec3 &vec) const;

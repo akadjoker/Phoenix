@@ -26,6 +26,7 @@ public:
     void Release();
 
     void Bind() const;
+    void Reset() const ;
 
     bool addUniform(const char *name);
 

@@ -102,7 +102,7 @@ protected:
     u32 m_id;
     std::string m_name;
     bool m_active;
-  
+    u32 m_layerMask = 1u << 0;
     virtual  void serialize(Serialize& serialize) ;
     virtual void deserialize(const Serialize& in);
 public:
@@ -124,7 +124,9 @@ public:
   
     virtual ObjectType getType() { return ObjectType::Object; }
 
-
+    void setLayer(u32 layerIndex) { m_layerMask = (1u << layerIndex); }
+    void setLayerMask(u32 mask) { m_layerMask = mask; }
+    u32 getLayerMask() const { return m_layerMask; }
    
    
     

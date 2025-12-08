@@ -1649,6 +1649,42 @@ Mat4 Mat4::inverse() const
     return inv;
 }
 
+Vec4 Mat4::transform(const Vec4 &vec) const
+{
+   return Vec4(
+        m[0] * vec.x + m[4] * vec.y + m[8]  * vec.z + m[12] * vec.w,
+        m[1] * vec.x + m[5] * vec.y + m[9]  * vec.z + m[13] * vec.w,
+        m[2] * vec.x + m[6] * vec.y + m[10] * vec.z + m[14] * vec.w,
+        m[3] * vec.x + m[7] * vec.y + m[11] * vec.z + m[15] * vec.w
+    );
+}
+
+Vec3 Mat4::transform(const Vec3 &vec) const
+{
+    float x = m[0] * vec.x + m[4] * vec.y + m[8]  * vec.z + m[12];
+    float y = m[1] * vec.x + m[5] * vec.y + m[9]  * vec.z + m[13];
+    float z = m[2] * vec.x + m[6] * vec.y + m[10] * vec.z + m[14];
+    float w = m[3] * vec.x + m[7] * vec.y + m[11] * vec.z + m[15];
+    
+    
+    if (w != 0.0f && w != 1.0f)
+    {
+        float invW = 1.0f / w;
+        return Vec3(x * invW, y * invW, z * invW);
+    }
+    
+    return Vec3(x, y, z);
+}
+// Ignora translação!
+Vec3 Mat4::transformDirection(const Vec3 &vec) const
+{
+   float x = m[0] * vec.x + m[4] * vec.y + m[8]  * vec.z;
+    float y = m[1] * vec.x + m[5] * vec.y + m[9]  * vec.z;
+    float z = m[2] * vec.x + m[6] * vec.y + m[10] * vec.z;
+    
+    return Vec3(x, y, z);
+}
+
 // Funções estáticas
 Mat4 Mat4::Identity()
 {

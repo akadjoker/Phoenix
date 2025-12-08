@@ -118,6 +118,17 @@ public:
     void Quad(Texture *texture, float x1, float y1, float x2, float y2, const FloatRect &src);
     void QuadCentered(Texture *texture, float x, float y, float size, const FloatRect &clip);
 
+    void DrawQuad(float x1, float y1, float x2, float y2,
+                  float u0, float v0, float u1, float v1);
+    
+    void DrawQuad(Texture* texture,
+                  float x1, float y1, float x2, float y2,
+                  float u0, float v0, float u1, float v1);
+    
+    void DrawQuad(float x1, float y1, float x2, float y2,
+                  float u0, float v0, float u1, float v1,
+                  const Color& color);
+
     void BeginTransform(const Mat4 &transform);
     void EndTransform();
 
