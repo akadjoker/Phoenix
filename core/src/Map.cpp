@@ -132,7 +132,11 @@ void DetailMeshBuffer::Render()
     {
         Build();
     }
+    
+    
     Driver::Instance().DrawVertexArray(buffer, vertices.size(), indices.size(), PrimitiveType::PT_TRIANGLES);
+    //Driver::Instance().DrawVertexArray(buffer, vertices.size(), indices.size(), PrimitiveType::PT_TRIANGLES);
+
 }
 
 void DetailMeshBuffer::Render(PrimitiveType type, u32 count)
@@ -149,19 +153,20 @@ void DetailMeshBuffer::Debug(RenderBatch *batch)
 
     // tris lines
 
-    batch->SetColor(255, 0, 0);
-    for (size_t i = 0; i < indices.size(); i += 3)
-    {
+     batch->SetColor(255, 0, 255);
+     batch->Box(m_boundBox);
+    // for (size_t i = 0; i < indices.size(); i += 3)
+    // {
 
-        const DetailVertex v0 = vertices[indices[i]];
-        const DetailVertex v1 = vertices[indices[i + 1]];
-        const DetailVertex v2 = vertices[indices[i + 2]];
-        const Vec3 p0 = Vec3(v0.x, v0.y, v0.z);
-        const Vec3 p1 = Vec3(v1.x, v1.y, v1.z);
-        const Vec3 p2 = Vec3(v2.x, v2.y, v2.z);
-        batch->TriangleLines(p0, p1, p2);
-        // batch->Line3D(p0, p1);
-    }
+    //     const DetailVertex v0 = vertices[indices[i]];
+    //     const DetailVertex v1 = vertices[indices[i + 1]];
+    //     const DetailVertex v2 = vertices[indices[i + 2]];
+    //     const Vec3 p0 = Vec3(v0.x, v0.y, v0.z);
+    //     const Vec3 p1 = Vec3(v1.x, v1.y, v1.z);
+    //     const Vec3 p2 = Vec3(v2.x, v2.y, v2.z);
+    //     batch->TriangleLines(p0, p1, p2);
+    //     // batch->Line3D(p0, p1);
+    // }
 
     /// vertex animaltions lines
 }
@@ -176,12 +181,14 @@ void DetailMeshBuffer::CalculateBoundingBox()
 }
 
 MapMesh::MapMesh(const std::string &name)
-    : Visual(name)
+    : Spatial(name)
 {
 }
 
 MapMesh::~MapMesh()
 {
+    textures.clear();
+    lightMaps.clear();
     Clear();
 }
 
@@ -240,9 +247,7 @@ void MapMesh::Clear()
     }
     buffers.clear();
 
-    spawnPoints.clear();
-    healthPacks.clear();
-    weapons.clear();
+   
 }
 
 void MapMesh::Build()
@@ -258,6 +263,8 @@ void MapMesh::Render()
 
     for (u32 i = 0; i < buffers.size(); i++)
     {
+
+        
 
         const int texture  = buffers[i]->GetMaterial();
         const int detail = buffers[i]->GetLightmap();
@@ -284,8 +291,7 @@ void MapMesh::Render()
         buffers[i]->Render();
     }
 
-    //
-    Driver::Instance().SetCulling(CullMode::None);
+    
  
 }
 
@@ -303,8 +309,8 @@ void MapMesh::CalculateBoundingBox()
 void MapMesh::Debug(RenderBatch *batch)
 {
     // // Desenha bounding box
-    // batch->SetColor(0, 255, 0);
-    // // batch->DrawAABB(m_boundBox);
+     batch->SetColor(0, 255, 0);
+     batch->Box(m_boundBox);
 
     // // Desenha spawn points
     // batch->SetColor(255, 0, 0);
@@ -390,6 +396,7 @@ bool MapMesh::Load(const std::string &filename)
 
     u32 magic = file.ReadUInt();
     u32 version = file.ReadUInt();
+    std::string name = Utils::GetFileNameWithoutExt(filename.c_str());
 
     if (magic != 0x4D415032)
     {
@@ -410,13 +417,12 @@ bool MapMesh::Load(const std::string &filename)
     for (u32 i = 0; i < textureCount; i++)
     {
         std::string texture = file.ReadUTF();
-        LogInfo("Material %d: %s", i, texture.c_str());
-         
-
         Texture *tex = TextureManager::Instance().TryLoad(texture);
-        tex->SetAnisotropy(16.0f);
+        tex->SetAnisotropy(8.0f);
 
         textures.push_back(tex);
+
+       
 
 
 
@@ -433,14 +439,12 @@ bool MapMesh::Load(const std::string &filename)
  
     for (int i = 0; i < lightmapCount; i++)
     {
-        std::string lightmapName = "city" + std::to_string(i) ;
-        LogInfo("Lightmap %d: %s", i, lightmapName.c_str());
+        std::string lightmapName = name + std::to_string(i) ;
+       // LogInfo("Lightmap %d: %s", i, lightmapName.c_str());
         Texture *lightmap = TextureManager::Instance().TryLoad(lightmapName);
         lightMaps.push_back(lightmap);
-
-       
-         
     }
+ 
 
 
     // BUFFERS
@@ -469,6 +473,7 @@ bool MapMesh::Load(const std::string &filename)
         }
         buffer->Build();
     }
+    CalculateBoundingBox();
 
     file.Close();
     return true;

@@ -99,7 +99,7 @@ public:
     size_t GetIndexCount() const { return indices.size(); }
 };
 
-class MapMesh : public Visual
+class MapMesh : public Spatial
 {
 private:
     std::vector<DetailMeshBuffer *> buffers;
@@ -107,10 +107,7 @@ private:
     std::vector<Texture *> lightMaps;
     std::vector<Texture *> textures;
 
-    // Entidades do mapa
-    std::vector<Vec3> spawnPoints;
-    std::vector<Vec3> healthPacks;
-    std::vector<Vec3> weapons;
+
 
 public:
     MapMesh(const std::string &name = "MapMesh");
@@ -129,6 +126,8 @@ public:
     DetailMeshBuffer *GetBuffer(size_t index) const;
 
  
+
+
     bool Load(const std::string &file);
     bool Save(const std::string &file);
 
@@ -136,17 +135,13 @@ public:
 
     static MapMesh* CreateTestPlane(float width, float height, 
                                     u32 subdivisionsX, u32 subdivisionsZ);
-    // Entidades
-    const std::vector<Vec3> &GetSpawnPoints() const { return spawnPoints; }
-    const std::vector<Vec3> &GetHealthPacks() const { return healthPacks; }
-    const std::vector<Vec3> &GetWeapons() const { return weapons; }
 
     // Override de Visual
-    void Clear() override;
-    void Build() override;
-    void Render() override;
+    void Clear() ;
+    void Build() ;
+    void Render() ;
     void CalculateBoundingBox() override;
-    void Debug(RenderBatch *batch) override;
+    void Debug(RenderBatch *batch) ;
 };
 
 

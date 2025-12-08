@@ -23,7 +23,7 @@ public:
 
         //    terrain->debug(batch);
 
-  //  mapa->Debug(batch);
+    mapa->Debug(batch);
 
     };
     void OnRender() override
