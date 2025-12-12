@@ -178,58 +178,49 @@ bool BSP::saveToFile(const std::string& filePath)
     if (!out.IsOpen())
         return false;
 
-    // --- Header ---
-    MapHeader hdr{};
-    hdr.magic        = 0x324D4150; // '2MAP' ou outro; podes escolher 'MAP2' = 0x324C5041 etc.
-    hdr.version      = 1;
-    hdr.numTextures  = static_cast<u32>(textures.size());
-    hdr.numLightmaps = static_cast<u32>(lightmaps.size());
-    hdr.numSurfaces  = static_cast<u32>(mergedSurfaces.size());
+ // HEADER
+    out.WriteUInt(0x4D415032); // "MAP2"
+    out.WriteUInt(1);          // versão
 
-    out.WriteUInt(hdr.magic);
-    out.WriteUInt(hdr.version);
-    out.WriteUInt(hdr.numTextures);
-    out.WriteUInt(hdr.numLightmaps);
-    out.WriteUInt(hdr.numSurfaces);
-
-    // --- Textures diffuse ---
+        // 1) TEXTURAS
+    u32 numTextures  = static_cast<u32>(textures.size());
+  
+ 
+    out.WriteUInt(numTextures);
     for (const std::string& texName : textures)
     {
-        out.WriteUTF(texName);
+    
+        out.WriteUTF(texName.c_str());
     }
 
-    // --- Lightmaps ---
-    // Aqui assumes que já fizeste:
-    // lightmaps.push_back("lightmap0.png");
-    // lightmaps.push_back("lightmap1.png");
-    // etc. quando os exportaste.
-    for (const std::string& lmName : lightmaps)
-    {
-        out.WriteUTF(lmName);
-    }
+ // 2) LIGHTMAPS
+    out.WriteUInt(NumLightMaps);
 
-    // --- Superfícies ---
+    out.WriteUInt((u32)mergedSurfaces.size());
+
+    
     for (const BSPSurface& s : mergedSurfaces)
     {
         u32 textureIndex  = static_cast<u32>(s.textureID);
-        u32 lightmapIndex = (s.lightmapID >= 0)
-                          ? static_cast<u32>(s.lightmapID)
-                          : 0xFFFFFFFFu;
+        u32 lightmapIndex = static_cast<u32>(s.lightmapID);
+                          
 
         u32 vertexCount   = static_cast<u32>(s.vertices.size());
         u32 indexCount    = static_cast<u32>(s.indices.size());
 
-        // MapSurfaceHeader
+        
         out.WriteUInt(textureIndex);
         out.WriteUInt(lightmapIndex);
-        out.WriteUInt(vertexCount);
-        out.WriteUInt(indexCount);
+
 
         // Vertices
+        out.WriteUInt(vertexCount);
+        
         for (u32 i = 0; i < vertexCount; ++i)
         {
             const Vec3& p  = s.vertices[i];
-            const Vec3& n  = s.normals[i];
+           // const Vec3& n  = s.normals[i];
+          //  const Color& c = s.colors[i];
             const Vec2& uv0 = s.uv0[i];
             const Vec2& uv1 = s.uv1[i];
 
@@ -237,27 +228,41 @@ bool BSP::saveToFile(const std::string& filePath)
             out.WriteFloat(p.y);
             out.WriteFloat(p.z);
 
-            out.WriteFloat(n.x);
-            out.WriteFloat(n.y);
-            out.WriteFloat(n.z);
-
+            // out.WriteByte(c.r);
+            // out.WriteByte(c.g);
+            // out.WriteByte(c.b);
+            // out.WriteByte(c.a);
+            
+            // out.WriteFloat(n.x);
+            // out.WriteFloat(n.y);
+            // out.WriteFloat(n.z);
+            
             out.WriteFloat(uv0.x);
             out.WriteFloat(uv0.y);
-
+            
             out.WriteFloat(uv1.x);
             out.WriteFloat(uv1.y);
         }
-
+        
         // Índices (u32)
-        for (u16 idx : s.indices)   // se indices forem u16
+        out.WriteUInt(indexCount);
+        for (u32 i = 0; i < indexCount/3; ++i)
         {
-            out.WriteUInt(static_cast<u32>(idx));
+            u32 idx0 = s.indices[i * 3 + 0];
+            u32 idx1 = s.indices[i * 3 + 1];
+            u32 idx2 = s.indices[i * 3 + 2];
+            
+            out.WriteUInt(idx0);
+            out.WriteUInt(idx1);
+            out.WriteUInt(idx2);
         }
     }
 
     out.Close();
     return true;
 }
+
+
 
 
 BSP::BSP()
@@ -406,6 +411,7 @@ void BSP::MergeSurfacesByMaterial()
         mergedSurface.uv0.reserve(totalVertices);
         mergedSurface.uv1.reserve(totalVertices);
         mergedSurface.indices.reserve(totalIndices);
+        mergedSurface.colors.reserve(totalVertices);
 
         // Merge todas as superfícies do grupo
         for (int surfaceIndex : group.second)
@@ -420,6 +426,7 @@ void BSP::MergeSurfacesByMaterial()
                 mergedSurface.normals.push_back(surface.normals[i]);
                 mergedSurface.uv0.push_back(surface.uv0[i]);
                 mergedSurface.uv1.push_back(surface.uv1[i]);
+                mergedSurface.colors.push_back(surface.colors[i]);
             }
 
             for (size_t i = 0; i < surface.indices.size(); i++)
@@ -581,6 +588,7 @@ bool BSP::ProcessBezierPatch(const BSPFace &face, BSPSurface &surface)
     surface.normals.reserve(msize + bsize);
     surface.uv0.reserve(msize + bsize);
     surface.uv1.reserve(msize + bsize);
+    surface.colors.reserve(msize + bsize);
 
     for (u32 i = 0; i != bsize; ++i)
     {
@@ -588,6 +596,7 @@ bool BSP::ProcessBezierPatch(const BSPFace &face, BSPSurface &surface)
         surface.normals.push_back(Bezier.Patch->normals[i]);
         surface.uv0.push_back(Bezier.Patch->uv0[i]);
         surface.uv1.push_back(Bezier.Patch->uv1[i]);
+        surface.colors.push_back(Bezier.Patch->colors[i]);
     }
 
     surface.indices.reserve(surface.indices.size() + Bezier.Patch->indices.size());
@@ -629,6 +638,8 @@ void BSP::SBezier::tesselate(s32 level, float scale)
     Patch->normals.reserve(idx + level * level);
     Patch->uv0.reserve(idx + level * level);
     Patch->uv1.reserve(idx + level * level);
+    Patch->colors.reserve(idx + level * level);
+    
 
     Vertex2TCoords v;
     Vertex2TCoords f;
@@ -645,12 +656,21 @@ void BSP::SBezier::tesselate(s32 level, float scale)
             pos.y = v.position.y * scale;
             pos.z = v.position.z * scale;
 
+
             Vec3 norm;
 
             norm.x = v.normal.x * scale;
             norm.y = v.normal.y * scale;
             norm.z = v.normal.z * scale;
 
+            Color col;
+
+            col.r = v.color.r;
+            col.g = v.color.g;
+            col.b = v.color.b;
+            col.a = v.color.a;
+
+            Patch->colors.push_back(col);
             Patch->vertices.push_back(pos);
             Patch->normals.push_back(norm);
             Patch->uv0.push_back(v.uv0);
@@ -725,6 +745,30 @@ static Vec2 Interpolated_vec2_quadratic(const Vec2 &v1, const Vec2 &v2,
     return v;
 }
 
+ 
+
+static Color Interpolated_color_quadratic(const Color& c0, const Color& c1, const Color& c2, float d)
+{
+    d = Clamp(d, 0.f, 1.f);
+    const float inv = 1.f - d;
+    const float mul0 = inv * inv;
+    const float mul1 = 2.f * d * inv;
+    const float mul2 = d * d;
+
+    float a = GetValue(c0.a) * mul0 + GetValue(c1.a) * mul1 + GetValue(c2.a) * mul2;
+    float r = GetValue(c0.r) * mul0 + GetValue(c1.r) * mul1 + GetValue(c2.r) * mul2;
+    float g = GetValue(c0.g) * mul0 + GetValue(c1.g) * mul1 + GetValue(c2.g) * mul2;
+    float b = GetValue(c0.b) * mul0 + GetValue(c1.b) * mul1 + GetValue(c2.b) * mul2;
+
+    Color result;
+    result.a =  ToByte(a);
+    result.r = ToByte(r);
+    result.g = ToByte(g);
+    result.b = ToByte(b);
+
+    return result;
+}
+
 BSP::Vertex2TCoords BSP::SBezier::Interpolated_quadratic(BSP::Vertex2TCoords p0,
                                                          BSP::Vertex2TCoords p1,
                                                          BSP::Vertex2TCoords p2, double f)
@@ -734,6 +778,7 @@ BSP::Vertex2TCoords BSP::SBezier::Interpolated_quadratic(BSP::Vertex2TCoords p0,
     result.normal = Interpolated_vec3_quadratic(p0.normal, p1.normal, p2.normal, f);
     result.uv0 = Interpolated_vec2_quadratic(p0.uv0, p1.uv0, p2.uv0, f);
     result.uv1 = Interpolated_vec2_quadratic(p0.uv1, p1.uv1, p2.uv1, f);
+    result.color = Interpolated_color_quadratic(p0.color, p1.color, p2.color, f);
 
     return result;
 }

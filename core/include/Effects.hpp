@@ -438,3 +438,53 @@ public:
     int GetActiveDecalCount() const;
     Decal *GetDecal(int index);
 };
+
+
+ 
+struct FlareElement
+{
+    Vec3 color;
+    float position;
+    float size;
+    FlareElement();
+    FlareElement(float pos, float sz, const Vec3 &col);
+};
+
+class LensFlareSystem
+{
+private:
+    VertexArray *m_vao;
+    VertexBuffer *m_vbo;
+    IndexBuffer *m_ibo;
+    u32 m_sunTexture, m_flareTexture;
+    Vec3 m_sunColor, m_sunDirection;
+    float m_sunSize, m_flareBaseSize, m_cameraDistance;
+    bool m_checkOcclusion, m_wasOccluded, m_lensFlareEnabled;
+    Shader *m_shader;
+    std::vector<FlareElement> m_flares;
+
+    bool isFlareInScreen(const Vec3&, const Mat4&, const Mat4&, int, int);
+    void buildSunQuad(const Mat4&, std::vector<float>&);
+    void buildFlareVertexData(const Mat4&, const Vec3&, const Vec3&,
+                              std::vector<float>&, const Mat4&, int, int);
+    void createVertexArray();
+    bool isSunOnScreenWithSize(const Vec3&, const Mat4&, const Mat4&,
+                               float, int, int);
+    float computeSunScreenFactor(const Vec3&, const Mat4&, const Mat4&);
+
+public:
+    LensFlareSystem(u32 sunTex, u32 flareTex, float sunSz, float cameraDistance = 1000.0f);
+    ~LensFlareSystem();
+
+    void initializeDefaultFlares(int count);
+    void setSunColor(float r, float g, float b);
+    void setSunColor(const Vec3 &color);
+    void setSunDirection(const Vec3 &dir);
+    void setLensFlareEnabled(bool enabled);
+    void setCheckOcclusion(bool check);
+
+    void checkOcclusion(const Mat4 &viewMatrix, const Mat4 &projectionMatrix,
+                        int viewportWidth, int viewportHeight);
+    void render(const Mat4 &viewMatrix, const Mat4 &projectionMatrix,
+                const Vec3 &cameraPos, const Vec3 &cameraDir);
+};

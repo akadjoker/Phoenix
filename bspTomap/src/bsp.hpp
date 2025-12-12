@@ -2,8 +2,7 @@
 #include "Core.hpp"
 
  
-
-
+ 
 
 struct BSPLump
 {
@@ -142,6 +141,7 @@ struct BSPSurface
     s32 lightmapID{ 0 };
     std::vector<Vec2> uv0;
     std::vector<Vec2> uv1;
+    std::vector<Color> colors;
     std::vector<Vec3> normals;
     std::vector<Vec3> vertices;
     std::vector<u16> indices;
@@ -255,6 +255,7 @@ private:
     {
         Vec3 position;
         Vec3 normal;
+        Color color;
         Vec2 uv0;
         Vec2 uv1;
  
@@ -266,6 +267,10 @@ private:
             normal = v.vNormal;
             uv0 = v.vTextureCoord;
             uv1 = v.vLightmapCoord;
+            color.r = v.color[0];
+            color.g = v.color[1];
+            color.b = v.color[2];
+            color.a = v.color[3];
 
         }
         Vertex2TCoords(const Vertex2TCoords &dest) 
@@ -274,6 +279,7 @@ private:
             normal = dest.normal;
             uv0 = dest.uv0;
             uv1 = dest.uv1;
+            color = dest.color;
 
         }
         Vertex2TCoords& operator=(const Vertex2TCoords& dest)
@@ -282,6 +288,7 @@ private:
             normal = dest.normal;
             uv0 = dest.uv0;
             uv1 = dest.uv1;
+            color = dest.color;
  
             return *this;
         }
@@ -295,6 +302,8 @@ private:
             dest.normal = normal;
             dest.uv0 = uv0;
             dest.uv1 = uv1;
+            dest.color = color;
+            
 
         }
     };

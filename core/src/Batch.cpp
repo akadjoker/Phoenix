@@ -707,6 +707,69 @@ void RenderBatch::Cube(const Vec3 &position, float w, float h, float d,
     }
 }
 
+void RenderBatch::Circle3D(const Vec3& center, float radius, 
+                           const Vec3& normal, int segments)
+{
+    SetMode(LINES);
+    
+    if (segments < 3) segments = 32;  
+    
+ 
+    Vec3 tangent, bitangent;
+    
+    // Encontra um vetor não paralelo ao normal
+    if (fabs(normal.x) > 0.9f)
+        tangent = Vec3(0, 1, 0).cross(normal);
+    else
+        tangent = Vec3(1, 0, 0).cross(normal);
+    
+    tangent = tangent.normalized();
+    bitangent = normal.cross(tangent).normalized();
+    
+    
+    const float angleStep = (2.0f * 3.14159f) / segments;
+    
+    for (int i = 0; i < segments; i++)
+    {
+        float angle1 = angleStep * i;
+        float angle2 = angleStep * (i + 1);
+        
+        // Ponto atual
+        Vec3 p1 = center + (tangent * cos(angle1) + bitangent * sin(angle1)) * radius;
+        // Próximo ponto
+        Vec3 p2 = center + (tangent * cos(angle2) + bitangent * sin(angle2)) * radius;
+        
+        Vertex3f(p1.x, p1.y, p1.z);
+        Vertex3f(p2.x, p2.y, p2.z);
+    }
+}
+void RenderBatch::CircleXZ(const Vec3& center, float radius, int segments)
+{
+    SetMode(LINES);
+    
+    if (segments < 3) segments = 32;
+    const float angleStep = (2.0f * 3.14159f) / segments;
+    
+    for (int i = 0; i < segments; i++)
+    {
+        float angle1 = angleStep * i;
+        float angle2 = angleStep * (i + 1);
+        
+        Vec3 p1(center.x + radius * cos(angle1), 
+                center.y, 
+                center.z + radius * sin(angle1));
+                
+        Vec3 p2(center.x + radius * cos(angle2), 
+                center.y, 
+                center.z + radius * sin(angle2));
+        
+        Vertex3f(p1.x, p1.y, p1.z);
+        Vertex3f(p2.x, p2.y, p2.z);
+    }
+}
+
+
+
 void RenderBatch::Sphere(const Vec3 &position, float radius, int rings,
                          int slices, bool wire)
 {
@@ -1082,6 +1145,46 @@ void RenderBatch::Grid(int slices, float spacing, bool axes)
 //     Line3D(edges[5], edges[4]);
 // }
 
+ 
+void RenderBatch::DrawQuad(float x1, float y1, float x2, float y2,
+                           float u0, float v0, float u1, float v1)
+{
+    Vec2 coords[4] = {
+        {x1, y1},  // Top-left
+        {x1, y2},  // Bottom-left
+        {x2, y2},  // Bottom-right
+        {x2, y1}   // Top-right
+    };
+    
+    Vec2 texcoords[4] = {
+        {u0, v0},  // Top-left UV
+        {u0, v1},  // Bottom-left UV
+        {u1, v1},  // Bottom-right UV
+        {u1, v0}   // Top-right UV
+    };
+    
+    Quad(coords, texcoords);
+}
+
+ 
+void RenderBatch::DrawQuad(Texture* texture,
+                           float x1, float y1, float x2, float y2,
+                           float u0, float v0, float u1, float v1)
+{
+    if (texture)
+        SetTexture(texture->GetHandle());
+    
+    DrawQuad(x1, y1, x2, y2, u0, v0, u1, v1);
+}
+
+ 
+void RenderBatch::DrawQuad(float x1, float y1, float x2, float y2,
+                           float u0, float v0, float u1, float v1,
+                           const Color& color)
+{
+    SetColor(color);
+    DrawQuad(x1, y1, x2, y2, u0, v0, u1, v1);
+}
 
 void RenderBatch::QuadCentered(Texture *texture, float x, float y, 
                                float size, const FloatRect &clip)

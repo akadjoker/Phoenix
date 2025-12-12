@@ -169,9 +169,10 @@ public:
     void removeChild(Node3D *child);
     void removeFromParent();
 
-    Vec3 getForward(TransformSpace space = TransformSpace::Local) const;
-    Vec3 getRight(TransformSpace space = TransformSpace::Local) const;
-    Vec3 getUp(TransformSpace space = TransformSpace::Local) const;
+    Vec3 getForward(TransformSpace space = TransformSpace::Parent) const;
+    Vec3 getBackward(TransformSpace space = TransformSpace::Parent) const;
+    Vec3 getRight(TransformSpace space = TransformSpace::Parent) const;
+    Vec3 getUp(TransformSpace space = TransformSpace::Parent) const;
 
     virtual void lookAt(const Vec3 &target, TransformSpace targetSpace = TransformSpace::World, const Vec3 &up = Vec3(0, 1, 0));
 

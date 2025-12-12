@@ -168,5 +168,9 @@ public:
     void Render(PrimitiveType type, u32 count) const;
     void RenderInstanced(PrimitiveType type, u32 count, u32 instanceCount) const;
 
+    void Render(PrimitiveType type, u32 count, u32 startIndex ) const;
+    
+    void RenderInstanced(PrimitiveType type, u32 count, u32 instanceCount, u32 startIndex) const;
+
     bool IsValid() const { return m_vao != 0; }
 };

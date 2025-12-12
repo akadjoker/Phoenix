@@ -10,6 +10,7 @@
 #include "Shader.hpp"
 #include "Color.hpp"
 #include "Batch.hpp"
+#include "Pixmap.hpp"
 
 Camera *Scene::createCamera(const std::string &name)
 {
@@ -139,7 +140,7 @@ void Scene::Debug(RenderBatch *batch)
     for (u32 i = 0; i < m_objects.size(); i++)
     {
         //  m_objects[i]->debug(batch);
-        if (m_objects[i]->isShowBoxes())
+       if (m_objects[i]->isShowBoxes())
             batch->Box(m_objects[i]->getTransformedBoundingBox());
     }
 }
@@ -178,6 +179,24 @@ TerrainLod *Scene::createTerrainLod(const std::string &name, const std::string &
     TerrainLod *node = new TerrainLod(name, maxLOD, patchSize, position, scale);
     node->setRenderType(RenderType::Terrain);
     node->LoadHeightMap(heightmapPath);
+    m_objects.push_back(node);
+    m_needRebuildLists = true;
+    return node;
+}
+
+TiledTerrain *Scene::createTiledTerrain(const std::string &name, int tilesInTextureSide, float patchLength, int tilesPerPatch, u8 defaultTile, u8 border)
+{
+    TiledTerrain *node = new TiledTerrain(tilesInTextureSide, patchLength, tilesPerPatch, defaultTile, border,name);
+    node->setRenderType(RenderType::Terrain);
+    m_objects.push_back(node);
+    m_needRebuildLists = true;
+    return node;
+}
+
+InfiniteTerrain *Scene::createInfiniteTerrain(const std::string &name)
+{
+    InfiniteTerrain *node = new InfiniteTerrain(name);
+    node->setRenderType(RenderType::Terrain);
     m_objects.push_back(node);
     m_needRebuildLists = true;
     return node;
@@ -464,24 +483,12 @@ void Scene::Update(float dt)
         ActiveCamera->update(dt);
     }
 
-    const std::vector<Node3D *> *updateLists[] =
-        {
-            &m_render_terrains,
-            &m_render_lights,
-            &m_render_skyes,
-            &m_render_solids,
-            &m_render_trasparent,
-            &m_render_special,
-            &m_render_waters,
-            &m_render_mirrors};
-
-    for (const auto *list : updateLists)
+  
+    for (Node3D *object : m_objects)
     {
-        for (Node3D *object : *list)
-        {
-            object->update(dt);
-        }
+        object->update(dt);
     }
+    
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------

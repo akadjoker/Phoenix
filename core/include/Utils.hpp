@@ -76,7 +76,7 @@ namespace Utils
 {
     bool IsFileExtension(const char *fileName, const char *ext);
     bool FileExists(const char *fileName);
-
+    const char *GetFileExtension(const char *fileName);
     const char *GetFileName(const char *filePath);
     const char *GetFileNameWithoutExt(const char *filePath);
     const char *GetDirectoryPath(const char *filePath);

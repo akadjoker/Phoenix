@@ -120,6 +120,10 @@ public:
     void UnloadAll();
     bool Exists(const std::string &name) const;
 
+    Texture* TryLoad(const std::string &filename)  ;
+
+    std::string FindTextureFile(const std::string &name) const;
+
 
     void SetLoadPath(const std::string &path) { defaultPath = path; }
  

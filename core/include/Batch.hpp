@@ -94,6 +94,9 @@ public:
     void Box(const BoundingBox &box);
     void Box(const BoundingBox &box, const Mat4 &transform);
 
+    void Circle3D(const Vec3& center, float radius, const Vec3& normal, int segments);
+    void CircleXZ(const Vec3& center, float radius, int segments);
+
     void Cube(const Vec3 &position, float width, float height, float depth, bool wire = true);
     void Sphere(const Vec3 &position, float radius, int rings, int slices, bool wire = true);
     void Cone(const Vec3 &position, float radius, float height, int segments, bool wire);
@@ -114,6 +117,17 @@ public:
     void Quad(u32 texture, float x, float y, float width, float height);
     void Quad(Texture *texture, float x1, float y1, float x2, float y2, const FloatRect &src);
     void QuadCentered(Texture *texture, float x, float y, float size, const FloatRect &clip);
+
+    void DrawQuad(float x1, float y1, float x2, float y2,
+                  float u0, float v0, float u1, float v1);
+    
+    void DrawQuad(Texture* texture,
+                  float x1, float y1, float x2, float y2,
+                  float u0, float v0, float u1, float v1);
+    
+    void DrawQuad(float x1, float y1, float x2, float y2,
+                  float u0, float v0, float u1, float v1,
+                  const Color& color);
 
     void BeginTransform(const Mat4 &transform);
     void EndTransform();

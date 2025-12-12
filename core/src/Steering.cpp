@@ -3,7 +3,71 @@
 #include "Steering.hpp"
 #include "Components.hpp"
 #include "GameObject.hpp"
-#include "Mesh.hpp"
+#include "Utils.hpp"
+
+bool SteeringComponent::computeDesiredOrientation(Quat& outRotation, Vec3& outForward) const
+{
+    // Se não estamos a mover, não há orientação "útil"
+    Vec3 vel = m_velocity;
+    if (m_lockY)
+        vel.y = 0.0f;
+
+    float speed = vel.length();
+    if (speed < 0.001f)
+        return false;
+
+    Vec3 forward = vel / speed; // normalized
+
+    // Forward final (sem roll) em world space
+    outForward = forward;
+
+    // Base "up" global
+    Vec3 up(0.0f, 1.0f, 0.0f);
+
+    // Evitar caso degenerado
+    if (fabs(Vec3::Dot(up, forward)) > 0.999f)
+    {
+        // Se estiver quase colado, escolhe outro up qualquer
+        up = Vec3(1.0f, 0.0f, 0.0f);
+    }
+
+    // Right e up ortogonais
+    Vec3 right = Vec3::Cross(up, forward).normalized();
+    Vec3 newUp = Vec3::Cross(forward, right).normalized();
+
+    // Aplica roll (banking) à volta da forward
+    if (fabs(m_rollAngle) > 0.0001f)
+    {
+        Quat rollQuat = Quat::FromAxisAngle(forward, m_rollAngle);
+        right = rollQuat * right;
+        newUp = rollQuat * newUp;
+    }
+
+    // Cria matriz de rotação (igual espírito do teu lookAt)
+    Mat4 rotMat = Mat4::Identity();
+    // Colunas (ou linhas) dependem da tua Mat4; vou seguir o estilo do teu lookAt:
+    rotMat[0]  = right.x;
+    rotMat[4]  = right.y;
+    rotMat[8]  = right.z;
+
+    rotMat[1]  = newUp.x;
+    rotMat[5]  = newUp.y;
+    rotMat[9]  = newUp.z;
+
+    rotMat[2]  = -forward.x;
+    rotMat[6]  = -forward.y;
+    rotMat[10] = -forward.z;
+
+    Quat worldRot = Quat::FromMat4(rotMat);
+
+    // Compensar offset do modelo (caso a mesh aponte noutro eixo)
+    // Por ex: se o modelo estiver em +Z e a lógica usa -Z, podes definir um offset de 180º em Y
+    worldRot = worldRot * m_modelForwardOffset;
+
+    outRotation = worldRot;
+    return true;
+}
+
 
 SteeringComponent::SteeringComponent()
     : m_velocity(0, 0, 0), m_steeringForce(0, 0, 0)
@@ -96,6 +160,13 @@ void SteeringComponent::addForce(const Vec3 &force, float weight)
 
 // ==================== Basic Behaviors ====================
 
+void SteeringComponent::stop()
+{
+    m_velocity = Vec3::Zero;
+    m_steeringForce = Vec3::Zero;
+    
+}
+
 Vec3 SteeringComponent::seek(const Vec3 &target, float maxSpeed)
 {
     if (maxSpeed < 0)
@@ -106,7 +177,7 @@ Vec3 SteeringComponent::seek(const Vec3 &target, float maxSpeed)
     float distance = desired.length();
 
     if (distance < 0.001f)
-        return Vec3(0, 0, 0);
+        return Vec3::Zero;
 
     desired = desired.normalized() * maxSpeed;
     return desired - m_velocity; // Steering = desired - current
@@ -122,7 +193,7 @@ Vec3 SteeringComponent::flee(const Vec3 &threat, float panicDistance, float maxS
     float distance = toThreat.length();
 
     if (distance > panicDistance)
-        return Vec3(0, 0, 0);
+        return Vec3::Zero;
 
     Vec3 desired = (position - threat).normalized() * maxSpeed;
 
@@ -143,7 +214,7 @@ Vec3 SteeringComponent::arrive(const Vec3 &target, float slowingRadius, float ma
     float distance = toTarget.length();
 
     if (distance < 0.001f)
-        return Vec3(0, 0, 0);
+        return Vec3::Zero;
 
     float speed = maxSpeed;
     if (distance < slowingRadius)
@@ -160,7 +231,7 @@ Vec3 SteeringComponent::arrive(const Vec3 &target, float slowingRadius, float ma
 Vec3 SteeringComponent::pursue(GameObject *target, float predictionTime, float maxSpeed)
 {
     if (!target)
-        return Vec3(0, 0, 0);
+        return Vec3::Zero;
     if (maxSpeed < 0)
         maxSpeed = m_maxSpeed;
 
@@ -184,7 +255,7 @@ Vec3 SteeringComponent::evade(GameObject *threat, float predictionTime,
                               float panicDistance, float maxSpeed)
 {
     if (!threat)
-        return Vec3(0, 0, 0);
+        return Vec3::Zero;
     if (maxSpeed < 0)
         maxSpeed = m_maxSpeed;
 
@@ -207,24 +278,46 @@ Vec3 SteeringComponent::wander(float wanderRadius, float wanderDistance,
     if (maxSpeed < 0)
         maxSpeed = m_maxSpeed;
 
-    // Update wander angle with jitter
+   
     m_wanderAngle += (((float)rand() / RAND_MAX) - 0.5f) * wanderJitter;
 
+    Vec3 position = getOwner()->getPosition(TransformSpace::World);
+
+ 
     Vec3 forward = getOwner()->getForward(TransformSpace::World);
-    Vec3 circleCenter = forward * wanderDistance;
+    forward.y = 0;
 
-    // Calculate displacement on wander circle
-    Vec3 right = getOwner()->getRight(TransformSpace::World);
-    Vec3 up = getOwner()->getUp(TransformSpace::World);
+ 
+    if (forward.length() < 0.01f)
+    {
+        forward = m_velocity;
+        forward.y = 0;
+    }
 
-    Vec3 displacement = right * (std::cos(m_wanderAngle) * wanderRadius) +
-                        up * (std::sin(m_wanderAngle) * wanderRadius);
+ 
+    if (forward.length() < 0.01f)
+    {
+        forward = Vec3(0, 0, 1); // Forward padrão
+    }
 
-    if (m_lockY)
-        displacement.y = 0;
+    forward = forward.normalized();
+
+    // Centro do círculo à frente do agente
+    Vec3 circleCenter = position + forward * wanderDistance;
+    circleCenter.y = position.y; // Mantém no mesmo Y
+
+    // Calcula ponto no círculo usando o ângulo
+    // Right vector no plano XZ (perpendicular ao forward)
+    Vec3 right(-forward.z, 0, forward.x);
+
+    Vec3 displacement = forward * (std::cos(m_wanderAngle) * wanderRadius) +
+                        right * (std::sin(m_wanderAngle) * wanderRadius);
 
     Vec3 wanderTarget = circleCenter + displacement;
-    Vec3 desired = wanderTarget.normalized() * maxSpeed;
+
+ 
+    Vec3 desired = (wanderTarget - position).normalized() * maxSpeed;
+    desired.y = 0; 
 
     return desired - m_velocity;
 }
@@ -236,14 +329,10 @@ Vec3 SteeringComponent::circleStrafe(const Vec3 &target, float orbitRadius,
     Vec3 toTarget = target - position;
     float distance = toTarget.length();
 
-    // Tangent for circular motion (perpendicular to radius)
-    Vec3 tangent(-toTarget.z, 0, toTarget.x);
-    if (tangent.length() > 0.001f)
-    {
-        tangent = tangent.normalized();
-        if (!clockwise)
-            tangent = tangent * -1.0f;
-    }
+    Vec3 up(0, 1, 0);
+    Vec3 tangent = up.cross(toTarget).normalized();
+    if (!clockwise)
+        tangent = tangent * -1.0f;
 
     // Radial correction to maintain orbit distance
     Vec3 radial(0, 0, 0);
@@ -371,63 +460,319 @@ Vec3 SteeringComponent::cohesion(const std::vector<GameObject *> &neighbors,
         return seek(center, maxSpeed);
     }
 
-    return Vec3(0, 0, 0);
+    return Vec3::Zero;
+}
+
+Vec3 SteeringComponent::align(const std::vector<GameObject *> &neighbors, float neighborRadius, float maxSpeed)
+{
+    if (maxSpeed < 0)
+        maxSpeed = m_maxSpeed;
+
+    Vec3 avgVelocity(0, 0, 0);
+    int count = 0;
+
+    for (auto *neighbor : neighbors)
+    {
+        if (!neighbor || neighbor == getOwner())
+            continue;
+
+        auto *neighborSteering = neighbor->getComponent<SteeringComponent>();
+        if (!neighborSteering)
+            continue;
+
+        Vec3 neighborPos = neighbor->getPosition(TransformSpace::World);
+        Vec3 position = getOwner()->getPosition(TransformSpace::World);
+        float distance = (position - neighborPos).length();
+
+        if (distance < neighborRadius)
+        {
+            avgVelocity += neighborSteering->getVelocity();
+            count++;
+        }
+    }
+
+    if (count > 0)
+    {
+        avgVelocity = avgVelocity / (float)count;
+        Vec3 desired = avgVelocity.normalized() * maxSpeed;
+        return desired - m_velocity;
+    }
+
+    return Vec3::Zero;
 }
 
 // ==================== Update ====================
+// Na implementação (.cpp)
+
+void SteeringComponent::setSmoothingEnabled(bool enabled)
+{
+    m_smoothingEnabled = enabled;
+}
+
+bool SteeringComponent::isSmoothingEnabled() const
+{
+    return m_smoothingEnabled;
+}
+
+void SteeringComponent::setSmoothingFactor(float factor)
+{
+    m_smoothingFactor = std::clamp(factor, 0.01f, 1.0f);
+}
+
+float SteeringComponent::getSmoothingFactor() const
+{
+    return m_smoothingFactor;
+}
+
+float SteeringComponent::getWanderAngle() const
+{
+    return m_wanderAngle;
+}
+
+Vec3 SteeringComponent::getForwardDirection() const
+{
+    Vec3 vel = m_velocity;
+    if (m_lockY)
+        vel.y = 0.0f;
+
+    float speed = vel.length();
+    if (speed < 0.0001f)
+        return Vec3(0,0,0);
+
+    return vel / speed;
+}
+
+
+// void SteeringComponent::update(float deltaTime)
+// {
+//     if (!isEnabled())
+//         return;
+
+//     if (deltaTime <= 0.0f)
+//     {
+//         clearForces();
+//         return;
+//     }
+
+//     // 1) Limitar força de steering
+//     Vec3 steering = m_steeringForce;
+//     float steeringMag = steering.length();
+//     if (steeringMag > m_maxForce && steeringMag > 0.0001f)
+//     {
+//         steering = steering * (m_maxForce / steeringMag);
+//     }
+
+//     // 2) F = m a  →  a = F / m
+//     Vec3 acceleration = steering / m_mass;
+
+//     // 3) Calcular velocidade alvo
+//     Vec3 targetVelocity = m_velocity + acceleration * deltaTime;
+
+//     // Bloquear eixo Y, se necessário
+//     if (m_lockY)
+//         targetVelocity.y = 0.0f;
+
+//     // 4) Limitar velocidade máxima
+//     float targetSpeed = targetVelocity.length();
+//     if (targetSpeed > m_maxSpeed && targetSpeed > 0.0001f)
+//     {
+//         targetVelocity = targetVelocity * (m_maxSpeed / targetSpeed);
+//     }
+
+//     // 5) Suavização (LERP)
+//     if (m_smoothingEnabled)
+//     {
+//         float t = m_smoothingFactor;
+//         if (t < 0.0f) t = 0.0f;
+//         if (t > 1.0f) t = 1.0f;
+
+//         // v = v + (target - v) * t
+//         m_velocity = m_velocity + (targetVelocity - m_velocity) * t;
+//     }
+//     else
+//     {
+//         m_velocity = targetVelocity;
+//     }
+
+//     // Garantir lockY também depois da suavização
+//     if (m_lockY)
+//         m_velocity.y = 0.0f;
+
+//     // 6) Se velocidade for muito baixa, não fazemos nada
+//     float speed = m_velocity.length();
+//     const float EPS = 0.0001f;
+//     if (speed < EPS)
+//     {
+//         m_velocity = Vec3(0.0f);
+//         clearForces();
+//         return;
+//     }
+
+//     Node3D* owner = getOwner();
+//     if (owner)
+//     {
+//         // 7) Movimento
+//         owner->translate(m_velocity * deltaTime, TransformSpace::World);
+
+//         // 8) Auto-rotate para a direção do movimento
+//         if (m_autoRotate)
+//         {
+//             Vec3 dir = m_velocity;
+
+//             if (m_lockY)
+//                 dir.y = 0.0f;
+
+//             if (dir.lengthSquared() > EPS * EPS)
+//             {
+//                 dir = dir.normalized();
+
+//                 Vec3 pos = owner->getPosition(TransformSpace::World);
+//                 owner->lookAt(pos + dir, TransformSpace::World, Vec3(0, 1, 0));
+//             }
+//         }
+//     }
+
+ 
+//     clearForces();
+// }
 
 void SteeringComponent::update(float deltaTime)
 {
     if (!isEnabled())
         return;
 
-    // Limit steering force
-    float forceMagnitude = m_steeringForce.length();
-    if (forceMagnitude > m_maxForce)
+    if (deltaTime <= 0.0f)
     {
-        m_steeringForce = (m_steeringForce / forceMagnitude) * m_maxForce;
+        clearForces();
+        return;
     }
 
-    // Apply force: F = ma, a = F/m
-    Vec3 acceleration = m_steeringForce / m_mass;
-    m_velocity += acceleration * deltaTime;
+    // --- 1) Steering force ---
+    Vec3 steering = m_steeringForce;
+    float mag = steering.length();
+    if (mag > m_maxForce)
+        steering *= (m_maxForce / mag);
 
-    // Lock Y if needed
-    if (m_lockY)
+    // --- 2) Acceleration ---
+    Vec3 acceleration = steering / m_mass;
+
+    // --- 3) Target velocity ---
+    Vec3 targetVelocity = m_velocity + acceleration * deltaTime;
+    if (m_lockY) targetVelocity.y = 0;
+
+    float ts = targetVelocity.length();
+    if (ts > m_maxSpeed)
+        targetVelocity *= (m_maxSpeed / ts);
+
+    // --- 4) Smoothing velocity ---
+    if (m_smoothingEnabled)
     {
-        m_velocity.y = 0;
+        float t = m_smoothingFactor;
+        m_velocity = m_velocity + (targetVelocity - m_velocity) * t;
     }
+    else
+        m_velocity = targetVelocity;
 
-    // Limit speed
+    if (m_lockY) m_velocity.y = 0;
+
     float speed = m_velocity.length();
-    if (speed > m_maxSpeed)
+    if (speed < 0.0001f)
     {
-        m_velocity = (m_velocity / speed) * m_maxSpeed;
+        m_velocity = Vec3(0);
+        clearForces();
+        return;
     }
 
-    // Apply movement
-    if (speed > 0.01f)
+    // --- 5) Move object ---
+    Node3D* owner = getOwner();
+    owner->translate(m_velocity * deltaTime, TransformSpace::World);
+
+    // --- 6) Auto-rotate with SLERP ---
+    if (m_autoRotate)
     {
-        getOwner()->translate(m_velocity * deltaTime, TransformSpace::World);
+        Vec3 dir = m_velocity;
+        if (m_lockY) dir.y = 0;
 
-        // Auto-rotate to face movement direction
-        if (m_autoRotate && speed > 0.1f)
+        if (dir.lengthSquared() > 0.000001f)
         {
-            Vec3 forward = m_velocity.normalized();
-            if (m_lockY)
-                forward.y = 0;
+            dir.normalize();
 
-            if (forward.length() > 0.01f)
-            {
-                Vec3 currentPos = getOwner()->getPosition(TransformSpace::World);
-                getOwner()->lookAt(currentPos + forward, TransformSpace::World, Vec3(0, 1, 0));
-            }
+       
+            Mat3 rot3 = Mat3::LookAtDirection(dir, Vec3(0,1,0));
+            Quat desiredRot = Quat::FromMat3(rot3);
+
+            Quat currentRot = owner->getRotation(TransformSpace::World);
+
+           
+          
+            Quat smoothRot = Quat::Slerp(currentRot, desiredRot, m_rotationSmoothFactor);
+
+            owner->setRotation(smoothRot, TransformSpace::World);
         }
     }
 
-    // Clear forces for next frame
+ 
     clearForces();
 }
+
+Vec3 SteeringComponent::pursue(const Vec3& targetPos,
+                               const Vec3& targetVelocity,
+                               float weight)
+{
+    Node3D* owner = getOwner();
+    if (!owner)
+        return Vec3(0);
+
+    Vec3 ownerPos = owner->getPosition(TransformSpace::World);
+
+    // Direção atual até ao alvo
+    Vec3 toTarget = targetPos - ownerPos;
+    float distance = toTarget.length();
+
+    // Velocidade do nosso agente
+    float speed = m_velocity.length();
+    if (speed < 0.0001f)
+    {
+        // Se quase parado, faz basicamente um seek normal
+        return seek(targetPos, weight);
+    }
+
+    // Tempo de previsão (quanto mais longe e mais rápido, mais à frente prevemos)
+    float predictionTime = distance / speed;
+
+    // Posição prevista do alvo
+    Vec3 predictedPos = targetPos + targetVelocity * predictionTime;
+
+    return seek(predictedPos, weight);
+}
+
+Vec3 SteeringComponent::evade(const Vec3& targetPos,
+                              const Vec3& targetVelocity,
+                              float weight)
+{
+    Node3D* owner = getOwner();
+    if (!owner)
+        return Vec3(0);
+
+    Vec3 ownerPos = owner->getPosition(TransformSpace::World);
+
+    Vec3 toTarget = targetPos - ownerPos;
+    float distance = toTarget.length();
+
+    float speed = m_velocity.length();
+    if (speed < 0.0001f)
+    {
+       
+        return flee(targetPos, weight);
+    }
+
+    float predictionTime = distance / speed;
+    Vec3 predictedPos = targetPos + targetVelocity * predictionTime;
+
+    return flee(predictedPos, weight);
+}
+
+
 
 // void SteeringComponent::debugDraw()
 // {

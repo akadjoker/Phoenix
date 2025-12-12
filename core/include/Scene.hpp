@@ -16,6 +16,9 @@ class Color;
 class Terrain;
 class TerrainLod;
 class SceneParser;
+class TiledTerrain;
+class Pixmap;
+class InfiniteTerrain;
 
 class Scene
 {
@@ -98,6 +101,10 @@ public:
                                  const Vec3 &scale = Vec3(1, 1, 1),
                                  float heightScale = 1.0f,
                                  int smoothFactor = 0);
+
+    TiledTerrain *createTiledTerrain(const std::string &name, int tilesInTextureSide, float patchLength, int tilesPerPatch, u8 defaultTile = 0, u8 border=0);
+    InfiniteTerrain *createInfiniteTerrain(const std::string &name);
+
 
     const std::vector<Node3D *> &getObjects() const { return m_objects; }
 

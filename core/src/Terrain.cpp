@@ -246,8 +246,7 @@ void Terrain::render(Shader *shader, bool useMaterial)
     // if (!frustum->intersectsAABB(box))
     //     return;
 
-
-    const Mat4 &mat = getWorldTransform(); 
+    const Mat4 &mat = getWorldTransform();
     shader->SetModelMat4(mat.m);
 
     if (useMaterial)
@@ -617,7 +616,7 @@ void TerrainLod::CalculateDistanceThresholds(bool scaleChanged)
         const float patchWorldSizeX = normalizedPatchSize * m_terrainData.scale.x;
         const float patchWorldSizeZ = normalizedPatchSize * m_terrainData.scale.z;
 
-       // const float patchWorldSize = std::max(patchWorldSizeX, patchWorldSizeZ);
+        // const float patchWorldSize = std::max(patchWorldSizeX, patchWorldSizeZ);
 
         const float patchDiagonal = std::sqrt(patchWorldSizeX * patchWorldSizeX +
                                               patchWorldSizeZ * patchWorldSizeZ);
@@ -893,8 +892,6 @@ bool TerrainLod::LoadHeightMap(const std::string &filename,
     CreatePatches();
     CalculatePatchData();
 
-     
-
     // Criar buffers
     int maxIndices = m_terrainData.patchCount * m_terrainData.patchCount *
                      m_terrainData.calcPatchSize * m_terrainData.calcPatchSize * 6;
@@ -963,12 +960,12 @@ void TerrainLod::render(Shader *shader, bool useMaterial)
 
         return;
     }
-    const Mat4 &mat = getWorldTransform(); 
+    const Mat4 &mat = getWorldTransform();
     shader->SetModelMat4(mat.m);
 
     if (useMaterial)
         ApplyMaterial();
-    
+
     Driver::Instance().DrawMeshBuffer(meshBuffer, PrimitiveType::PT_TRIANGLES, m_indicesToRender);
 }
 
@@ -1094,7 +1091,7 @@ void TerrainLod::Smooth(int smoothFactor)
 
         heights = smoothed;
     }
- 
+
     for (int z = 0; z < m_terrainData.size; ++z)
     {
         for (int x = 0; x < m_terrainData.size; ++x)
@@ -1128,7 +1125,7 @@ void TerrainLod::SmoothArea(float worldX, float worldZ, float radius, int iterat
     int maxX = std::min(m_terrainData.size - 2, static_cast<int>(centerGridX + maxRadius));
     int minZ = std::max(1, static_cast<int>(centerGridZ - maxRadius));
     int maxZ = std::min(m_terrainData.size - 2, static_cast<int>(centerGridZ + maxRadius));
- 
+
     std::vector<float> heights(m_terrainData.size * m_terrainData.size);
 
     for (int i = 0; i < m_terrainData.size * m_terrainData.size; ++i)
@@ -1410,7 +1407,6 @@ TerrainRaycastHit TerrainLod::Raycast(const Ray &ray, float maxDistance) const
     }
 
     float closestDistance = maxDistance;
- 
 
     // Testar todos os patches visíveis
     const int patchCount = m_terrainData.patchCount * m_terrainData.patchCount;
@@ -1474,8 +1470,6 @@ TerrainRaycastHit TerrainLod::Raycast(const Ray &ray, float maxDistance) const
                         Vec3 edge2 = v01 - v00;
                         result.normal = edge1.cross(edge2);
                         result.normal.normalize();
-
-       
                     }
                 }
 
@@ -1496,8 +1490,6 @@ TerrainRaycastHit TerrainLod::Raycast(const Ray &ray, float maxDistance) const
                         Vec3 edge2 = v01 - v10;
                         result.normal = edge1.cross(edge2);
                         result.normal.normalize();
-
-              
                     }
                 }
             }
@@ -1506,3 +1498,4 @@ TerrainRaycastHit TerrainLod::Raycast(const Ray &ray, float maxDistance) const
 
     return result;
 }
+ 

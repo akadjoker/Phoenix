@@ -1,4 +1,4 @@
-project(bsptoh3d)
+project(test_map)
 cmake_policy(SET CMP0072 NEW)
 
 
@@ -26,12 +26,12 @@ add_compile_options(
 
 
 file(GLOB SOURCES "src/*.cpp")
-add_executable(bsptoh3d   ${SOURCES})
+add_executable(test_map   ${SOURCES})
 
 if (WIN32)
-    target_include_directories(bsptoh3d PUBLIC "${LIBS_DIR}/include" include src)
+    target_include_directories(test_map PUBLIC "${LIBS_DIR}/include" include src)
 else() 
-    target_include_directories(bsptoh3d PUBLIC  include src)
+    target_include_directories(test_map PUBLIC  include src)
 endif()
 
 
@@ -39,25 +39,25 @@ endif()
 if(CMAKE_BUILD_TYPE MATCHES Debug)
 
     if (UNIX)
-        target_compile_options(bsptoh3d PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g  -D_DEBUG )
-        target_link_options(bsptoh3d PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g  -D_DEBUG) 
+        target_compile_options(test_map PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g  -D_DEBUG )
+        target_link_options(test_map PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g  -D_DEBUG) 
     endif()
 
 
 elseif(CMAKE_BUILD_TYPE MATCHES Release)
-    target_compile_options(bsptoh3d PRIVATE -O3   -DNDEBUG )
-    target_link_options(bsptoh3d PRIVATE -O3   -DNDEBUG )
+    target_compile_options(test_map PRIVATE -O3   -DNDEBUG )
+    target_link_options(test_map PRIVATE -O3   -DNDEBUG )
 endif()
 
 
 
 if (WIN32)
-    target_link_libraries(bsptoh3d core "${LIBS_DIR}/lib/x64/SDL2main.lib" "${LIBS_DIR}/lib/x64/SDL2.lib"  Winmm.lib opengl32.lib)
+    target_link_libraries(test_map core "${LIBS_DIR}/lib/x64/SDL2animation.lib" "${LIBS_DIR}/lib/x64/SDL2.lib"  Winmm.lib opengl32.lib)
 endif()
 
 
 if (UNIX)
-    target_link_libraries(bsptoh3d core  m SDL2 GL)
+    target_link_libraries(test_map core  m SDL2 GL)
 endif()
 
 #message(STATUS "SDL2 Library Dir: ${LIB_DIR}/")

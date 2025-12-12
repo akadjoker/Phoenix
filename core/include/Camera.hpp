@@ -43,6 +43,8 @@ private:
     mutable bool m_viewDirty;
     mutable bool m_projectionDirty;
 
+    u32 m_cullingMask = 0xFFFFFFFF;
+
     void updateViewMatrix() const;
     void updateProjectionMatrix() const;
 
@@ -54,11 +56,31 @@ public:
     Vec3 getUp() const { return m_up; }
 
     // Target (calculado a partir da rotação)
-    void setTarget(const Vec3& target, TransformSpace space = TransformSpace::World);
+    void setTarget(const Vec3 &target, TransformSpace space = TransformSpace::World);
     Vec3 getTarget(TransformSpace space = TransformSpace::World) const;
- 
+
     Vec3 getTarget() const;
     Vec3 getDirection() const;
+
+    void setCullingMask(u32 mask)
+    {
+        m_cullingMask = mask;
+    }
+
+    u32 getCullingMask() const
+    {
+        return m_cullingMask;
+    }
+
+    void enableLayer(u32 index)
+    {
+        m_cullingMask |= (1u << index);
+    }
+
+    void disableLayer(u32 index)
+    {
+        m_cullingMask &= ~(1u << index);
+    }
 
     // Projeção
     void setPerspective(float fovDeg, float aspect, float near, float far);
@@ -86,7 +108,7 @@ public:
     void setPosition(const Vec3 &pos, TransformSpace space = TransformSpace::Local) override;
     void setPosition(float x, float y, float z, TransformSpace space = TransformSpace::Local) override;
     void setRotation(const Quat &rot, TransformSpace space = TransformSpace::Local) override;
-    void setRotation(float x, float y, float z,  TransformSpace space = TransformSpace::Local);
+    void setRotation(float x, float y, float z, TransformSpace space = TransformSpace::Local);
     void translate(const Vec3 &offset, TransformSpace space = TransformSpace::Local) override;
     void rotate(const Quat &rot, TransformSpace space = TransformSpace::Local) override;
     void lookAt(const Vec3 &target, TransformSpace targetSpace = TransformSpace::World,

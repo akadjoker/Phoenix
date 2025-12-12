@@ -57,8 +57,8 @@ int main(int argc, char** argv)
  
 
      BSP bsp;
-    bsp.loadFromFile("/media/djoker/code/projects/cpp/Phoenix/bin/oa_rpg3dm2.bsp");
-    bsp.saveToFile("/media/djoker/code/projects/cpp/Phoenix/bin/oa_rpg3dm2.h3d");
+    bsp.loadFromFile("/media/djoker/code/projects/cpp/Phoenix/assets/maps/oa_rpg3dm2.bsp");
+    bsp.saveToFile("/media/djoker/code/projects/cpp/Phoenix/assets/maps/oa_rpg3dm2.map");
 
  
 

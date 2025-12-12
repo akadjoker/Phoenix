@@ -397,6 +397,13 @@ void Vec3::normalize()
     }
 }
 
+void Vec3::inverse()
+{
+    x = -x;
+    y = -y;
+    z = -z;
+}
+
 float Vec3::dot(const Vec3 &other) const
 {
     return x * other.x + y * other.y + z * other.z;
@@ -993,6 +1000,48 @@ Mat3 Mat3::Identity()
 {
     return Mat3();
 }
+Mat3 Mat3::FromAxes(const Vec3& right, const Vec3& up, const Vec3& forward)
+{
+    Mat3 result;
+
+    // Column-major:
+    // coluna 0 = right
+    result.m[0] = right.x;
+    result.m[1] = right.y;
+    result.m[2] = right.z;
+
+    // coluna 1 = up
+    result.m[3] = up.x;
+    result.m[4] = up.y;
+    result.m[5] = up.z;
+
+    // coluna 2 = forward
+    result.m[6] = forward.x;
+    result.m[7] = forward.y;
+    result.m[8] = forward.z;
+
+    return result;
+}
+
+Mat3 Mat3::LookAtDirection(const Vec3& forwardDir, const Vec3& upHint)
+{
+    Vec3 f = forwardDir.normalized();
+    Vec3 u = upHint.normalized();
+
+    // Evitar up quase paralelo ao forward
+    if (fabs(Vec3::Dot(f, u)) > 0.999f)
+    {
+ 
+        u = Vec3(0, 0, 1);
+    }
+ 
+    Vec3 right = Vec3::Cross(f, u).normalized();
+    Vec3 newUp = Vec3::Cross(right, f).normalized();
+
+ 
+    return FromAxes(right, newUp, -f);
+}
+
 
 Mat3 Mat3::Scale(float sx, float sy, float sz)
 {
@@ -1598,6 +1647,42 @@ Mat4 Mat4::inverse() const
     }
 
     return inv;
+}
+
+Vec4 Mat4::transform(const Vec4 &vec) const
+{
+   return Vec4(
+        m[0] * vec.x + m[4] * vec.y + m[8]  * vec.z + m[12] * vec.w,
+        m[1] * vec.x + m[5] * vec.y + m[9]  * vec.z + m[13] * vec.w,
+        m[2] * vec.x + m[6] * vec.y + m[10] * vec.z + m[14] * vec.w,
+        m[3] * vec.x + m[7] * vec.y + m[11] * vec.z + m[15] * vec.w
+    );
+}
+
+Vec3 Mat4::transform(const Vec3 &vec) const
+{
+    float x = m[0] * vec.x + m[4] * vec.y + m[8]  * vec.z + m[12];
+    float y = m[1] * vec.x + m[5] * vec.y + m[9]  * vec.z + m[13];
+    float z = m[2] * vec.x + m[6] * vec.y + m[10] * vec.z + m[14];
+    float w = m[3] * vec.x + m[7] * vec.y + m[11] * vec.z + m[15];
+    
+    
+    if (w != 0.0f && w != 1.0f)
+    {
+        float invW = 1.0f / w;
+        return Vec3(x * invW, y * invW, z * invW);
+    }
+    
+    return Vec3(x, y, z);
+}
+// Ignora translação!
+Vec3 Mat4::transformDirection(const Vec3 &vec) const
+{
+   float x = m[0] * vec.x + m[4] * vec.y + m[8]  * vec.z;
+    float y = m[1] * vec.x + m[5] * vec.y + m[9]  * vec.z;
+    float z = m[2] * vec.x + m[6] * vec.y + m[10] * vec.z;
+    
+    return Vec3(x, y, z);
 }
 
 // Funções estáticas

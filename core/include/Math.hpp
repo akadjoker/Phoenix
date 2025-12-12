@@ -351,6 +351,7 @@ public:
     float length() const;
     Vec3 normalized() const;
     void normalize();
+    void inverse();
     float dot(const Vec3 &other) const;
     Vec3 cross(const Vec3 &other) const;
 
@@ -487,6 +488,8 @@ public:
     float determinant() const;
     Mat3 inverse() const;
 
+    static Mat3 FromAxes(const Vec3& right, const Vec3& up, const Vec3& forward);
+    static Mat3 LookAtDirection(const Vec3& forward, const Vec3& up);
 
     static Mat3 Identity();
     static Mat3 Scale(float sx, float sy, float sz);
@@ -548,12 +551,19 @@ public:
     bool operator==(const Mat4 &other) const;
     bool operator!=(const Mat4 &other) const;
 
+
+    
+
     // Operações de matriz
     Mat4 transposed() const;
     void identity();
     void transpose();
     float determinant() const;
     Mat4 inverse() const;
+
+    Vec4 transform(const Vec4 &vec) const;
+    Vec3 transform(const Vec3 &vec) const;
+    Vec3 transformDirection(const Vec3& vec) const; 
 
     Vec3 TransformPoint(const Vec3 &point) const;
     Vec3 TransformVector(const Vec3 &vec) const;
