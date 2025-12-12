@@ -11,6 +11,7 @@ add_subdirectory(long_terrain)
 
 add_subdirectory(test_map)
 
+add_subdirectory(bsxTomap)
 add_subdirectory(bspTomap)
  
 add_subdirectory(md3animation)

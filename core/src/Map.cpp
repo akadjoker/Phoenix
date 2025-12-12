@@ -463,14 +463,9 @@ bool MapMesh::Load(const std::string &filename)
         buffer->vertices.resize(vertCount);
         file.Read(buffer->vertices.data(), vertCount * sizeof(DetailVertex));
 
-        u32 idxCount = file.ReadUInt() /3;        
-        for (u32 j = 0; j < idxCount; j++)
-        {
-            u32 i0 = file.ReadUInt();
-            u32 i1 = file.ReadUInt();
-            u32 i2 = file.ReadUInt();
-            buffer->AddFace(i2, i1, i0);
-        }
+        u32 idxCount = file.ReadUInt();
+        buffer->indices.resize(idxCount);
+        file.Read(buffer->indices.data(), idxCount * sizeof(u32));
         buffer->Build();
     }
     CalculateBoundingBox();

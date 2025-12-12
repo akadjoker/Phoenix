@@ -23,7 +23,7 @@ public:
 
         //    terrain->debug(batch);
 
-    mapa->Debug(batch);
+  //  mapa->Debug(batch);
 
     };
     void OnRender() override
@@ -89,9 +89,9 @@ public:
         // mapa->GetMaterial(0)->SetTexture(0, TextureManager::Instance().Add("terrain_texture.jpg"));
         // mapa->GetMaterial(0)->SetTexture(1, TextureManager::Instance().Add("terrain_detail.jpg"));
 
-        TextureManager::Instance().SetLoadPath("assets/maps/textures/");
+        TextureManager::Instance().SetLoadPath("assets/maps/city/");
 
-        TextureManager::Instance().SetFlipVerticalOnLoad(true);
+        TextureManager::Instance().SetFlipVerticalOnLoad(false);
 
      
 

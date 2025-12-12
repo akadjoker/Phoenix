@@ -920,7 +920,7 @@ Texture* TextureManager::TryLoad(const std::string &name)
         }
     }
 
-    return defaultTexture;
+    return Get("checker");
 }
 
 

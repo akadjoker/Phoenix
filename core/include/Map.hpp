@@ -32,7 +32,7 @@ class Visual;
 struct DetailVertex
 {
     float x, y, z; // Posição
-
+    float nx, ny, nz;
     float u, v;   // UV textura
     float lu, lv; // UV lightmap
 

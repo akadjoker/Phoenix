@@ -1,4 +1,5 @@
-project(bspTomap)
+project(bsxToMap
+)
 cmake_policy(SET CMP0072 NEW)
 
 
@@ -26,12 +27,15 @@ add_compile_options(
 
 
 file(GLOB SOURCES "src/*.cpp")
-add_executable(bspTomap   ${SOURCES})
+add_executable(bsxToMap
+   ${SOURCES})
 
 if (WIN32)
-    target_include_directories(bspTomap PUBLIC "${LIBS_DIR}/include" include src)
+    target_include_directories(bsxToMap
+     PUBLIC "${LIBS_DIR}/include" include src)
 else() 
-    target_include_directories(bspTomap PUBLIC  include src)
+    target_include_directories(bsxToMap
+     PUBLIC  include src)
 endif()
 
 
@@ -39,25 +43,31 @@ endif()
 if(CMAKE_BUILD_TYPE MATCHES Debug)
 
     if (UNIX)
-        target_compile_options(bspTomap PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g  -D_DEBUG )
-        target_link_options(bspTomap PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g  -D_DEBUG) 
+        target_compile_options(bsxToMap
+         PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g  -D_DEBUG )
+        target_link_options(bsxToMap
+         PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g  -D_DEBUG) 
     endif()
 
 
 elseif(CMAKE_BUILD_TYPE MATCHES Release)
-    target_compile_options(bspTomap PRIVATE -O3   -DNDEBUG )
-    target_link_options(bspTomap PRIVATE -O3   -DNDEBUG )
+    target_compile_options(bsxToMap
+     PRIVATE -O3   -DNDEBUG )
+    target_link_options(bsxToMap
+     PRIVATE -O3   -DNDEBUG )
 endif()
 
 
 
 if (WIN32)
-    target_link_libraries(bspTomap core "${LIBS_DIR}/lib/x64/SDL2main.lib" "${LIBS_DIR}/lib/x64/SDL2.lib"  Winmm.lib opengl32.lib)
+    target_link_libraries(bsxToMap
+     core "${LIBS_DIR}/lib/x64/SDL2animation.lib" "${LIBS_DIR}/lib/x64/SDL2.lib"  Winmm.lib opengl32.lib)
 endif()
 
 
 if (UNIX)
-    target_link_libraries(bspTomap core  m SDL2 GL)
+    target_link_libraries(bsxToMap
+     core  m SDL2 GL)
 endif()
 
 #message(STATUS "SDL2 Library Dir: ${LIB_DIR}/")
