@@ -9,6 +9,8 @@ add_subdirectory(animation)
 
 add_subdirectory(long_terrain)
 
+add_subdirectory(island)
+
 add_subdirectory(test_map)
 
 add_subdirectory(bsxTomap)
